@@ -2,6 +2,41 @@
 Changelog
 =========
 
+Version 3.0.0
+-------------
+
+**Breaking changes**
+
+* Phase 1 and MVP models removed entirely. Only ``v3`` and ``v3-cls`` (YOLOv8) are supported.
+* ``pipeline_v3()`` renamed to ``pipeline()``; ``batch_v3()`` renamed to ``batch()``.
+* ``wic``, ``agg``, and ``tile`` modules removed.
+* ``loc`` module now exposes only ``fetch()`` and ``CONFIGS`` — the ``pre()``,
+  ``predict()``, and ``post()`` functions are gone.
+* CLI options ``--wic-thresh``, ``--loc-nms-thresh``, ``--agg-thresh``, ``--agg-nms-thresh``
+  removed. Only ``--loc-thresh`` remains.
+* Config aliases ``old`` and ``new`` removed from ``--config`` choices.
+
+**New features**
+
+* ``batch_resumable()`` — incremental JSONL output with automatic resume on interruption.
+* Model fetching now uses MD5 sidecar verification (``requests`` + ``hashlib``);
+  ``pooch`` is no longer required.
+* Models are cached at ``~/.cache/scoutbot/`` instead of inside the package directory.
+* ``get_classes()`` returns class labels by model introspection.
+
+**Dependency reductions**
+
+* Removed: ``pooch``, ``wbia-utool``, ``onnxruntime``, ``torch`` (standalone),
+  ``torchvision``, ``imgaug``, ``gradio``, ``dill``.
+* Added: ``requests`` (replaces ``pooch`` for model downloads).
+* ``ultralytics`` and ``sahi`` are now the only ML dependencies.
+
+**Internal**
+
+* ``tile_batched/main.py`` reduced from ~550 lines to ~35 lines; all SAHI reimplementation
+  removed. Stock ``sahi.predict.get_sliced_prediction()`` is used directly.
+* Docker image no longer requires Rust toolchain or ``onnxruntime-gpu``.
+
 Version 0.1.17
 --------------
 

@@ -1,19 +1,19 @@
 .DS_Store
 .idea
+.venv/
 output.*.jpg
 *.log*
 
 *.egg-info/
+dist/
+build/
 
-examples/*_w_256_h_256.jpg
 .coverage*
 coverage/
 
-gradio_cached_examples/
 __pycache__/
 docs/build/
-
 docs/_build/
-.claude/
+
+uv.lock
 test.json
-visualise.py

@@ -6,10 +6,10 @@ CLI for ScoutBot v3
 A simplified command-line interface for running YOLOv8-based wildlife detection.
 """
 import json
+import os
 from os.path import exists
 
 import click
-import utool as ut
 
 import scoutbot
 from scoutbot import loc, log
@@ -44,7 +44,7 @@ v3_options = [
     click.option(
         '--device',
         help='Specifies the device for inference (see YOLO and PyTorch documentation)',
-        default='cuda:0',
+        default=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
         type=click.Choice(['cuda:0', 'cuda', 'mps', 'cpu']),
     ),
     click.option(
@@ -132,7 +132,7 @@ def pipeline(
         with open(output, 'w') as outfile:
             json.dump(data, outfile)
     else:
-        print(ut.repr3(data))
+        print(json.dumps(data, indent=2))
 
 
 @click.command('batch')
@@ -199,7 +199,7 @@ def batch(
         with open(output, 'w') as outfile:
             json.dump(data, outfile)
     else:
-        print(ut.repr3(data))
+        print(json.dumps(data, indent=2))
 
 
 @click.command('batch-resumable')
@@ -299,7 +299,7 @@ def get_classes(config, output):
         with open(output, 'w') as outfile:
             json.dump(classes, outfile)
     else:
-        print(ut.repr3(classes))
+        print(json.dumps(classes, indent=2))
 
 
 @click.group()

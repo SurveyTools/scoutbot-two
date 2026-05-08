@@ -12,20 +12,10 @@ pretrained for inference in a production environment.
 
 .. include:: environment.rst
 
-.. include:: onnx.rst
+Tile Batched (v3)
+-----------------
 
-Tiles (TILE)
-------------
-
-.. automodule:: scoutbot.tile
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Whole-Image Classifier (WIC)
-----------------------------
-
-.. automodule:: scoutbot.wic
+.. automodule:: scoutbot.tile_batched
    :members:
    :undoc-members:
    :show-inheritance:
@@ -34,14 +24,6 @@ Localizer (LOC)
 ---------------
 
 .. automodule:: scoutbot.loc
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Aggregation (AGG)
------------------
-
-.. automodule:: scoutbot.agg
    :members:
    :undoc-members:
    :show-inheritance:

@@ -8,14 +8,7 @@ tests/
 .coverage
 coverage/
 
-gradio_cached_examples/
 __pycache__/
 docs/build/
 
 requirements.optional.txt
-
-scoutbot/loc/models/pytorch
-scoutbot/loc/models/onnx/scout.loc.5fbfff26.1.onnx
-scoutbot/wic/models/pytorch
-scoutbot/wic/models/onnx/scout.wic.5fbfff26.3.2.onnx
-scoutbot/wic/models/onnx/scout.wic.5fbfff26.3.1.onnx

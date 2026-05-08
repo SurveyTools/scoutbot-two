@@ -1,38 +1,30 @@
 Overview
 --------
 
-In general, the structure of this API is to expose four main processing components for the Scout project.
-These components are, in order: ``TILE``, ``WIC``, ``LOC``, and ``AGG``.
+ScoutBot is a machine learning package for aerial wildlife survey image processing. It detects
+and localises animals in aerial photographs using YOLOv8 with SAHI (Slicing Aided Hyper
+Inference).
 
-   1. ``TILE``: A module to convert images to tiles
-   2. ``WIC``: A module to classify tiles as relevant for further processing (i.e., does it likely have an elephant?)
-   3. ``LOC``: A module to detect elephants in tiles
-   4. ``AGG``: A module to aggregate the tile-level detections back onto the original image
+The v3 pipeline runs in two steps:
 
-The ``TILE`` step and ``AGG`` steps are heuristic-based algorithms and do not need to use any
-machine learning (ML) models or GPU offload.  In contrast, the ``WIC`` and ``LOC`` steps both require
-their own ML models and can be computed on CPU or GPU (if available).
+   1. **Fetch** — Download the YOLOv8 model from Azure Blob Storage if it is not already cached
+      locally. MD5 verification ensures the local copy matches the remote.
 
-The non-ML components (``TILE`` and ``AGG``) both expose :func:`compute` functions, which is the single
-point of interaction as the developer:
+   2. **Sliced inference** — The input image is divided into overlapping 512×512 slices.
+      YOLOv8 runs inference on all slices in configurable batches (default: 128 slices per
+      batch). SAHI collects and deduplicates the resulting detections across slice boundaries
+      using class-agnostic NMS, then returns the full set of bounding boxes.
 
-   - :meth:`scoutbot.tile.compute`
-   - :meth:`scoutbot.agg.compute`
+Two model variants are available:
 
-The ML components (``WIC`` and ``LOC``), in contrast, is a bit more complex and exposes three functions:
+   - ``v3`` (``yolov8-onecls.kaza.pt``) — single-class (animal) detector
+   - ``v3-cls`` (``yolov8-cls.kaza.pt``) — multi-class species classifier
 
-   - :func:`pre` (preprocessing)
-   - :func:`predict` (inference)
-   - :func:`post` (postprocessing)
+The main entry points are:
 
-For the WIC, these functions are:
-
-   - :meth:`scoutbot.wic.pre`
-   - :meth:`scoutbot.wic.predict`
-   - :meth:`scoutbot.wic.post`
-
-and for the LOC, these functions are:
-
-   - :meth:`scoutbot.loc.pre`
-   - :meth:`scoutbot.loc.predict`
-   - :meth:`scoutbot.loc.post`
+   - :func:`scoutbot.pipeline` — run on a single image
+   - :func:`scoutbot.batch` — run on a list of images with model reuse
+   - :func:`scoutbot.batch_resumable` — like ``batch``, but writes results incrementally to
+     JSONL so processing can be resumed after interruption
+   - :func:`scoutbot.fetch` — explicitly download a model
+   - :func:`scoutbot.get_classes` — list the class labels supported by a model

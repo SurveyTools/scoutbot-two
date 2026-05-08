@@ -19,9 +19,9 @@ class TestLocConfig:
         from scoutbot import loc
 
         required_keys = [
-            'hash',
             'name',
-            'path',
+            'url',
+            'md5_url',
             'thresh',
             'slice_height',
             'slice_width',
