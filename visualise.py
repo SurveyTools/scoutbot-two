@@ -104,9 +104,6 @@ def visualize_detections(image_path, json_path, threshold=0.0, output_path=None)
         print(f"Saved output to: {output_path}")
 
     # Display image
-    # Convert BGR to RGB for display
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
     # Create window and display
     window_name = f"ScoutBot Detections - {Path(image_path).name}"
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)

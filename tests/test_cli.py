@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Tests for ScoutBot CLI."""
-import json
-import pytest
 from click.testing import CliRunner
 
 

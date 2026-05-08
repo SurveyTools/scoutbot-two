@@ -422,7 +422,6 @@ def example():
     Run the pipeline on an example image with the default configuration.
     """
     import hashlib
-    import tempfile
 
     import requests
 

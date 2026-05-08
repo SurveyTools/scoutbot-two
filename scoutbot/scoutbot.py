@@ -261,7 +261,7 @@ def batch_resumable(
         show_progress=not no_progress,
     )
 
-    print(f"\nSummary:")
+    print("\nSummary:")
     print(f"  Processed: {summary['processed']}")
     print(f"  Skipped (already done): {summary['skipped']}")
     print(f"  Errors: {summary['errors']}")

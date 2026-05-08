@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.loc module."""
-import pytest
 from pathlib import Path
 
 

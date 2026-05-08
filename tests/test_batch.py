@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.batch() and scoutbot.batch_resumable() functions."""
 import json
-import pytest
 import shutil
 
 
