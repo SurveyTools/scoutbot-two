@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false
+          lfs: true
           fetch-depth: 0
 
       - name: Free Disk Space
