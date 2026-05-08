@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoutbot"
-version = "3.0.0"
+version = "0.2.0"
 description = "The computer vision for Wild Me's Scout project"
 readme = "README.md"
 requires-python = ">=3.8,<3.13"
@@ -36,7 +36,7 @@ all = [
 ]
 
 [project.urls]
-Repository = "https://github.com/simbamangu/scoutbot-lean"
+Repository = "https://github.com/SurveyTools/scoutbot-2026"
 
 [project.scripts]
 scoutbot = "scoutbot.scoutbot:cli"

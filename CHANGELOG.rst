@@ -2,7 +2,7 @@
 Changelog
 =========
 
-Version 3.0.0
+Version 0.2.0
 -------------
 
 **Breaking changes**

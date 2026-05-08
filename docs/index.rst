@@ -3,7 +3,7 @@ Wild Me ScoutBot
 ================
 
 YOLOv8-based machine learning pipeline for detecting and localising wildlife
-in aerial survey imagery. Source: https://github.com/simbamangu/scoutbot-lean
+in aerial survey imagery. Source: https://github.com/SurveyTools/scoutbot-2026
 
 .. include:: ../CHANGELOG.rst
 

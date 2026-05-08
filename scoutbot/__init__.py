@@ -42,7 +42,7 @@ QUIET = not utils.VERBOSE
 
 from scoutbot import loc, tile_batched  # NOQA
 
-VERSION = '3.0.0'
+VERSION = '0.2.0'
 version = VERSION
 __version__ = VERSION
 

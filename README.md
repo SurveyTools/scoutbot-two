@@ -1,6 +1,6 @@
 # Wild Me ScoutBot
 
-[![Tests](https://github.com/simbamangu/scoutbot-lean/actions/workflows/testing.yml/badge.svg?branch=main)](https://github.com/simbamangu/scoutbot-lean/actions/workflows/testing.yml)
+[![Tests](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/testing.yml/badge.svg?branch=main)](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/testing.yml)
 
 YOLOv8-based machine learning pipeline for detecting and localising wildlife in aerial survey imagery.
 
