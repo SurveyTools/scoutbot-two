@@ -7,9 +7,9 @@ import pytest
 
 @pytest.fixture
 def sample_image():
-    """Return path to a bundled test image."""
-    tests_dir = Path(__file__).parent
-    img_path = tests_dir / '0d4e4df2-7b69-91b1-1985-c8421f2f3253.jpg'
+    """Return path to a bundled test image (from examples/)."""
+    repo_root = Path(__file__).resolve().parent.parent
+    img_path = repo_root / 'examples' / '0d4e4df2-7b69-91b1-1985-c8421f2f3253.jpg'
     assert img_path.exists(), f'Test image not found: {img_path}'
     return str(img_path)
 

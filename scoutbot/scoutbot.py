@@ -18,7 +18,7 @@ from scoutbot import loc, log
 def pipeline_filepath_validator(ctx, param, value):
     if not exists(value):
         log.error(f'Input filepath does not exist: {value}')
-        ctx.exit()
+        ctx.exit(1)
     return value
 
 
