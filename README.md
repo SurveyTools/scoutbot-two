@@ -9,8 +9,8 @@ YOLOv8-based machine learning pipeline for detecting and localising wildlife in 
 From source:
 
 ```bash
-git clone https://github.com/simbamangu/scoutbot-lean
-cd scoutbot-lean
+git clone https://github.com/SurveyTools/scoutbot-2026
+cd scoutbot-2026
 pip install -e .
 ```
 
