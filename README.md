@@ -1,18 +1,10 @@
 # Wild Me ScoutBot
 
 [![Tests](https://github.com/simbamangu/scoutbot-lean/actions/workflows/testing.yml/badge.svg?branch=main)](https://github.com/simbamangu/scoutbot-lean/actions/workflows/testing.yml)
-[![Python Wheel](https://github.com/simbamangu/scoutbot-lean/actions/workflows/python-publish.yml/badge.svg)](https://github.com/simbamangu/scoutbot-lean/actions/workflows/python-publish.yml)
-[![Docker](https://img.shields.io/docker/image-size/wildme/scoutbot/latest)](https://hub.docker.com/r/wildme/scoutbot)
 
 YOLOv8-based machine learning pipeline for detecting and localising wildlife in aerial survey imagery.
 
 ## How to Install
-
-From PyPI:
-
-```bash
-pip install scoutbot
-```
 
 From source:
 
@@ -131,18 +123,6 @@ Two models are available, both trained on KAZA aerial survey data:
 
 Models are fetched from Azure Blob Storage with MD5 integrity verification and cached at `~/.cache/scoutbot/`.
 
-To run with Docker:
-
-```bash
-docker run \
-   -it \
-   --rm \
-   --gpus all \
-   --name scoutbot \
-   wildme/scoutbot:main \
-   scoutbot batch --config v3 /data/*.jpg
-```
-
 ## Environment Variables
 
 | Variable | Default | Description |
@@ -165,28 +145,6 @@ For a coverage report:
 coverage run -m pytest
 coverage html
 open coverage/html/index.html
-```
-
-## How to Build and Deploy
-
-### Docker Hub
-
-```bash
-docker login
-export DOCKER_BUILDKIT=1
-docker buildx create --name multi-arch-builder --use
-docker buildx build -t wildme/scoutbot:latest --platform linux/amd64 --push .
-```
-
-### PyPI
-
-1. Set `VERSION` in `scoutbot/__init__.py`
-2. Commit and push to `main`; wait for CI to pass
-3. Tag the release:
-
-```bash
-git tag v3.0.0
-git push origin v3.0.0
 ```
 
 ## Building Documentation

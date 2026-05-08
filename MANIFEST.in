@@ -1,6 +1,0 @@
-include pyproject.toml
-include README.md
-include LICENSE
-include *.rst
-
-include examples/1be4d40a-6fd0-42ce-da6c-294e45781f41.jpg
