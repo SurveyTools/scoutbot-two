@@ -6,7 +6,7 @@ YOLOv8-based machine learning pipeline for detecting and localising wildlife in 
 
 ## How to Install
 
-From source:
+### Linux / macOS
 
 ```bash
 git clone https://github.com/SurveyTools/scoutbot-2026
@@ -14,7 +14,49 @@ cd scoutbot-2026
 pip install -e .
 ```
 
-Models are downloaded automatically on first use to `~/.cache/scoutbot/`. To pre-fetch explicitly:
+### Windows (NVIDIA GPU)
+
+The default install pulls in a CPU-only PyTorch build on Windows. After cloning, run these steps in order:
+
+```powershell
+git clone https://github.com/SurveyTools/scoutbot-2026
+cd scoutbot-2026
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -e .
+
+# Replace CPU-only PyTorch with the CUDA build (requires NVIDIA GPU + driver >= 525)
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
+
+# Pin numpy to a version compatible with ultralytics
+pip install "numpy<2.0.0" --force-reinstall
+
+# Required for large image handling (SAHI tiling)
+pip install scikit-image imagecodecs
+```
+
+Verify the GPU is detected before running:
+
+```powershell
+python -c "import torch; print(torch.cuda.is_available(), torch.__version__)"
+# Expected: True  2.x.x+cu124
+```
+
+**Running batch on Windows** — PowerShell does not expand glob patterns for external commands, so use `Get-ChildItem` to pass files:
+
+```powershell
+$imgs = (Get-ChildItem "C:\path\to\images" -Filter "*.JPG").FullName
+scoutbot batch @imgs --output results.json
+```
+
+For low-VRAM GPUs (e.g. 4 GB), reduce the tile batch size:
+
+```powershell
+$env:DETECTOR_BATCH_SIZE = "16"
+scoutbot batch @imgs --output results.json
+```
+
+Models are downloaded automatically on first use to `~/.cache/scoutbot/` (Windows: `C:\Users\<user>\.cache\scoutbot\`). To pre-fetch explicitly:
 
 ```bash
 scoutbot fetch --config v3
