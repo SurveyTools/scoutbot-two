@@ -17,3 +17,5 @@ docs/_build/
 
 uv.lock
 test.json
+
+.claude/
