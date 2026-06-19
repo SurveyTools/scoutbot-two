@@ -1,4 +1,5 @@
 click
+dill
 numpy
 opencv-python-headless>=4.7.0
 requests
