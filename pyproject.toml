@@ -35,6 +35,11 @@ all = [
     "pycodestyle",
     "pytest-cov",
 ]
+# Core ML inference (Apple Neural Engine) on macOS. Ultralytics imports coremltools
+# at inference time to run .mlpackage models; gated to Darwin to keep Linux installs clean.
+coreml = [
+    "coremltools ; sys_platform == 'darwin'",
+]
 
 [project.urls]
 Repository = "https://github.com/SurveyTools/scoutbot-2026"

@@ -1,4 +1,5 @@
 brunette
+coremltools; platform_system == "Darwin"
 coverage
 flake8
 ipython

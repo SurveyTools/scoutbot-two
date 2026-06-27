@@ -278,6 +278,33 @@ def fetch(config):
     scoutbot.fetch(config=config)
 
 
+@click.command('export-coreml')
+@click.option(
+    '--config',
+    default=None,
+    help='Core ML config to export (default: all coreml configs).',
+)
+@click.option('--force', is_flag=True, help='Re-export even if the bundle exists.')
+def export_coreml(config, force):
+    """
+    Export Core ML (.mlpackage) models from their source .pt models.
+    """
+    from scoutbot import loc
+
+    if config:
+        configs = [config]
+    else:
+        configs = [
+            name
+            for name, cfg in loc.CONFIGS.items()
+            if name is not None
+            and isinstance(cfg, dict)
+            and cfg.get('backend') == 'coreml'
+        ]
+    for name in configs:
+        print(loc.export_coreml(name, force=force))
+
+
 @click.command('example')
 def example():
     """
@@ -314,6 +341,7 @@ cli.add_command(pipeline)
 cli.add_command(batch)
 cli.add_command(batch_resumable)
 cli.add_command(fetch)
+cli.add_command(export_coreml)
 cli.add_command(example)
 cli.add_command(get_classes)
 
