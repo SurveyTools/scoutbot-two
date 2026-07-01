@@ -8,11 +8,41 @@ class TestLocConfig:
     """Tests for LOC configuration."""
 
     def test_configs_exist(self):
-        """Test that v3 and v3-cls configs exist."""
+        """Test that v3, v3-cls, v3-coreml, and v3-cls-coreml configs exist."""
         from scoutbot import loc
 
         assert 'v3' in loc.CONFIGS
         assert 'v3-cls' in loc.CONFIGS
+        assert 'v3-coreml' in loc.CONFIGS
+        assert 'v3-cls-coreml' in loc.CONFIGS
+
+    def test_coreml_config_schema(self):
+        """CoreML configs must have backend/source/name keys; not url/md5_url."""
+        from scoutbot import loc
+
+        for name in ['v3-coreml', 'v3-cls-coreml']:
+            cfg = loc.CONFIGS[name]
+
+            # CoreML-specific required keys
+            assert cfg.get('backend') == 'coreml', f'{name} must have backend=coreml'
+            assert 'source' in cfg, f'{name} must have a source key'
+            assert cfg['source'] in loc.CONFIGS, (
+                f"{name} source '{cfg['source']}' must itself be a known config"
+            )
+            assert 'name' in cfg, f'{name} must have a name key'
+            assert cfg['name'].endswith('.mlpackage'), (
+                f"{name} bundle name must end in .mlpackage, got: {cfg['name']}"
+            )
+
+            # Shared inference keys must be present
+            for key in ('thresh', 'slice_height', 'slice_width',
+                        'overlap_height_ratio', 'overlap_width_ratio',
+                        'perform_standard_pred', 'postprocess_class_agnostic'):
+                assert key in cfg, f'{name} missing shared key: {key}'
+
+            # CoreML configs must NOT have download keys (no remote bundle)
+            assert 'url' not in cfg, f'{name} must not have a url key'
+            assert 'md5_url' not in cfg, f'{name} must not have a md5_url key'
 
     def test_config_has_required_keys(self):
         """Test that configs have all required keys."""
