@@ -289,6 +289,10 @@ def fetch(config):
 @click.option(
     '--config',
     default=None,
+    type=click.Choice(
+        [k for k, v in loc.CONFIGS.items()
+         if k is not None and isinstance(v, dict) and v.get('backend') == 'coreml'],
+    ),
     help='Core ML config to export (default: all coreml configs).',
 )
 @click.option('--force', is_flag=True, help='Re-export even if the bundle exists.')
@@ -296,8 +300,6 @@ def export_coreml(config, force):
     """
     Export Core ML (.mlpackage) models from their source .pt models.
     """
-    from scoutbot import loc
-
     if config:
         configs = [config]
     else:
