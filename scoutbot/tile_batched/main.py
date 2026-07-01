@@ -1,4 +1,5 @@
 import os
+import sys
 from typing import Optional
 
 import numpy as np
@@ -31,6 +32,12 @@ class Yolov8DetectionModel(_Base):
         #   - no model.to(device): Ultralytics routes Core ML through its own
         #     runtime, so a torch device (esp. the cuda:0 default) is invalid here.
         if str(self.model_path).endswith('.mlpackage'):
+            if sys.platform != 'darwin':
+                raise RuntimeError(
+                    f'Core ML .mlpackage models require macOS (darwin); '
+                    f'current platform is {sys.platform!r}. '
+                    f'Use a .pt config instead (e.g. config="v3").'
+                )
             from ultralytics import YOLO
 
             self._coreml = True
