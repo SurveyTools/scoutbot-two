@@ -3,6 +3,7 @@ import sys
 from typing import Optional
 
 import numpy as np
+import torch
 from sahi.models.ultralytics import UltralyticsDetectionModel as _Base
 
 DETECTOR_BATCH_SIZE = int(os.getenv('DETECTOR_BATCH_SIZE', 128))
@@ -48,7 +49,11 @@ class Yolov8DetectionModel(_Base):
             self.set_model(YOLO(self.model_path, task='detect'))
             return
 
-        super().load_model()
+        from ultralytics import YOLO
+
+        model = YOLO(self.model_path, task='detect')
+        model.to(self.device)
+        self.set_model(model)
 
     def perform_inference(self, images, batch_size: Optional[int] = None):
         if self.model is None:
@@ -81,5 +86,7 @@ class Yolov8DetectionModel(_Base):
 
         self._original_predictions = [
             result.boxes.data[result.boxes.data[:, 4] >= self.confidence_threshold]
+            if result.boxes is not None
+            else torch.zeros((0, 6))
             for result in all_preds
         ]
