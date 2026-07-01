@@ -335,3 +335,34 @@ class TestBatchResumableErrorResume:
         assert 'done.jpg' not in processed
         assert summary['skipped'] == 1
         assert summary['processed'] == 0
+
+
+class TestApiEnvVarConfig:
+    """LOC_CONFIG/CONFIG env vars must be respected by public API functions."""
+
+    def test_fetch_uses_loc_default_config_when_no_config_given(self):
+        """scoutbot.fetch() with no args must delegate to loc.DEFAULT_CONFIG."""
+        import scoutbot
+        from scoutbot import loc
+
+        with patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch:
+            scoutbot.fetch()
+
+        mock_fetch.assert_called_with(config='v3-cls')
+
+    def test_get_classes_uses_loc_default_config_when_no_config_given(self):
+        """scoutbot.get_classes() with no args must delegate to loc.DEFAULT_CONFIG."""
+        import scoutbot
+        from scoutbot import loc
+        from unittest.mock import MagicMock
+
+        mock_model = MagicMock()
+        mock_model.category_names = ['animal']
+
+        with patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model):
+            result = scoutbot.get_classes()
+
+        assert result == ['animal']

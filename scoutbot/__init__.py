@@ -47,7 +47,7 @@ version = VERSION
 __version__ = VERSION
 
 
-def fetch(config='v3'):
+def fetch(config=None):
     """
     Fetch the YOLOv8 model file from CDN if it does not exist locally.
 
@@ -59,13 +59,13 @@ def fetch(config='v3'):
         str: Path to the model file.
     """
     if config is None:
-        config = 'v3'
+        config = loc.DEFAULT_CONFIG
     return loc.fetch(config=config)
 
 
 def pipeline(
         filepath,
-        config='v3',
+        config=None,
         batched_detection_model=None,
         backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
         loc_thresh=0.45,
@@ -113,7 +113,7 @@ def pipeline(
     from sahi.predict import get_sliced_prediction
 
     if config is None:
-        config = 'v3'
+        config = loc.DEFAULT_CONFIG
 
     if batched_detection_model is None:
         yolov8_model_path = loc.fetch(config=config)
@@ -162,7 +162,7 @@ def pipeline(
 
 def batch(
         filepaths,
-        config='v3',
+        config=None,
         backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
         loc_thresh=0.45,
         slice_height=512,
@@ -200,7 +200,7 @@ def batch(
     from tqdm import tqdm
 
     if config is None:
-        config = 'v3'
+        config = loc.DEFAULT_CONFIG
 
     yolov8_model_path = loc.fetch(config=config)
 
@@ -250,7 +250,7 @@ def batch(
 def batch_resumable(
         filepaths,
         output_path,
-        config='v3',
+        config=None,
         backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
         loc_thresh=0.45,
         slice_height=512,
@@ -296,7 +296,7 @@ def batch_resumable(
     from tqdm import tqdm
 
     if config is None:
-        config = 'v3'
+        config = loc.DEFAULT_CONFIG
 
     output_path = Path(output_path)
 
@@ -400,7 +400,7 @@ def batch_resumable(
     }
 
 
-def get_classes(config='v3'):
+def get_classes(config=None):
     """
     Get the list of class labels supported by the model.
 
@@ -411,7 +411,7 @@ def get_classes(config='v3'):
         list: list of class label strings
     """
     if config is None:
-        config = 'v3'
+        config = loc.DEFAULT_CONFIG
 
     yolov8_model_path = loc.fetch(config=config)
     model = tile_batched.Yolov8DetectionModel(
