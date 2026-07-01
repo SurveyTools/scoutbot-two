@@ -90,7 +90,19 @@ Benchmark
 
 ``benchmarks/benchmark_coreml.py`` runs the full SAHI-tiled pipeline over the images in
 ``examples/`` for each variant and reports wall-clock per image plus detection parity against the
-PyTorch-CPU reference::
+PyTorch-CPU reference.
+
+.. note::
+
+   ``examples/`` images are stored via Git LFS. Before running the benchmark::
+
+       brew install git-lfs   # once per machine
+       git lfs install        # once per clone
+       git lfs pull           # downloads the actual images (~23 MB)
+
+   Or point ``--images`` at your own directory of aerial survey JPEGs.
+
+::
 
     uv run python benchmarks/benchmark_coreml.py
     uv run python benchmarks/benchmark_coreml.py --family cls
@@ -148,3 +160,8 @@ Parity and caveats
 * **Re-export after changing the slice size.** ``imgsz`` is baked into the bundle at export time;
   if a config's ``slice_width`` changes, rebuild with ``scoutbot export-coreml --force`` so the
   fixed input matches the tiles.
+* **Torch / coremltools version pairing.** The export and inference paths have been
+  validated with Torch 2.7.0 (the most recent version tested by coremltools at writing).
+  Torch 2.11.0 produces a runtime warning but inference results are correct in practice.
+  If you see unexpected export failures or accuracy regressions, check whether a newer
+  ``coremltools`` release supports your installed Torch version before filing a bug.

@@ -100,11 +100,24 @@ scoutbot get_classes --config v3-cls  # list species labels
 scoutbot example                      # run on a built-in test image
 ```
 
+### CLI — Core ML (Apple Silicon, macOS)
+
+On M-series Macs, install the `coreml` extra and use the `v3-coreml` or `v3-cls-coreml` config to route inference through Apple's Neural Engine (~7–13× faster than CPU):
+
+```bash
+uv sync --extra coreml
+
+scoutbot pipeline image.jpg --config v3-coreml
+scoutbot batch *.jpg --config v3-coreml --no-progress
+```
+
+The `.mlpackage` bundle is exported on first use (~10–30 s) and cached at `~/.cache/scoutbot/`. See [docs/coreml.rst](docs/coreml.rst) for benchmarks and full details.
+
 ### CLI Options
 
 | Option | Values | Default |
 |---|---|---|
-| `--config` | `v3`, `v3-cls` | `v3` |
+| `--config` | `v3`, `v3-cls`, `v3-coreml`, `v3-cls-coreml` | `v3` |
 | `--device` | `mps`, `cpu`, `cuda`, `cuda:0` | `cuda:0` |
 | `--loc-thresh` | 0–100 (integer) | `45` |
 | `--output` | file path | stdout |
