@@ -11,7 +11,7 @@ YOLOv8-based machine learning pipeline for detecting and localising wildlife in 
 ```bash
 git clone https://github.com/SurveyTools/scoutbot-2026
 cd scoutbot-2026
-pip install -e .
+uv pip install -e ".[test]"
 ```
 
 ### Windows (NVIDIA GPU)
@@ -21,24 +21,24 @@ The default install pulls in a CPU-only PyTorch build on Windows. After cloning,
 ```powershell
 git clone https://github.com/SurveyTools/scoutbot-2026
 cd scoutbot-2026
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -e .
+uv venv
+.\.venv\Scripts\Activate.ps1
+uv pip install -e .
 
 # Replace CPU-only PyTorch with the CUDA build (requires NVIDIA GPU + driver >= 525)
-pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
+uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
 
 # Pin numpy to a version compatible with ultralytics
-pip install "numpy<2.0.0" --force-reinstall
+uv pip install "numpy<2.0.0" --force-reinstall
 
 # Required for large image handling (SAHI tiling)
-pip install scikit-image imagecodecs
+uv pip install scikit-image imagecodecs
 ```
 
 Verify the GPU is detected before running:
 
 ```powershell
-python -c "import torch; print(torch.cuda.is_available(), torch.__version__)"
+uv run python -c "import torch; print(torch.cuda.is_available(), torch.__version__)"
 # Expected: True  2.x.x+cu124
 ```
 
@@ -183,40 +183,38 @@ Models are fetched from Azure Blob Storage with MD5 integrity verification and c
 | Variable | Default | Description |
 |---|---|---|
 | `SCOUTBOT_DEVICE` | `cuda:0` | Inference device: `mps`, `cpu`, `cuda`, `cuda:0` |
-| `LOC_CONFIG` | `v3` | Model config: `v3` or `v3-cls`. Alias: `CONFIG` |
+| `LOC_CONFIG` | `v3` | Model config: `v3`, `v3-cls`, `v3-coreml`, or `v3-cls-coreml`. Alias: `CONFIG` |
 | `DETECTOR_BATCH_SIZE` | `128` | Slices per GPU batch. Reduce for low-memory environments (e.g. `8` for CI) |
 | `VERBOSE` | unset | Set to any value to enable debug logging |
 
 ## Tests and Coverage
 
 ```bash
-pip install -r requirements.optional.txt
-pytest
+uv pip install -e ".[test]"
+uv run pytest
 ```
 
 For a coverage report:
 
 ```bash
-coverage run -m pytest
-coverage html
-open coverage/html/index.html
+uv run pytest --cov=scoutbot --cov-report=html
+open htmlcov/index.html
 ```
 
 ## Building Documentation
 
 ```bash
-pip install -r requirements.optional.txt
-cd docs/
-sphinx-build -M html . build/
-open build/html/index.html
+uv pip install -r requirements.optional.txt
+uv run sphinx-build -M html docs docs/build
+open docs/build/html/index.html
 ```
 
 ## Code Formatting
 
 ```bash
-pip install -r requirements.optional.txt
-pre-commit install          # run linting on every commit
-pre-commit run --all-files  # run manually
+uv pip install -r requirements.optional.txt
+uv run pre-commit install          # run linting on every commit
+uv run pre-commit run --all-files  # run manually
 ```
 
 The codebase uses [Brunette](https://pypi.org/project/brunette/) (a configurable Black fork) with `flake8` for linting. See `setup.cfg` for style rules.

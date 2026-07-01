@@ -41,7 +41,7 @@
 
 **Background:** `QUIET = not utils.VERBOSE` evaluates to `True` in any standard environment (no `VERBOSE` env var). Line 346 reads `disable=not show_progress or QUIET`, which short-circuits to `True` unconditionally — the progress bar never renders, even with `show_progress=True`. The sibling `batch()` at line 220 correctly uses only `disable=not show_progress`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append after the existing `TestBatchResumable` class in `tests/test_batch.py`:
 
@@ -112,7 +112,7 @@ class TestBatchResumableProgressBar:
         assert captured.get('disable') is True
 ```
 
-- [ ] **Step 2: Run tests to verify they fail correctly**
+- [x] **Step 2: Run tests to verify they fail correctly**
 
 ```bash
 pytest tests/test_batch.py::TestBatchResumableProgressBar -v
@@ -122,7 +122,7 @@ Expected:
 - `test_progress_shown_when_show_progress_true` — **FAILS** with `AssertionError: progress bar must be enabled when show_progress=True`
 - `test_progress_hidden_when_show_progress_false` — PASSES (QUIET=True makes `disable=True`, which is also correct for `show_progress=False`)
 
-- [ ] **Step 3: Apply the one-word fix**
+- [x] **Step 3: Apply the one-word fix**
 
 In `scoutbot/__init__.py` line 346:
 
@@ -136,7 +136,7 @@ In `scoutbot/__init__.py` line 346:
             disable=not show_progress,
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_batch.py::TestBatchResumableProgressBar -v
@@ -144,7 +144,7 @@ pytest tests/test_batch.py::TestBatchResumableProgressBar -v
 
 Expected: both PASS.
 
-- [ ] **Step 5: Run full suite and linter**
+- [x] **Step 5: Run full suite and linter**
 
 ```bash
 pytest
@@ -153,7 +153,7 @@ pre-commit run --all-files
 
 Expected: all tests pass, linter clean.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scoutbot/__init__.py tests/test_batch.py
@@ -170,7 +170,7 @@ git commit -m "fix: restore progress bar in batch_resumable (QUIET was short-cir
 
 **Background:** When a file errors during `batch_resumable`, an error record `{'filepath': ..., 'error': ...}` is appended to the JSONL. The resume reader at lines 311-315 adds any record containing `'filepath'` to `processed` — including error records — so failed images are permanently skipped on subsequent runs. Fix: only count records that have `'filepath'` AND do NOT have `'error'`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append after `TestBatchResumableProgressBar` in `tests/test_batch.py`:
 
@@ -252,7 +252,7 @@ class TestBatchResumableErrorResume:
         assert summary['processed'] == 0
 ```
 
-- [ ] **Step 2: Run tests to verify they fail correctly**
+- [x] **Step 2: Run tests to verify they fail correctly**
 
 ```bash
 pytest tests/test_batch.py::TestBatchResumableErrorResume -v
@@ -262,7 +262,7 @@ Expected:
 - `test_errored_files_retried_on_resume` — **FAILS**: `bad.jpg` is currently treated as done
 - `test_successful_files_still_skipped_on_resume` — PASSES
 
-- [ ] **Step 3: Apply the fix**
+- [x] **Step 3: Apply the fix**
 
 In `scoutbot/__init__.py`, line 313:
 
@@ -278,7 +278,7 @@ In `scoutbot/__init__.py`, line 313:
                         processed.add(record['filepath'])
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_batch.py::TestBatchResumableErrorResume -v
@@ -286,14 +286,14 @@ pytest tests/test_batch.py::TestBatchResumableErrorResume -v
 
 Expected: both PASS.
 
-- [ ] **Step 5: Run full suite and linter**
+- [x] **Step 5: Run full suite and linter**
 
 ```bash
 pytest
 pre-commit run --all-files
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scoutbot/__init__.py tests/test_batch.py
@@ -310,7 +310,7 @@ git commit -m "fix: exclude error records from processed set on batch_resumable 
 
 **Background:** `export_coreml` calls `exported.rename(target)` to place the `.mlpackage` bundle in `CACHE_DIR`. `Path.rename()` wraps `os.rename()`, which raises `OSError: [Errno 18] Invalid cross-device link` when source and destination are on different filesystems. Ultralytics has changed its export output directory across versions; the comment in the code acknowledges this assumption. `shutil.move()` handles cross-device moves via copy-then-delete. This fix also moves the `import shutil` from its deferred position inside an `if` block to the file's top-level stdlib imports, per isort conventions.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append after the existing classes in `tests/test_loc.py`:
 
@@ -347,7 +347,7 @@ class TestExportCoreml:
         assert dst == str(tmp_path / 'yolov8-onecls.kaza.mlpackage')
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 ```bash
 pytest tests/test_loc.py::TestExportCoreml::test_export_uses_shutil_move_not_rename -v
@@ -355,7 +355,7 @@ pytest tests/test_loc.py::TestExportCoreml::test_export_uses_shutil_move_not_ren
 
 Expected: **FAILS** — `move_calls` is empty because the current code calls `Path.rename`, not `shutil.move`.
 
-- [ ] **Step 3: Add `import shutil` to top-level imports**
+- [x] **Step 3: Add `import shutil` to top-level imports**
 
 In `scoutbot/loc/__init__.py`, the current top-level imports are:
 
@@ -374,7 +374,7 @@ import shutil
 from pathlib import Path
 ```
 
-- [ ] **Step 4: Replace the deferred import and `.rename()` call**
+- [x] **Step 4: Replace the deferred import and `.rename()` call**
 
 Find this block in `export_coreml` (around line 175):
 
@@ -396,7 +396,7 @@ Replace with:
             shutil.move(str(exported), str(target))
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 ```bash
 pytest tests/test_loc.py::TestExportCoreml::test_export_uses_shutil_move_not_rename -v
@@ -404,14 +404,14 @@ pytest tests/test_loc.py::TestExportCoreml::test_export_uses_shutil_move_not_ren
 
 Expected: PASS.
 
-- [ ] **Step 6: Run full suite and linter**
+- [x] **Step 6: Run full suite and linter**
 
 ```bash
 pytest
 pre-commit run --all-files
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add scoutbot/loc/__init__.py tests/test_loc.py
@@ -428,7 +428,7 @@ git commit -m "fix: use shutil.move instead of Path.rename in export_coreml (cro
 
 **Background:** The `--config` option on `export-coreml` is declared as a plain `str` with no `type=click.Choice(...)`. Passing a non-CoreML config (e.g. `--config v3`) causes Click to pass the value through to `loc.export_coreml`, which raises a bare `AssertionError` with a Python traceback. Every other command uses `click.Choice` derived from `loc.CONFIGS`. This fix derives choices the same way, filtered to configs where `backend == 'coreml'`. It also removes a redundant `from scoutbot import loc` local import inside the command function — `loc` is already imported at module level on line 15.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add inside the existing `TestCLI` class in `tests/test_cli.py`:
 
@@ -461,7 +461,7 @@ Add inside the existing `TestCLI` class in `tests/test_cli.py`:
         assert 'invalid' in result.output.lower()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 pytest tests/test_cli.py::TestCLI::test_export_coreml_help_lists_coreml_configs tests/test_cli.py::TestCLI::test_export_coreml_rejects_non_coreml_config_with_click_error -v
@@ -471,7 +471,7 @@ Expected:
 - `test_export_coreml_help_lists_coreml_configs` — **FAILS**: `--help` shows `--config TEXT`, no choices listed
 - `test_export_coreml_rejects_non_coreml_config_with_click_error` — **FAILS**: output contains `AssertionError` traceback
 
-- [ ] **Step 3: Apply the fix**
+- [x] **Step 3: Apply the fix**
 
 In `scoutbot/scoutbot.py`, replace the `export_coreml` command's decorator and first line of the function body:
 
@@ -513,7 +513,7 @@ def export_coreml(config, force):
     if config:
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_cli.py::TestCLI::test_export_coreml_help_lists_coreml_configs tests/test_cli.py::TestCLI::test_export_coreml_rejects_non_coreml_config_with_click_error -v
@@ -521,14 +521,14 @@ pytest tests/test_cli.py::TestCLI::test_export_coreml_help_lists_coreml_configs 
 
 Expected: both PASS.
 
-- [ ] **Step 5: Run full suite and linter**
+- [x] **Step 5: Run full suite and linter**
 
 ```bash
 pytest
 pre-commit run --all-files
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add scoutbot/scoutbot.py tests/test_cli.py

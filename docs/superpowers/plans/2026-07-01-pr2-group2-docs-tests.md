@@ -44,7 +44,7 @@
 
 These tests cover already-implemented behaviour, so they will **PASS on first run** — that is expected and correct. They serve as regression guards against future accidental removal or schema changes.
 
-- [ ] **Step 1: Expand `test_configs_exist` in `tests/test_loc.py`**
+- [x] **Step 1: Expand `test_configs_exist` in `tests/test_loc.py`**
 
 Find the existing `test_configs_exist` method inside `TestLocConfig` and add two lines:
 
@@ -59,7 +59,7 @@ Find the existing `test_configs_exist` method inside `TestLocConfig` and add two
         assert 'v3-cls-coreml' in loc.CONFIGS    # ← add
 ```
 
-- [ ] **Step 2: Add `test_coreml_config_schema` to `TestLocConfig`**
+- [x] **Step 2: Add `test_coreml_config_schema` to `TestLocConfig`**
 
 Append inside the `TestLocConfig` class immediately after `test_configs_exist`:
 
@@ -93,7 +93,7 @@ Append inside the `TestLocConfig` class immediately after `test_configs_exist`:
             assert 'md5_url' not in cfg, f'{name} must not have a md5_url key'
 ```
 
-- [ ] **Step 3: Run the two loc tests to confirm they pass**
+- [x] **Step 3: Run the two loc tests to confirm they pass**
 
 ```bash
 pytest tests/test_loc.py::TestLocConfig::test_configs_exist tests/test_loc.py::TestLocConfig::test_coreml_config_schema -v
@@ -101,7 +101,7 @@ pytest tests/test_loc.py::TestLocConfig::test_configs_exist tests/test_loc.py::T
 
 Expected: both **PASS** (these document existing behaviour).
 
-- [ ] **Step 4: Fix `test_cli_config_choices` docstring and add a coreml assertion**
+- [x] **Step 4: Fix `test_cli_config_choices` docstring and add a coreml assertion**
 
 In `tests/test_cli.py`, inside `TestCLI`, update `test_cli_config_choices` and add a new test after it:
 
@@ -131,7 +131,7 @@ In `tests/test_cli.py`, inside `TestCLI`, update `test_cli_config_choices` and a
         assert 'v3-cls-coreml' in result.output
 ```
 
-- [ ] **Step 5: Run the CLI tests to confirm they pass**
+- [x] **Step 5: Run the CLI tests to confirm they pass**
 
 ```bash
 pytest tests/test_cli.py::TestCLI::test_cli_config_choices tests/test_cli.py::TestCLI::test_pipeline_help_includes_coreml_configs -v
@@ -139,14 +139,14 @@ pytest tests/test_cli.py::TestCLI::test_cli_config_choices tests/test_cli.py::Te
 
 Expected: both **PASS**.
 
-- [ ] **Step 6: Run full suite and linter**
+- [x] **Step 6: Run full suite and linter**
 
 ```bash
 pytest
 pre-commit run --all-files
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add tests/test_loc.py tests/test_cli.py
@@ -163,7 +163,7 @@ git commit -m "test: add offline CoreML config schema and CLI choice regression 
 
 **Background:** When `examples/` images are Git LFS pointer stubs (not yet pulled), the benchmark discovers them (they match `*.jpg`), loads models, then crashes deep inside SAHI with a confusing PIL/skimage error. The guard reads the first few bytes of each image before any model is loaded and raises a clear `SystemExit` with remediation instructions. It also catches non-image files with `.jpg` extension. No PIL or external library needed — just magic bytes.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `tests/test_benchmark_coreml.py`:
 
@@ -249,7 +249,7 @@ class TestValidateImages:
         assert '3' in message
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 pytest tests/test_benchmark_coreml.py -v
@@ -257,7 +257,7 @@ pytest tests/test_benchmark_coreml.py -v
 
 Expected: all tests **FAIL** with `AttributeError: module 'benchmark_coreml' has no attribute '_validate_images'`.
 
-- [ ] **Step 3: Add the constants and function to `benchmarks/benchmark_coreml.py`**
+- [x] **Step 3: Add the constants and function to `benchmarks/benchmark_coreml.py`**
 
 After the existing module-level constants (after `MATCH_GATE_PX = 16.0`, before `def _parity`), add:
 
@@ -293,7 +293,7 @@ def _validate_images(images):
         )
 ```
 
-- [ ] **Step 4: Call `_validate_images` in `main()`**
+- [x] **Step 4: Call `_validate_images` in `main()`**
 
 Find the `if not images:` guard in `main()` and add one line after it:
 
@@ -303,7 +303,7 @@ Find the `if not images:` guard in `main()` and add one line after it:
     _validate_images(images)    # ← add this line
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 ```bash
 pytest tests/test_benchmark_coreml.py -v
@@ -311,14 +311,14 @@ pytest tests/test_benchmark_coreml.py -v
 
 Expected: all 6 tests **PASS**.
 
-- [ ] **Step 6: Run full suite and linter**
+- [x] **Step 6: Run full suite and linter**
 
 ```bash
 pytest
 pre-commit run --all-files
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add benchmarks/benchmark_coreml.py tests/test_benchmark_coreml.py
@@ -341,7 +341,7 @@ git commit -m "feat: add image validation guard to benchmark (clear error for LF
 
 ### 3a — `docs/coreml.rst`: Git LFS note
 
-- [ ] **Step 1: Add the LFS note before the benchmark usage block**
+- [x] **Step 1: Add the LFS note before the benchmark usage block**
 
 Find line 91 (`uv run python benchmarks/benchmark_coreml.py`) and insert this block **before** it (after the sentence ending `PyTorch-CPU reference::`):
 
@@ -381,7 +381,7 @@ PyTorch-CPU reference::
 
 ### 3b — `docs/coreml.rst`: Torch version caveat
 
-- [ ] **Step 2: Add Torch/coremltools version caveat to Parity and caveats section**
+- [x] **Step 2: Add Torch/coremltools version caveat to Parity and caveats section**
 
 The "Parity and caveats" section ends at line 150. Append a new bullet after the last existing bullet (`Re-export after changing the slice size`):
 
@@ -395,7 +395,7 @@ The "Parity and caveats" section ends at line 150. Append a new bullet after the
 
 ### 3c — `README.md`: Core ML section
 
-- [ ] **Step 3: Add a Core ML subsection under `## How to Run`**
+- [x] **Step 3: Add a Core ML subsection under `## How to Run`**
 
 Find the `### CLI Options` table (around line 103). Insert a new subsection **before** it:
 
@@ -417,7 +417,7 @@ The `.mlpackage` bundle is exported on first use (~10–30 s) and cached at `~/.
 
 ### 3d — `README.md`: update CLI Options table
 
-- [ ] **Step 4: Update the `--config` row in the CLI Options table**
+- [x] **Step 4: Update the `--config` row in the CLI Options table**
 
 Find the table row:
 
@@ -431,13 +431,13 @@ Replace with:
 | `--config` | `v3`, `v3-cls`, `v3-coreml`, `v3-cls-coreml` | `v3` |
 ```
 
-- [ ] **Step 5: Run linter**
+- [x] **Step 5: Run linter**
 
 ```bash
 pre-commit run --all-files
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/coreml.rst README.md
@@ -558,13 +558,13 @@ git commit -m "docs: add M4 benchmark results alongside M2 baseline; label by ha
 
 **File:** PR #2 description on GitHub
 
-- [ ] **Step 1: Fetch the current PR body for reference**
+- [x] **Step 1: Fetch the current PR body for reference**
 
 ```bash
 gh pr view 2 --json body -q .body
 ```
 
-- [ ] **Step 2: Edit the PR with an updated test plan**
+- [x] **Step 2: Edit the PR with an updated test plan**
 
 Replace the test plan checklist in the PR body. The key change is step 1 (`pip install` → `uv sync`) and adding a git lfs step:
 

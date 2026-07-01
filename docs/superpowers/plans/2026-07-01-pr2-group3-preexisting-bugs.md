@@ -40,11 +40,11 @@
 
 **Background:** `load_model()` detects a `.mlpackage` path and calls `_coreml_input_size()`, which does `import coremltools as ct`. `coremltools` is only installed on macOS (the `[coreml]` extra has `sys_platform == 'darwin'`). On Linux CI, this silently raises `ModuleNotFoundError` instead of a clear platform error. Fix: check `sys.platform` before calling `_coreml_input_size()`.
 
-- [ ] **Step 1: Read `scoutbot/tile_batched/main.py`**
+- [x] **Step 1: Read `scoutbot/tile_batched/main.py`**
 
 Read the full file to confirm the exact current imports and `load_model()` body.
 
-- [ ] **Step 2: Create `tests/test_tile_batched.py` with a failing test**
+- [x] **Step 2: Create `tests/test_tile_batched.py` with a failing test**
 
 ```python
 # -*- coding: utf-8 -*-
@@ -82,7 +82,7 @@ class TestLoadModelPlatformGuard:
             Yolov8DetectionModel.load_model(instance)  # must not raise
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 ```bash
 uv run pytest tests/test_tile_batched.py::TestLoadModelPlatformGuard -v
@@ -90,7 +90,7 @@ uv run pytest tests/test_tile_batched.py::TestLoadModelPlatformGuard -v
 
 Expected: both **FAIL** — `test_mlpackage_raises_on_non_darwin` fails because no `RuntimeError` is raised (currently raises `ModuleNotFoundError` or nothing); `test_mlpackage_allowed_on_darwin` likely passes already (it may pass because the mock covers `_coreml_input_size`). Focus on the first test failing.
 
-- [ ] **Step 4: Add `import sys` to `main.py` top-level imports**
+- [x] **Step 4: Add `import sys` to `main.py` top-level imports**
 
 Current imports at top of `scoutbot/tile_batched/main.py`:
 ```python
@@ -105,7 +105,7 @@ import sys
 from typing import Optional
 ```
 
-- [ ] **Step 5: Add the platform guard to `load_model()`**
+- [x] **Step 5: Add the platform guard to `load_model()`**
 
 Find this block in `load_model()`:
 ```python
@@ -137,7 +137,7 @@ Replace with:
             return
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 ```bash
 uv run pytest tests/test_tile_batched.py::TestLoadModelPlatformGuard -v
@@ -145,7 +145,7 @@ uv run pytest tests/test_tile_batched.py::TestLoadModelPlatformGuard -v
 
 Expected: both **PASS**.
 
-- [ ] **Step 7: Run flake8 on changed files**
+- [x] **Step 7: Run flake8 on changed files**
 
 ```bash
 uv run flake8 scoutbot/tile_batched/main.py tests/test_tile_batched.py
@@ -167,7 +167,7 @@ Expected: no output (clean).
 
 These two changes address the same bug from two angles: fix the root cause in `load_model` and make `perform_inference` robust to the edge case.
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Append these two classes to `tests/test_tile_batched.py`:
 
@@ -217,7 +217,7 @@ class TestPerformInferenceNoneBoxes:
         assert len(instance._original_predictions) == 1
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 uv run pytest tests/test_tile_batched.py::TestLoadModelPtTaskDetect tests/test_tile_batched.py::TestPerformInferenceNoneBoxes -v
@@ -227,7 +227,7 @@ Expected:
 - `test_pt_load_model_passes_task_detect` — **FAILS**: `MockYOLO` is called without `task=` kwarg (current code calls `super().load_model()`)
 - `test_none_boxes_produces_empty_prediction` — **FAILS**: `AttributeError: 'NoneType' object has no attribute 'data'`
 
-- [ ] **Step 3: Add `import torch` to `main.py` top-level imports**
+- [x] **Step 3: Add `import torch` to `main.py` top-level imports**
 
 `torch` is a direct transitive dependency (via ultralytics) — add it explicitly:
 
@@ -241,7 +241,7 @@ import torch
 from sahi.models.ultralytics import UltralyticsDetectionModel as _Base
 ```
 
-- [ ] **Step 4: Replace `super().load_model()` for the PT path**
+- [x] **Step 4: Replace `super().load_model()` for the PT path**
 
 Find the end of `load_model()`:
 ```python
@@ -257,7 +257,7 @@ Replace with:
         self.set_model(model)
 ```
 
-- [ ] **Step 5: Add `result.boxes is not None` guard in `perform_inference()`**
+- [x] **Step 5: Add `result.boxes is not None` guard in `perform_inference()`**
 
 Find:
 ```python
@@ -277,7 +277,7 @@ Replace with:
         ]
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 ```bash
 uv run pytest tests/test_tile_batched.py::TestLoadModelPtTaskDetect tests/test_tile_batched.py::TestPerformInferenceNoneBoxes -v
@@ -285,7 +285,7 @@ uv run pytest tests/test_tile_batched.py::TestLoadModelPtTaskDetect tests/test_t
 
 Expected: both **PASS**.
 
-- [ ] **Step 7: Run all tile_batched tests and flake8**
+- [x] **Step 7: Run all tile_batched tests and flake8**
 
 ```bash
 uv run pytest tests/test_tile_batched.py -v
@@ -304,7 +304,7 @@ Expected: all pass, flake8 clean.
 
 **Background:** `perform_inference()` builds `predict_kwargs` but never passes `conf=self.confidence_threshold` to `model.predict()`. Ultralytics defaults to `conf=0.25` internally, so predictions in [0.25, 0.45) are computed on the ANE/GPU and then discarded by the comprehension at line 75. Passing `conf=` explicitly prevents this wasted work on every tile.
 
-- [ ] **Step 1: Write failing test**
+- [x] **Step 1: Write failing test**
 
 Append to `tests/test_tile_batched.py`:
 
@@ -365,7 +365,7 @@ class TestPerformInferenceConfKwarg:
         assert call_kwargs.get('imgsz') == 512
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 uv run pytest tests/test_tile_batched.py::TestPerformInferenceConfKwarg -v
@@ -373,7 +373,7 @@ uv run pytest tests/test_tile_batched.py::TestPerformInferenceConfKwarg -v
 
 Expected: both **FAIL** — `conf` key not present in `call_kwargs`.
 
-- [ ] **Step 3: Apply the fix**
+- [x] **Step 3: Apply the fix**
 
 In `scoutbot/tile_batched/main.py`, find:
 ```python
@@ -389,7 +389,7 @@ Replace with:
             predict_kwargs['imgsz'] = self._coreml_imgsz
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 uv run pytest tests/test_tile_batched.py::TestPerformInferenceConfKwarg -v
@@ -397,7 +397,7 @@ uv run pytest tests/test_tile_batched.py::TestPerformInferenceConfKwarg -v
 
 Expected: both **PASS**.
 
-- [ ] **Step 5: Run full tile_batched test file and flake8**
+- [x] **Step 5: Run full tile_batched test file and flake8**
 
 ```bash
 uv run pytest tests/test_tile_batched.py -v
@@ -416,7 +416,7 @@ Expected: all pass, flake8 clean.
 
 **Background:** `fetch()`, `pipeline()`, `batch()`, `batch_resumable()`, and `get_classes()` all have `config='v3'` as their default, so `loc.DEFAULT_CONFIG` (which reads the `LOC_CONFIG` / `CONFIG` env vars) is never consulted when these functions are called without an explicit config. Setting `LOC_CONFIG=v3-coreml` and calling `scoutbot.pipeline(image)` silently uses PyTorch. Fix: change the default to `config=None` and replace each `if config is None: config = 'v3'` guard with `if config is None: config = loc.DEFAULT_CONFIG`. Behavior is unchanged when no env var is set (`DEFAULT_CONFIG` falls back to `'v3'`).
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Append a new class to `tests/test_batch.py`:
 
@@ -453,7 +453,7 @@ class TestApiEnvVarConfig:
         assert result == ['animal']
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 ```bash
 uv run pytest tests/test_batch.py::TestApiEnvVarConfig -v
@@ -461,7 +461,7 @@ uv run pytest tests/test_batch.py::TestApiEnvVarConfig -v
 
 Expected: both **FAIL** — `mock_fetch` is called with `config='v3'` (the hardcoded default), not `'v3-cls'`.
 
-- [ ] **Step 3: Apply the fix to `scoutbot/__init__.py`**
+- [x] **Step 3: Apply the fix to `scoutbot/__init__.py`**
 
 Five changes — each is the same two-part pattern:
 1. Change `config='v3'` in the function signature to `config=None`
@@ -575,7 +575,7 @@ def get_classes(config=None):
         config = loc.DEFAULT_CONFIG
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 ```bash
 uv run pytest tests/test_batch.py::TestApiEnvVarConfig -v
@@ -583,7 +583,7 @@ uv run pytest tests/test_batch.py::TestApiEnvVarConfig -v
 
 Expected: both **PASS**.
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 ```bash
 uv run pytest -v 2>&1 | tail -20
@@ -591,7 +591,7 @@ uv run pytest -v 2>&1 | tail -20
 
 Expected: all existing tests still pass. The `config=None` default is backward-compatible — `loc.DEFAULT_CONFIG` falls through to `'v3'` when no env var is set.
 
-- [ ] **Step 6: Run flake8 on changed files**
+- [x] **Step 6: Run flake8 on changed files**
 
 ```bash
 uv run flake8 scoutbot/__init__.py tests/test_batch.py
