@@ -27,7 +27,7 @@ model_option = [
         '--config',
         help='Which ML model to use for inference',
         default='v3',
-        type=click.Choice(['v3', 'v3-cls']),
+        type=click.Choice([k for k in loc.CONFIGS if k is not None]),
     ),
 ]
 
