@@ -343,7 +343,7 @@ def batch_resumable(
             remaining,
             desc='Processing',
             unit='img',
-            disable=not show_progress or QUIET,
+            disable=not show_progress,
         )
 
         for filepath in iterator:

@@ -2,6 +2,7 @@
 """Tests for scoutbot.batch() and scoutbot.batch_resumable() functions."""
 import json
 import shutil
+from unittest.mock import patch
 
 
 class TestBatch:
@@ -194,3 +195,66 @@ class TestBatchResumable:
         assert summary['processed'] == 0
         assert summary['skipped'] == 1
         assert summary['total'] == 1
+
+
+class TestBatchResumableProgressBar:
+    """Unit tests for batch_resumable progress bar behaviour (no model/network needed)."""
+
+    def _fake_tqdm(self, captured):
+        """Return a tqdm stand-in that records the disable kwarg."""
+        def factory(iterable, **kwargs):
+            captured.update(kwargs)
+
+            class FakePbar:
+                def __iter__(self):
+                    return iter(iterable)
+
+                def set_postfix(self, **kw):
+                    pass
+
+            return FakePbar()
+
+        return factory
+
+    def test_progress_shown_when_show_progress_true(self, tmp_path):
+        """show_progress=True must not be suppressed by the QUIET module constant."""
+        import scoutbot
+
+        assert scoutbot.QUIET is True, (
+            'QUIET must be True (VERBOSE env var unset) for this test to prove the regression'
+        )
+
+        captured = {}
+
+        with patch('tqdm.tqdm', self._fake_tqdm(captured)), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', return_value=(0.5, [])):
+            scoutbot.batch_resumable(
+                filepaths=['fake.jpg'],
+                output_path=str(tmp_path / 'out.jsonl'),
+                show_progress=True,
+            )
+
+        assert captured.get('disable') is False, (
+            'progress bar must be enabled when show_progress=True; '
+            'check that QUIET is not short-circuiting the disable flag in batch_resumable'
+        )
+
+    def test_progress_hidden_when_show_progress_false(self, tmp_path):
+        """show_progress=False must suppress the progress bar regardless of QUIET."""
+        import scoutbot
+
+        captured = {}
+
+        with patch('tqdm.tqdm', self._fake_tqdm(captured)), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', return_value=(0.5, [])):
+            scoutbot.batch_resumable(
+                filepaths=['fake.jpg'],
+                output_path=str(tmp_path / 'out.jsonl'),
+                show_progress=False,
+            )
+
+        assert captured.get('disable') is True
