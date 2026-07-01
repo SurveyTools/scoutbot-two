@@ -309,7 +309,7 @@ def batch_resumable(
                     continue
                 try:
                     record = json.loads(line)
-                    if 'filepath' in record:
+                    if 'filepath' in record and 'error' not in record:
                         processed.add(record['filepath'])
                 except json.JSONDecodeError:
                     continue

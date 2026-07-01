@@ -258,3 +258,80 @@ class TestBatchResumableProgressBar:
             )
 
         assert captured.get('disable') is True
+
+
+class TestBatchResumableErrorResume:
+    """Unit tests for resume-on-error behaviour (no model/network needed)."""
+
+    def test_errored_files_retried_on_resume(self, tmp_path):
+        """A file that errored previously must be retried, not silently skipped."""
+        import scoutbot
+
+        output = tmp_path / 'out.jsonl'
+
+        # Seed JSONL: one success record, one error record
+        with open(output, 'w') as f:
+            f.write(json.dumps({
+                'filepath': 'good.jpg',
+                'wic': 0.5,
+                'detections': [],
+                'config': 'v3',
+            }) + '\n')
+            f.write(json.dumps({
+                'filepath': 'bad.jpg',
+                'error': 'some transient error',
+                'config': 'v3',
+            }) + '\n')
+
+        processed = []
+
+        def mock_pipeline(filepath, *args, **kwargs):
+            processed.append(filepath)
+            return 0.0, []
+
+        with patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', side_effect=mock_pipeline):
+            summary = scoutbot.batch_resumable(
+                filepaths=['good.jpg', 'bad.jpg'],
+                output_path=str(output),
+                show_progress=False,
+            )
+
+        assert 'good.jpg' not in processed, 'successfully completed file must be skipped'
+        assert 'bad.jpg' in processed, 'previously errored file must be retried'
+        assert summary['skipped'] == 1
+        assert summary['processed'] == 1
+
+    def test_successful_files_still_skipped_on_resume(self, tmp_path):
+        """Files completed successfully must continue to be skipped on resume."""
+        import scoutbot
+
+        output = tmp_path / 'out.jsonl'
+
+        with open(output, 'w') as f:
+            f.write(json.dumps({
+                'filepath': 'done.jpg',
+                'wic': 0.9,
+                'detections': [],
+                'config': 'v3',
+            }) + '\n')
+
+        processed = []
+
+        def mock_pipeline(filepath, *args, **kwargs):
+            processed.append(filepath)
+            return 0.0, []
+
+        with patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', side_effect=mock_pipeline):
+            summary = scoutbot.batch_resumable(
+                filepaths=['done.jpg'],
+                output_path=str(output),
+                show_progress=False,
+            )
+
+        assert 'done.jpg' not in processed
+        assert summary['skipped'] == 1
+        assert summary['processed'] == 0
