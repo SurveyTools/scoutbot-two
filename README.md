@@ -46,21 +46,21 @@ python -c "import torch; print(torch.cuda.is_available(), torch.__version__)"
 
 ```powershell
 $imgs = (Get-ChildItem "C:\path\to\images" -Filter "*.JPG").FullName
-scoutbot batch @imgs --output results.json
+uv run scoutbot batch @imgs --output results.json
 ```
 
 For low-VRAM GPUs (e.g. 4 GB), reduce the tile batch size:
 
 ```powershell
 $env:DETECTOR_BATCH_SIZE = "16"
-scoutbot batch @imgs --output results.json
+uv run scoutbot batch @imgs --output results.json
 ```
 
 Models are downloaded automatically on first use to `~/.cache/scoutbot/` (Windows: `C:\Users\<user>\.cache\scoutbot\`). To pre-fetch explicitly:
 
 ```bash
-scoutbot fetch --config v3
-scoutbot fetch --config v3-cls
+uv run scoutbot fetch --config v3
+uv run scoutbot fetch --config v3-cls
 ```
 
 ## How to Run
@@ -68,20 +68,20 @@ scoutbot fetch --config v3-cls
 ### CLI — Single Image
 
 ```bash
-scoutbot pipeline /path/to/image.jpg --config v3 --device mps
+uv run scoutbot pipeline /path/to/image.jpg --config v3 --device mps
 
 # Save results to a JSON file
-scoutbot pipeline /path/to/image.jpg --config v3-cls --output results.json
+uv run scoutbot pipeline /path/to/image.jpg --config v3-cls --output results.json
 ```
 
 ### CLI — Batch
 
 ```bash
 # Process a directory of images, print results to stdout
-scoutbot batch --config v3 --device mps images/*.jpg
+uv run scoutbot batch --config v3 --device mps images/*.jpg
 
 # Save to JSON
-scoutbot batch --config v3 --device mps --output results.json images/*.jpg
+uv run scoutbot batch --config v3 --device mps --output results.json images/*.jpg
 ```
 
 ### CLI — Resumable Batch
@@ -89,15 +89,15 @@ scoutbot batch --config v3 --device mps --output results.json images/*.jpg
 For large surveys. Results are written incrementally to a JSONL file. Re-running the same command resumes from where it stopped:
 
 ```bash
-scoutbot batch-resumable --output survey.jsonl --config v3 --device mps images/*.jpg
+uv run scoutbot batch-resumable --output survey.jsonl --config v3 --device mps images/*.jpg
 ```
 
 ### CLI — Other Commands
 
 ```bash
-scoutbot fetch --config v3            # download model
-scoutbot get_classes --config v3-cls  # list species labels
-scoutbot example                      # run on a built-in test image
+uv run scoutbot fetch --config v3            # download model
+uv run scoutbot get_classes --config v3-cls  # list species labels
+uv run scoutbot example                      # run on a built-in test image
 ```
 
 ### CLI — Core ML (Apple Silicon, macOS)
@@ -107,8 +107,8 @@ On M-series Macs, install the `coreml` extra and use the `v3-coreml` or `v3-cls-
 ```bash
 uv sync --extra coreml
 
-scoutbot pipeline image.jpg --config v3-coreml
-scoutbot batch *.jpg --config v3-coreml --no-progress
+uv run scoutbot pipeline image.jpg --config v3-coreml
+uv run scoutbot batch *.jpg --config v3-coreml --no-progress
 ```
 
 The `.mlpackage` bundle is exported on first use (~10–30 s) and cached at `~/.cache/scoutbot/`. See [docs/coreml.rst](docs/coreml.rst) for benchmarks and full details.
@@ -126,7 +126,7 @@ The default device can be set via the `SCOUTBOT_DEVICE` environment variable:
 
 ```bash
 export SCOUTBOT_DEVICE=mps   # Apple Silicon
-scoutbot batch --config v3 images/*.jpg
+uv run scoutbot batch --config v3 images/*.jpg
 ```
 
 ## Python API
