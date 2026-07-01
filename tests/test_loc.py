@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.loc module."""
 from pathlib import Path
+from unittest.mock import patch
 
 
 class TestLocConfig:
@@ -93,3 +94,32 @@ class TestLocFetch:
 
         assert model_path is not None
         assert Path(model_path).exists()
+
+
+class TestExportCoreml:
+    """Unit tests for export_coreml (no network, no model load needed)."""
+
+    def test_export_uses_shutil_move_not_rename(self, tmp_path):
+        """export_coreml must call shutil.move (not Path.rename) to handle cross-device moves."""
+        from scoutbot import loc
+
+        # Simulate Ultralytics writing the bundle to an unexpected location
+        other = tmp_path / 'ultralytics_out' / 'yolov8-onecls.kaza.mlpackage'
+        other.parent.mkdir()
+        other.mkdir()  # .mlpackage is a directory bundle
+
+        move_calls = []
+
+        with patch.object(loc, 'CACHE_DIR', tmp_path), \
+             patch('scoutbot.loc.fetch', return_value=str(tmp_path / 'fake.pt')), \
+             patch('ultralytics.YOLO') as MockYOLO, \
+             patch('shutil.move', side_effect=lambda s, d: move_calls.append((str(s), str(d)))):
+            MockYOLO.return_value.export.return_value = str(other)
+            loc.export_coreml('v3-coreml', force=True)
+
+        assert move_calls, (
+            'shutil.move must be called to relocate the bundle; '
+            'the current code uses Path.rename which fails across filesystems (EXDEV)'
+        )
+        src, dst = move_calls[0]
+        assert dst == str(tmp_path / 'yolov8-onecls.kaza.mlpackage')

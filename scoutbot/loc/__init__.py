@@ -4,6 +4,7 @@ Localizer (LOC) configuration and model fetching for YOLOv8 models.
 '''
 import hashlib
 import os
+import shutil
 from pathlib import Path
 
 import requests
@@ -174,10 +175,8 @@ def export_coreml(config, force: bool = False) -> str:
     assert exported.exists(), f'Export produced no bundle for {config}'
     if exported.resolve() != target.resolve():
         if target.exists():
-            import shutil
-
             shutil.rmtree(target)
-        exported.rename(target)
+        shutil.move(str(exported), str(target))
 
     log.info(f'Saved: {target}')
     return str(target)
