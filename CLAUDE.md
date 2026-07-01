@@ -16,28 +16,37 @@ ScoutBot is a Python package for detecting wildlife in high-resolution aerial im
 Public API lives in `scoutbot/__init__.py`: `pipeline()`, `batch()`, `batch_resumable()`, `fetch()`, `get_classes()`.
 CLI is defined in `scoutbot/scoutbot.py` using Click.
 
+## Runtime Rule: Always Use `uv`
+
+This project uses `uv` as its Python runner. **Never run `python`, `pytest`, `ruff`, `mypy`, or similar tools directly.** Always prefix with `uv run`:
+
+```bash
+uv run pytest
+uv run python -m scoutbot ...
+uv run mypy scoutbot/
+uv run ruff check .
+```
+
 ## Commands
 
 ```bash
 # Install (editable, with dev/test extras)
-pip install -e ".[test]"
-# or
-pip install -r requirements.txt && pip install -r requirements.optional.txt
+uv pip install -e ".[test]"
 
 # Run all tests
-pytest
+uv run pytest
 
 # Run a single test
-pytest tests/test_loc.py::TestLoc::test_configs -v
+uv run pytest tests/test_loc.py::TestLoc::test_configs -v
 
 # Run tests matching a pattern
-pytest -k "test_pipeline" -v
+uv run pytest -k "test_pipeline" -v
 
 # With coverage
-pytest --cov=scoutbot
+uv run pytest --cov=scoutbot
 
 # Pre-commit linting (also runs on git commit)
-pre-commit run --all-files
+uv run pre-commit run --all-files
 ```
 
 ## Architecture
