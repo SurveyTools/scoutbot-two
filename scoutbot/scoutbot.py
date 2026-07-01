@@ -144,12 +144,18 @@ def pipeline(
 @add_options(model_option)
 @add_options(v3_options)
 @add_options(output_option)
+@click.option(
+    '--no-progress',
+    is_flag=True,
+    help='Disable progress bar',
+)
 def batch(
     filepaths,
     config,
     output,
     device,
     loc_thresh,
+    no_progress,
 ):
     """
     Run the ScoutBot pipeline in batch on a list of input image filepaths.
@@ -184,6 +190,7 @@ def batch(
         overlap_width_ratio=loc.CONFIGS[config]['overlap_width_ratio'],
         perform_standard_pred=loc.CONFIGS[config]['perform_standard_pred'],
         postprocess_class_agnostic=loc.CONFIGS[config]['postprocess_class_agnostic'],
+        show_progress=not no_progress,
     )
     results = zip(filepaths, wic_list, detects_list)
 

@@ -196,6 +196,7 @@ def batch(
     Returns:
         tuple ( list ( float ), list ( list ( dict ) ) ): list of wic scores, list of detection lists
     """
+    import time
     from tqdm import tqdm
 
     if config is None:
@@ -216,10 +217,12 @@ def batch(
         filepaths,
         desc='Processing',
         unit='img',
-        disable=not show_progress or QUIET,
+        disable=not show_progress,
     )
 
-    for filepath in iterator:
+    t_start = time.time()
+
+    for i, filepath in enumerate(iterator):
         wic_, detects = pipeline(
             filepath,
             config,
@@ -237,7 +240,9 @@ def batch(
         detects_list.append(detects)
 
         if show_progress:
-            iterator.set_postfix({'file': Path(filepath).name[:20]})
+            elapsed = time.time() - t_start
+            mean_s = elapsed / (i + 1)
+            iterator.set_postfix({'file': Path(filepath).name[:20], 's/img': f'{mean_s:.1f}'})
 
     return wic_list, detects_list
 
