@@ -77,3 +77,61 @@ class TestPerformInferenceNoneBoxes:
 
         assert instance._original_predictions is not None
         assert len(instance._original_predictions) == 1
+
+
+class TestPerformInferenceConfKwarg:
+    """Verify model.predict() receives conf= to avoid below-threshold inference work."""
+
+    def test_predict_receives_conf_kwarg(self):
+        """model.predict() must receive conf=confidence_threshold."""
+        import numpy as np
+        import torch
+        from scoutbot.tile_batched.main import Yolov8DetectionModel
+
+        instance = MagicMock(spec=Yolov8DetectionModel)
+        instance._coreml = False
+        instance.batch_size = 128
+        instance.device = 'cpu'
+        instance.confidence_threshold = 0.45
+        instance.model = MagicMock()
+
+        fake_boxes = MagicMock()
+        fake_boxes.data = torch.zeros((0, 6))
+        fake_result = MagicMock()
+        fake_result.boxes = fake_boxes
+        instance.model.predict.return_value = [fake_result]
+
+        Yolov8DetectionModel.perform_inference(instance, [np.zeros((512, 512, 3), dtype=np.uint8)])
+
+        call_kwargs = instance.model.predict.call_args.kwargs
+        assert 'conf' in call_kwargs, (
+            'model.predict() must receive conf= to skip below-threshold inference; '
+            'without it, Ultralytics defaults to conf=0.25 and wastes ANE compute'
+        )
+        assert call_kwargs['conf'] == 0.45
+
+    def test_predict_receives_conf_kwarg_for_coreml(self):
+        """CoreML path must also receive conf=confidence_threshold alongside imgsz."""
+        import numpy as np
+        import torch
+        from scoutbot.tile_batched.main import Yolov8DetectionModel
+
+        instance = MagicMock(spec=Yolov8DetectionModel)
+        instance._coreml = True
+        instance._coreml_imgsz = 512
+        instance.batch_size = 128
+        instance.device = 'cpu'
+        instance.confidence_threshold = 0.45
+        instance.model = MagicMock()
+
+        fake_boxes = MagicMock()
+        fake_boxes.data = torch.zeros((0, 6))
+        fake_result = MagicMock()
+        fake_result.boxes = fake_boxes
+        instance.model.predict.return_value = [fake_result]
+
+        Yolov8DetectionModel.perform_inference(instance, [np.zeros((512, 512, 3), dtype=np.uint8)])
+
+        call_kwargs = instance.model.predict.call_args.kwargs
+        assert call_kwargs.get('conf') == 0.45
+        assert call_kwargs.get('imgsz') == 512

@@ -71,7 +71,7 @@ class Yolov8DetectionModel(_Base):
         batch_size = batch_size or self.batch_size
         all_preds = []
 
-        predict_kwargs = {}
+        predict_kwargs = {'conf': self.confidence_threshold}
         if self._coreml:
             predict_kwargs['imgsz'] = self._coreml_imgsz
 
