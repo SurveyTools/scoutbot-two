@@ -83,6 +83,36 @@ def _center(d):
 # so any sane gate cleanly separates true matches from artifacts.
 MATCH_GATE_PX = 16.0
 
+_LFS_PREFIX = b'version https://git-lfs.github.com'
+_VALID_SIGS = (b'\xff\xd8\xff', b'\x89PNG')  # JPEG and PNG magic bytes
+
+
+def _validate_images(images):
+    """Fail fast with a clear message if images are Git LFS stubs or wrong type."""
+    stubs, bad = [], []
+    for p in images:
+        header = p.read_bytes()[: max(len(_LFS_PREFIX), 8)]
+        if header[: len(_LFS_PREFIX)] == _LFS_PREFIX:
+            stubs.append(p)
+        elif not any(header[: len(sig)] == sig for sig in _VALID_SIGS):
+            bad.append(p)
+    if stubs:
+        names = ', '.join(p.name for p in stubs[:3])
+        extra = f' (+{len(stubs) - 3} more)' if len(stubs) > 3 else ''
+        raise SystemExit(
+            f'{len(stubs)} image(s) are Git LFS pointer stubs ({names}{extra}).\n'
+            f'Pull real image data:\n'
+            f'  brew install git-lfs   # once per machine\n'
+            f'  git lfs install        # once per clone\n'
+            f'  git lfs pull'
+        )
+    if bad:
+        names = ', '.join(p.name for p in bad[:3])
+        extra = f' (+{len(bad) - 3} more)' if len(bad) > 3 else ''
+        raise SystemExit(
+            f'{len(bad)} file(s) are not valid JPEG/PNG images: {names}{extra}'
+        )
+
 
 def _parity(ref_dets, test_dets):
     """Gated greedy center-distance match of test boxes to the reference set.
@@ -171,6 +201,7 @@ def main():
     )
     if not images:
         raise SystemExit(f'No images found in {image_dir}')
+    _validate_images(images)
 
     families = FAMILIES if args.family == 'all' else {args.family: FAMILIES[args.family]}
     for label, (pt_config, coreml_config) in families.items():
