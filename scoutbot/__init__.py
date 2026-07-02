@@ -373,7 +373,9 @@ def batch_resumable(
                     'filepath': filepath,
                     'wic': wic_,
                     'detections': detects,
-                    'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    'timestamp': datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace('+00:00', 'Z'),
                     'config': config,
                 }
 
@@ -394,7 +396,9 @@ def batch_resumable(
                 error_record = {
                     'filepath': filepath,
                     'error': str(e),
-                    'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+                    'timestamp': datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace('+00:00', 'Z'),
                     'config': config,
                 }
                 f.write(json.dumps(error_record) + '\n')
