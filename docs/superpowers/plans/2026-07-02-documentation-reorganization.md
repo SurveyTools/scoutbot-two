@@ -138,7 +138,7 @@ Root `README.md` should be:
 
 **Background:** The quality implementation is complete. Before editing docs, confirm the final branch state so documentation reflects the actual files, not earlier plan drafts.
 
-- [ ] **Step 1: Re-read the quality files**
+- [x] **Step 1: Re-read the quality files**
 
 ```bash
 git status --short --branch
@@ -153,7 +153,7 @@ sed -n '1,180p' docs/conf.py
 sed -n '1,120p' .readthedocs.yaml
 ```
 
-- [ ] **Step 2: Record the final command surface for docs**
+- [x] **Step 2: Record the final command surface for docs**
 
 Use these finalized commands unless the files have changed again:
 
@@ -167,7 +167,7 @@ uv run mypy scoutbot
 uv run pre-commit run --all-files
 ```
 
-- [ ] **Step 3: Confirm Sphinx extension and dependency baseline**
+- [x] **Step 3: Confirm Sphinx extension and dependency baseline**
 
 `docs/conf.py` must keep `sphinx_click` enabled because `docs/cli.rst` uses the
 `.. click::` directive. Do not add `myst-parser`; this plan converts the existing
@@ -180,7 +180,7 @@ uv run pre-commit run --all-files
 **Files:**
 - Read all docs: `README.md`, `CLAUDE.md`, `CHANGELOG.rst`, `docs/*.rst`, `docs/superpowers/plans/*.md`
 
-- [ ] **Step 1: Inventory every public command and config value**
+- [x] **Step 1: Inventory every public command and config value**
 
 Run stale-tool searches separately from valid current-tool searches to avoid false positives.
 
@@ -196,7 +196,7 @@ Current-tool/config verification:
 rg -n "uv sync --extra test|uv run pytest -m \"not slow\"|uv run ruff|uv run mypy scoutbot|quality.yml|testing.yml|v3-coreml|v3-cls-coreml|LOC_CONFIG|SCOUTBOT_DEVICE|DETECTOR_BATCH_SIZE" README.md CLAUDE.md CHANGELOG.rst docs
 ```
 
-- [ ] **Step 2: Create a short audit note inside the PR description or working notes**
+- [x] **Step 2: Create a short audit note inside the PR description or working notes**
 
 Record each stale item as:
 
