@@ -57,6 +57,17 @@ Quality workflow -- v2 scope
    ``bandit``
 5. macOS CI runner for Core ML path (expensive; consider self-hosted M-series)
 
+Documentation reorganization
+----------------------------
+
+**Status:** in-progress
+
+**Reference:** ``docs/superpowers/plans/2026-07-02-documentation-reorganization.md``
+
+The current documentation reorganization is restructuring ScoutBot docs around reader intent,
+separating user guide, reference, project, development, security, roadmap, and changelog content.
+It also establishes an ongoing documentation-pass rule for future agent and contributor work.
+
 Core ML / performance investigations
 ------------------------------------
 
@@ -70,6 +81,29 @@ Core ML / performance investigations
 * Confirm ANE engagement via Activity Monitor / ``coremltools`` compute-unit API
 * M4 follow-up benchmark once pipeline overhead is reduced
 
+Performance observability spec
+------------------------------
+
+**Status:** planned
+
+The next performance investigation should specify structured benchmark observability before making
+hardware-specific throughput claims. The spec should define phase timings for image discovery,
+decode/load, slicing, per-tile model invocation count, per-tile model wall time, post-processing,
+serialization, Core ML compute-unit selection, direct ``coremltools`` prediction timing, and
+concurrent or batched tile inference experiments.
+
+Model registry / model integration
+----------------------------------
+
+**Status:** planned
+
+**Reference:** ``docs/superpowers/plans/2026-05-09-scoutbot-registry.md``
+
+Future model integration work should provide a registry mechanism for model updates and new model
+integrations. Until that is mature, model configs remain internal implementation details in
+``scoutbot/loc/__init__.py`` and new model work should include artifact provenance, integrity
+verification, config schema tests, CLI choice tests, and output compatibility checks.
+
 Community contribution docs
 ---------------------------
 
@@ -80,4 +114,3 @@ pass requirement to the public contributor guide, likely ``CONTRIBUTING.md`` or
 an equivalent contributor page. Contributors should be expected to review and
 update affected docs, changelog, and roadmap entries as part of any code, model,
 CLI, configuration, workflow, security, or performance change.
-

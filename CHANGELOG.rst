@@ -2,6 +2,17 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Added Core ML documentation for ``v3-coreml`` and ``v3-cls-coreml`` configs, export behavior,
+  parity caveats, and Apple Silicon benchmark interpretation.
+* Removed the stale CodeQL workflow and documented the replacement quality gates:
+  ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
+* Raised declared Python support to ``>=3.10,<3.13``.
+* Reorganized documentation around reader roles, with separate installation, usage,
+  configuration, model, performance, development, security, roadmap, API, and CLI pages.
+
 Version 0.2.0
 -------------
 

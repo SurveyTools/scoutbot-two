@@ -576,7 +576,7 @@ Keep it short and link to `docs/development.rst`.
 - Modify: `CHANGELOG.rst`
 - Optional create: `docs/superpowers/plans/README.md`
 
-- [ ] **Step 1: Convert and refine existing roadmap**
+- [x] **Step 1: Convert and refine existing roadmap**
 
 Convert `docs/roadmap.md` to `docs/roadmap.rst` with equivalent content. Keep its lightweight
 tracking format and ensure it covers:
@@ -595,7 +595,7 @@ tracking format and ensure it covers:
   - macOS Core ML CI
   - Ruff rule expansion
 
-- [ ] **Step 2: Update changelog**
+- [x] **Step 2: Update changelog**
 
 Add an `Unreleased` section to `CHANGELOG.rst` that covers:
 
@@ -604,7 +604,7 @@ Add an `Unreleased` section to `CHANGELOG.rst` that covers:
 - Python support raised to `>=3.10,<3.13`
 - documentation reorganization if this plan is implemented in the same change set
 
-- [ ] **Step 3: Add a plans README**
+- [x] **Step 3: Add a plans README**
 
 If keeping plan files under `docs/superpowers/plans/`, add:
 
