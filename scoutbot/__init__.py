@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 ScoutBot v3 Pipeline
 
 ScoutBot provides a unified ML pipeline for wildlife detection in aerial imagery.
@@ -29,7 +29,8 @@ Example usage:
     #     'w': width (float)
     #     'h': height (float)
     # }
-'''
+"""
+
 import json
 import os
 from os.path import exists
@@ -64,17 +65,17 @@ def fetch(config=None):
 
 
 def pipeline(
-        filepath,
-        config=None,
-        batched_detection_model=None,
-        backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
-        loc_thresh=0.45,
-        slice_height=512,
-        slice_width=512,
-        overlap_height_ratio=0.25,
-        overlap_width_ratio=0.25,
-        perform_standard_pred=False,
-        postprocess_class_agnostic=True,
+    filepath,
+    config=None,
+    batched_detection_model=None,
+    backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
+    loc_thresh=0.45,
+    slice_height=512,
+    slice_width=512,
+    overlap_height_ratio=0.25,
+    overlap_width_ratio=0.25,
+    perform_standard_pred=False,
+    postprocess_class_agnostic=True,
 ):
     """
     Run the ML pipeline on a given image filepath and return the detections.
@@ -146,14 +147,16 @@ def pipeline(
 
     detects = []
     for pred in coco_prediction_list:
-        detects.append({
-            'l': pred['category_name'],
-            'c': pred['score'],
-            'x': pred['bbox'][0],
-            'y': pred['bbox'][1],
-            'w': pred['bbox'][2],
-            'h': pred['bbox'][3],
-        })
+        detects.append(
+            {
+                'l': pred['category_name'],
+                'c': pred['score'],
+                'x': pred['bbox'][0],
+                'y': pred['bbox'][1],
+                'w': pred['bbox'][2],
+                'h': pred['bbox'][3],
+            }
+        )
 
     wic_ = round(wic_score, 4)
 
@@ -161,17 +164,17 @@ def pipeline(
 
 
 def batch(
-        filepaths,
-        config=None,
-        backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
-        loc_thresh=0.45,
-        slice_height=512,
-        slice_width=512,
-        overlap_height_ratio=0.25,
-        overlap_width_ratio=0.25,
-        perform_standard_pred=False,
-        postprocess_class_agnostic=True,
-        show_progress=True,
+    filepaths,
+    config=None,
+    backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
+    loc_thresh=0.45,
+    slice_height=512,
+    slice_width=512,
+    overlap_height_ratio=0.25,
+    overlap_width_ratio=0.25,
+    perform_standard_pred=False,
+    postprocess_class_agnostic=True,
+    show_progress=True,
 ):
     """
     Run the ML pipeline on a batch of image filepaths and return detections.
@@ -243,24 +246,26 @@ def batch(
         if show_progress:
             elapsed = time.time() - t_start
             mean_s = elapsed / (i + 1)
-            iterator.set_postfix({'file': Path(filepath).name[:20], 's/img': f'{mean_s:.1f}'})
+            iterator.set_postfix(
+                {'file': Path(filepath).name[:20], 's/img': f'{mean_s:.1f}'}
+            )
 
     return wic_list, detects_list
 
 
 def batch_resumable(
-        filepaths,
-        output_path,
-        config=None,
-        backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
-        loc_thresh=0.45,
-        slice_height=512,
-        slice_width=512,
-        overlap_height_ratio=0.25,
-        overlap_width_ratio=0.25,
-        perform_standard_pred=False,
-        postprocess_class_agnostic=True,
-        show_progress=True,
+    filepaths,
+    output_path,
+    config=None,
+    backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
+    loc_thresh=0.45,
+    slice_height=512,
+    slice_width=512,
+    overlap_height_ratio=0.25,
+    overlap_width_ratio=0.25,
+    perform_standard_pred=False,
+    postprocess_class_agnostic=True,
+    show_progress=True,
 ):
     """
     Process images with automatic resume capability.
@@ -377,10 +382,12 @@ def batch_resumable(
                 processed_count += 1
 
                 if show_progress:
-                    iterator.set_postfix({
-                        'file': Path(filepath).name[:20],
-                        'detects': len(detects),
-                    })
+                    iterator.set_postfix(
+                        {
+                            'file': Path(filepath).name[:20],
+                            'detects': len(detects),
+                        }
+                    )
 
             except Exception as e:
                 log.error(f'Failed to process {filepath}: {e}')

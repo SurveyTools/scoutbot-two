@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.pipeline() function."""
+
 import pytest
 
 

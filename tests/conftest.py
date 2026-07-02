@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Shared pytest fixtures for ScoutBot tests."""
+
 import logging
 from pathlib import Path
 

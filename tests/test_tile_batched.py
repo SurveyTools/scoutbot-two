@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.tile_batched.main (no model/network needed)."""
+
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -27,9 +28,11 @@ class TestLoadModelPlatformGuard:
         instance = MagicMock(spec=Yolov8DetectionModel)
         instance.model_path = '/fake/model.mlpackage'
 
-        with patch.object(sys, 'platform', 'darwin'), \
-             patch('scoutbot.tile_batched.main._coreml_input_size', return_value=512), \
-             patch('ultralytics.YOLO'):
+        with (
+            patch.object(sys, 'platform', 'darwin'),
+            patch('scoutbot.tile_batched.main._coreml_input_size', return_value=512),
+            patch('ultralytics.YOLO'),
+        ):
             Yolov8DetectionModel.load_model(instance)  # must not raise
 
 
@@ -74,7 +77,9 @@ class TestPerformInferenceNoneBoxes:
         result_with_none_boxes.boxes = None
         instance.model.predict.return_value = [result_with_none_boxes]
 
-        Yolov8DetectionModel.perform_inference(instance, [np.zeros((512, 512, 3), dtype=np.uint8)])
+        Yolov8DetectionModel.perform_inference(
+            instance, [np.zeros((512, 512, 3), dtype=np.uint8)]
+        )
 
         assert instance._original_predictions is not None
         assert len(instance._original_predictions) == 1
@@ -103,7 +108,9 @@ class TestPerformInferenceConfKwarg:
         fake_result.boxes = fake_boxes
         instance.model.predict.return_value = [fake_result]
 
-        Yolov8DetectionModel.perform_inference(instance, [np.zeros((512, 512, 3), dtype=np.uint8)])
+        Yolov8DetectionModel.perform_inference(
+            instance, [np.zeros((512, 512, 3), dtype=np.uint8)]
+        )
 
         call_kwargs = instance.model.predict.call_args.kwargs
         assert 'conf' in call_kwargs, (
@@ -133,7 +140,9 @@ class TestPerformInferenceConfKwarg:
         fake_result.boxes = fake_boxes
         instance.model.predict.return_value = [fake_result]
 
-        Yolov8DetectionModel.perform_inference(instance, [np.zeros((512, 512, 3), dtype=np.uint8)])
+        Yolov8DetectionModel.perform_inference(
+            instance, [np.zeros((512, 512, 3), dtype=np.uint8)]
+        )
 
         call_kwargs = instance.model.predict.call_args.kwargs
         assert call_kwargs.get('conf') == 0.45

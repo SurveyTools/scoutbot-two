@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.batch() and scoutbot.batch_resumable() functions."""
+
 import json
 import shutil
 from unittest.mock import patch
@@ -206,6 +207,7 @@ class TestBatchResumableProgressBar:
 
     def _fake_tqdm(self, captured):
         """Return a tqdm stand-in that records the disable kwarg."""
+
         def factory(iterable, **kwargs):
             captured.update(kwargs)
 
@@ -230,10 +232,12 @@ class TestBatchResumableProgressBar:
 
         captured = {}
 
-        with patch('tqdm.tqdm', self._fake_tqdm(captured)), \
-             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
-             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
-             patch('scoutbot.pipeline', return_value=(0.5, [])):
+        with (
+            patch('tqdm.tqdm', self._fake_tqdm(captured)),
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.5, [])),
+        ):
             scoutbot.batch_resumable(
                 filepaths=['fake.jpg'],
                 output_path=str(tmp_path / 'out.jsonl'),
@@ -251,10 +255,12 @@ class TestBatchResumableProgressBar:
 
         captured = {}
 
-        with patch('tqdm.tqdm', self._fake_tqdm(captured)), \
-             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
-             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
-             patch('scoutbot.pipeline', return_value=(0.5, [])):
+        with (
+            patch('tqdm.tqdm', self._fake_tqdm(captured)),
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.5, [])),
+        ):
             scoutbot.batch_resumable(
                 filepaths=['fake.jpg'],
                 output_path=str(tmp_path / 'out.jsonl'),
@@ -275,17 +281,27 @@ class TestBatchResumableErrorResume:
 
         # Seed JSONL: one success record, one error record
         with open(output, 'w') as f:
-            f.write(json.dumps({
-                'filepath': 'good.jpg',
-                'wic': 0.5,
-                'detections': [],
-                'config': 'v3',
-            }) + '\n')
-            f.write(json.dumps({
-                'filepath': 'bad.jpg',
-                'error': 'some transient error',
-                'config': 'v3',
-            }) + '\n')
+            f.write(
+                json.dumps(
+                    {
+                        'filepath': 'good.jpg',
+                        'wic': 0.5,
+                        'detections': [],
+                        'config': 'v3',
+                    }
+                )
+                + '\n'
+            )
+            f.write(
+                json.dumps(
+                    {
+                        'filepath': 'bad.jpg',
+                        'error': 'some transient error',
+                        'config': 'v3',
+                    }
+                )
+                + '\n'
+            )
 
         processed = []
 
@@ -293,9 +309,11 @@ class TestBatchResumableErrorResume:
             processed.append(filepath)
             return 0.0, []
 
-        with patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
-             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
-             patch('scoutbot.pipeline', side_effect=mock_pipeline):
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', side_effect=mock_pipeline),
+        ):
             summary = scoutbot.batch_resumable(
                 filepaths=['good.jpg', 'bad.jpg'],
                 output_path=str(output),
@@ -314,12 +332,17 @@ class TestBatchResumableErrorResume:
         output = tmp_path / 'out.jsonl'
 
         with open(output, 'w') as f:
-            f.write(json.dumps({
-                'filepath': 'done.jpg',
-                'wic': 0.9,
-                'detections': [],
-                'config': 'v3',
-            }) + '\n')
+            f.write(
+                json.dumps(
+                    {
+                        'filepath': 'done.jpg',
+                        'wic': 0.9,
+                        'detections': [],
+                        'config': 'v3',
+                    }
+                )
+                + '\n'
+            )
 
         processed = []
 
@@ -327,9 +350,11 @@ class TestBatchResumableErrorResume:
             processed.append(filepath)
             return 0.0, []
 
-        with patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
-             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
-             patch('scoutbot.pipeline', side_effect=mock_pipeline):
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', side_effect=mock_pipeline),
+        ):
             summary = scoutbot.batch_resumable(
                 filepaths=['done.jpg'],
                 output_path=str(output),
@@ -349,8 +374,10 @@ class TestApiEnvVarConfig:
         import scoutbot
         from scoutbot import loc
 
-        with patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'), \
-             patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch:
+        with (
+            patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'),
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
+        ):
             scoutbot.fetch()
 
         mock_fetch.assert_called_with(config='v3-cls')
@@ -365,9 +392,11 @@ class TestApiEnvVarConfig:
         mock_model = MagicMock()
         mock_model.category_names = ['animal']
 
-        with patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'), \
-             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
-             patch('scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model):
+        with (
+            patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'),
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model),
+        ):
             result = scoutbot.get_classes()
 
         assert result == ['animal']

@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-'''
+"""
 Localizer (LOC) configuration and model fetching for YOLOv8 models.
-'''
+"""
+
 import hashlib
 import os
 import shutil
@@ -18,27 +19,27 @@ DEFAULT_CONFIG = os.getenv('LOC_CONFIG', os.getenv('CONFIG', 'v3')).strip().lowe
 
 CONFIGS = {
     'v3': {
-        'name':                       'yolov8-onecls.kaza.pt',
-        'url':                        'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt',
-        'md5_url':                    'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5',
-        'thresh':                     0.45,
-        'slice_height':               512,
-        'slice_width':                512,
-        'overlap_height_ratio':       0.25,
-        'overlap_width_ratio':        0.25,
-        'perform_standard_pred':      False,
+        'name': 'yolov8-onecls.kaza.pt',
+        'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt',
+        'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5',
+        'thresh': 0.45,
+        'slice_height': 512,
+        'slice_width': 512,
+        'overlap_height_ratio': 0.25,
+        'overlap_width_ratio': 0.25,
+        'perform_standard_pred': False,
         'postprocess_class_agnostic': True,
     },
     'v3-cls': {
-        'name':                       'yolov8-cls.kaza.pt',
-        'url':                        'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt',
-        'md5_url':                    'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5',
-        'thresh':                     0.45,
-        'slice_height':               512,
-        'slice_width':                512,
-        'overlap_height_ratio':       0.25,
-        'overlap_width_ratio':        0.25,
-        'perform_standard_pred':      False,
+        'name': 'yolov8-cls.kaza.pt',
+        'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt',
+        'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5',
+        'thresh': 0.45,
+        'slice_height': 512,
+        'slice_width': 512,
+        'overlap_height_ratio': 0.25,
+        'overlap_width_ratio': 0.25,
+        'perform_standard_pred': False,
         'postprocess_class_agnostic': True,
     },
     # Core ML (.mlpackage) exports of the v3 detectors, for Apple Neural Engine
@@ -47,27 +48,27 @@ CONFIGS = {
     # exports it on demand from the 'source' .pt config (see export_coreml). 'source'
     # also tells the exporter which .pt to convert.
     'v3-coreml': {
-        'name':                       'yolov8-onecls.kaza.mlpackage',
-        'backend':                    'coreml',
-        'source':                     'v3',
-        'thresh':                     0.45,
-        'slice_height':               512,
-        'slice_width':                512,
-        'overlap_height_ratio':       0.25,
-        'overlap_width_ratio':        0.25,
-        'perform_standard_pred':      False,
+        'name': 'yolov8-onecls.kaza.mlpackage',
+        'backend': 'coreml',
+        'source': 'v3',
+        'thresh': 0.45,
+        'slice_height': 512,
+        'slice_width': 512,
+        'overlap_height_ratio': 0.25,
+        'overlap_width_ratio': 0.25,
+        'perform_standard_pred': False,
         'postprocess_class_agnostic': True,
     },
     'v3-cls-coreml': {
-        'name':                       'yolov8-cls.kaza.mlpackage',
-        'backend':                    'coreml',
-        'source':                     'v3-cls',
-        'thresh':                     0.45,
-        'slice_height':               512,
-        'slice_width':                512,
-        'overlap_height_ratio':       0.25,
-        'overlap_width_ratio':        0.25,
-        'perform_standard_pred':      False,
+        'name': 'yolov8-cls.kaza.mlpackage',
+        'backend': 'coreml',
+        'source': 'v3-cls',
+        'thresh': 0.45,
+        'slice_height': 512,
+        'slice_width': 512,
+        'overlap_height_ratio': 0.25,
+        'overlap_width_ratio': 0.25,
+        'perform_standard_pred': False,
         'postprocess_class_agnostic': True,
     },
 }
@@ -106,7 +107,7 @@ def fetch(config=DEFAULT_CONFIG) -> str:
     # no single file to hash. If absent, export one on demand from the source .pt.
     if cfg.get('backend') == 'coreml':
         if not local_path.exists():
-            log.info(f"Core ML model missing, exporting: {cfg['name']}")
+            log.info(f'Core ML model missing, exporting: {cfg["name"]}')
             export_coreml(config)
         assert local_path.exists(), f'Core ML export failed: {local_path}'
         log.debug(f'Using local Core ML model: {local_path}')
@@ -120,18 +121,19 @@ def fetch(config=DEFAULT_CONFIG) -> str:
         log.debug(f'Model up to date: {local_path}')
         return str(local_path)
 
-    log.info(f"Downloading {cfg['name']}...")
+    log.info(f'Downloading {cfg["name"]}...')
     with requests.get(cfg['url'], stream=True, timeout=120) as r:
         r.raise_for_status()
         total = int(r.headers.get('content-length', 0))
-        with open(local_path, 'wb') as f, tqdm(
-            total=total, unit='B', unit_scale=True, desc=cfg['name']
-        ) as bar:
+        with (
+            open(local_path, 'wb') as f,
+            tqdm(total=total, unit='B', unit_scale=True, desc=cfg['name']) as bar,
+        ):
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
                 bar.update(len(chunk))
 
-    assert _md5(local_path) == remote_md5, f"MD5 mismatch after download: {cfg['name']}"
+    assert _md5(local_path) == remote_md5, f'MD5 mismatch after download: {cfg["name"]}'
     log.info(f'Saved: {local_path}')
     return str(local_path)
 
@@ -164,13 +166,11 @@ def export_coreml(config, force: bool = False) -> str:
 
     pt_path = fetch(cfg['source'])
     imgsz = cfg.get('slice_width', 640)
-    log.info(f"Exporting {cfg['name']} from {Path(pt_path).name} (imgsz={imgsz})...")
+    log.info(f'Exporting {cfg["name"]} from {Path(pt_path).name} (imgsz={imgsz})...')
 
     # Ultralytics writes "<pt_stem>.mlpackage" next to the .pt; since the .pt lives
     # in CACHE_DIR as e.g. yolov8-onecls.kaza.pt, the output lands exactly at target.
-    exported = YOLO(pt_path).export(
-        format='coreml', half=True, nms=False, imgsz=imgsz
-    )
+    exported = YOLO(pt_path).export(format='coreml', half=True, nms=False, imgsz=imgsz)
     exported = Path(exported)
     assert exported.exists(), f'Export produced no bundle for {config}'
     if exported.resolve() != target.resolve():

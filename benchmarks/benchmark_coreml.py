@@ -18,6 +18,7 @@ Usage:
     uv run python benchmarks/benchmark_coreml.py
     uv run python benchmarks/benchmark_coreml.py --family cls --images examples
 """
+
 import argparse
 import time
 from pathlib import Path
