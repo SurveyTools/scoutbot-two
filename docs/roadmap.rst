@@ -48,7 +48,8 @@ Quality workflow -- v2 scope
 **Reference:** ``docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md``
 (V2 Scope section)
 
-1. Coverage enforcement (``--cov-fail-under``, branch coverage)
+1. Coverage enforcement (``--cov-fail-under`` gated on meaningful branch coverage,
+   not raw line count; branch coverage via ``--cov-branch``)
 2. Expand mypy to ``tests/`` and ``benchmarks/``; add targeted
    ``[[tool.mypy.overrides]]`` per library; revisit ``ignore_missing_imports = true``
 3. Ruff rule expansion -- enable ``UP`` (restores deferred pyupgrade behaviour),
@@ -67,6 +68,17 @@ Documentation reorganization
 Documentation was reorganized around reader intent, separating user guide, reference, project,
 development, security, roadmap, and changelog content into discrete Sphinx pages. An ongoing
 documentation-pass rule was established for future agent and contributor work.
+
+Test coverage
+-------------
+
+**Status:** done
+
+Fast-suite coverage raised from 58% to 92%+ by adding unit tests with mocked SAHI,
+``requests``, and ``coremltools`` dependencies. All tests use ``unittest.mock`` to avoid
+network or model-file dependencies. The remaining uncovered lines are ``example()``
+(requires network and model download; marked ``@pytest.mark.slow``) and the
+``if __name__ == '__main__':`` CLI guard.
 
 Core ML / performance investigations
 ------------------------------------
