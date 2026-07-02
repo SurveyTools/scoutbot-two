@@ -60,13 +60,13 @@ Quality workflow -- v2 scope
 Documentation reorganization
 ----------------------------
 
-**Status:** in-progress
+**Status:** done
 
 **Reference:** ``docs/superpowers/plans/2026-07-02-documentation-reorganization.md``
 
-The current documentation reorganization is restructuring ScoutBot docs around reader intent,
-separating user guide, reference, project, development, security, roadmap, and changelog content.
-It also establishes an ongoing documentation-pass rule for future agent and contributor work.
+Documentation was reorganized around reader intent, separating user guide, reference, project,
+development, security, roadmap, and changelog content into discrete Sphinx pages. An ongoing
+documentation-pass rule was established for future agent and contributor work.
 
 Core ML / performance investigations
 ------------------------------------

@@ -105,6 +105,9 @@ whether the work changes user behavior, commands, configuration, models, outputs
 quality checks, security posture, performance characteristics, or roadmap status. Update the
 affected docs in the same change set, or explicitly record why no doc update is needed.
 
+This section mirrors the agent-facing rule in ``CLAUDE.md``. Keep both copies aligned until a
+public contributor guide becomes the shared source for contributor documentation requirements.
+
 Use these documentation roles to decide what may be impacted:
 
 ``README.md``

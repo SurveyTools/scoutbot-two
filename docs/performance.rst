@@ -130,5 +130,5 @@ Observability Follow-up
 -----------------------
 
 The next investigation should add structured benchmark phase timings before claiming
-hardware-specific Core ML throughput. See the forthcoming observability spec for implementation
-details.
+hardware-specific Core ML throughput. The planned observability spec is tracked in
+:doc:`roadmap`.
