@@ -625,7 +625,7 @@ Do not add this directory to the main Sphinx user-guide navigation.
 - Read/build docs output
 - Read: `.readthedocs.yaml`, `pyproject.toml`, `docs/conf.py`
 
-- [ ] **Step 1: Build Sphinx docs**
+- [x] **Step 1: Build Sphinx docs**
 
 Use the docs extra:
 
@@ -634,7 +634,7 @@ uv sync --extra docs
 uv run sphinx-build -M html docs docs/build
 ```
 
-- [ ] **Step 2: Run quality checks**
+- [x] **Step 2: Run quality checks**
 
 Use the final quality commands:
 
@@ -645,7 +645,7 @@ uv run mypy scoutbot
 uv run pytest -m "not slow" -v
 ```
 
-- [ ] **Step 3: Search for stale terms**
+- [x] **Step 3: Search for stale terms**
 
 ```bash
 rg -n "Brunette|flake8|isort|CodeQL|pip install -e|v3 or v3-cls|Python ≥ 3.8|>=3.8" README.md CLAUDE.md CHANGELOG.rst docs
@@ -659,7 +659,7 @@ Expected:
 - config lists include Core ML variants where appropriate
 - Python support is documented as `>=3.10,<3.13`
 
-- [ ] **Step 4: Verify no orphaned replacement docs remain**
+- [x] **Step 4: Verify no orphaned replacement docs remain**
 
 ```bash
 test ! -e docs/environment.rst
@@ -671,7 +671,7 @@ test -e docs/models.rst
 test -e docs/security.rst
 ```
 
-- [ ] **Step 5: Verify hosted-docs configuration**
+- [x] **Step 5: Verify hosted-docs configuration**
 
 Confirm `.readthedocs.yaml` installs the project with the `docs` extra and that `pyproject.toml`
 defines that extra with `Sphinx`, `sphinx-rtd-theme`, and `sphinx-click`.
