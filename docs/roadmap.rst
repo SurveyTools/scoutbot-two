@@ -40,6 +40,29 @@ installation:
   during model load; interrupts the per-family header. Suppress or redirect to
   stderr during benchmark runs.
 
+CI coverage reporting
+---------------------
+
+**Status:** in-progress
+
+The codecov upload step was removed from ``.github/workflows/testing.yml`` because
+no Codecov account exists; the upload was silently failing with a token error.
+
+A GitHub Actions job summary step was added in its place: pytest runs with
+``--cov-report=json`` and a small Python snippet writes the percentage and line
+counts to ``$GITHUB_STEP_SUMMARY``, making coverage visible on every PR in the
+Actions UI with no external account.
+
+Remaining options for further coverage tooling:
+
+1. **Codecov free tier** -- create a free account at `codecov.io`, add the repo,
+   store ``CODECOV_TOKEN`` in GitHub Actions secrets, and restore the
+   ``codecov/codecov-action`` step. Provides per-PR diff coverage annotations and
+   a README badge. Requires an ongoing Codecov account.
+
+2. **``--cov-fail-under``** -- enforce a minimum threshold in CI. Already listed
+   in Quality workflow v2 scope below.
+
 Quality workflow -- v2 scope
 ----------------------------
 
@@ -48,7 +71,8 @@ Quality workflow -- v2 scope
 **Reference:** ``docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md``
 (V2 Scope section)
 
-1. Coverage enforcement (``--cov-fail-under``, branch coverage)
+1. Coverage enforcement (``--cov-fail-under`` gated on meaningful branch coverage,
+   not raw line count; branch coverage via ``--cov-branch``)
 2. Expand mypy to ``tests/`` and ``benchmarks/``; add targeted
    ``[[tool.mypy.overrides]]`` per library; revisit ``ignore_missing_imports = true``
 3. Ruff rule expansion -- enable ``UP`` (restores deferred pyupgrade behaviour),
@@ -67,6 +91,23 @@ Documentation reorganization
 Documentation was reorganized around reader intent, separating user guide, reference, project,
 development, security, roadmap, and changelog content into discrete Sphinx pages. An ongoing
 documentation-pass rule was established for future agent and contributor work.
+
+Test coverage
+-------------
+
+**Status:** done
+
+Fast-suite coverage raised from 58% to 92%+ by adding unit tests with mocked SAHI,
+``requests``, and ``coremltools`` dependencies. All tests use ``unittest.mock`` to avoid
+network or model-file dependencies.
+
+Remaining uncovered lines (all intentional or deferred):
+
+* ``example()`` -- requires network and model download; covered only by ``@pytest.mark.slow``
+* ``if __name__ == '__main__':`` CLI guard -- untestable without subprocess
+* ``scoutbot/scoutbot.py:205-208`` -- ``batch`` CLI ``--output`` file-write branch
+* ``scoutbot/__init__.py:246-250`` -- ``batch()`` ``show_progress=True`` tqdm postfix update
+  (deferred to V2 scope; requires a real or patched tqdm iterator)
 
 Core ML / performance investigations
 ------------------------------------

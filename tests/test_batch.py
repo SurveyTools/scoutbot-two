@@ -400,3 +400,223 @@ class TestApiEnvVarConfig:
             result = scoutbot.get_classes()
 
         assert result == ['animal']
+
+
+class TestBatchUnit:
+    """Unit tests for scoutbot.batch() — no model or network."""
+
+    def test_batch_returns_wic_and_detects_lists(self, tmp_path):
+        import scoutbot
+
+        fake_imgs = [str(tmp_path / f'{i}.jpg') for i in range(3)]
+        for p in fake_imgs:
+            open(p, 'wb').close()
+
+        fake_wic = 0.75
+        fake_detects = [{'l': 'animal', 'c': 0.75, 'x': 0, 'y': 0, 'w': 10, 'h': 10}]
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(fake_wic, fake_detects)),
+        ):
+            wic_list, detects_list = scoutbot.batch(
+                fake_imgs, config='v3', show_progress=False
+            )
+
+        assert len(wic_list) == 3
+        assert len(detects_list) == 3
+        assert all(w == fake_wic for w in wic_list)
+
+    def test_batch_none_config_uses_default(self, tmp_path):
+        import scoutbot
+
+        fake_img = str(tmp_path / 'img.jpg')
+        open(fake_img, 'wb').close()
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.0, [])),
+            patch('scoutbot.loc.DEFAULT_CONFIG', 'v3'),
+        ):
+            scoutbot.batch([fake_img], config=None, show_progress=False)
+
+        mock_fetch.assert_called_once_with(config='v3')
+
+
+class TestBatchResumableUnit:
+    """Unit tests for scoutbot.batch_resumable() — no model or network."""
+
+    def test_all_already_processed_returns_early(self, tmp_path):
+        import scoutbot
+
+        output = tmp_path / 'output.jsonl'
+        filepaths = [str(tmp_path / 'a.jpg'), str(tmp_path / 'b.jpg')]
+
+        # Write records for both filepaths as already done
+        with open(output, 'w') as f:
+            for fp in filepaths:
+                f.write(json.dumps({'filepath': fp, 'wic': 0.5, 'detections': []}) + '\n')
+
+        with patch('scoutbot.loc.fetch') as mock_fetch:
+            summary = scoutbot.batch_resumable(
+                filepaths=filepaths,
+                output_path=str(output),
+                config='v3',
+                show_progress=False,
+            )
+
+        mock_fetch.assert_not_called()
+        assert summary['processed'] == 0
+        assert summary['skipped'] == 2
+        assert summary['total'] == 2
+
+    def test_jsonl_parser_skips_blank_lines_and_bad_json(self, tmp_path):
+        """Lines 316 (blank) and 321-322 (JSONDecodeError) of batch_resumable."""
+        import scoutbot
+
+        output = tmp_path / 'output.jsonl'
+        fake_img = str(tmp_path / 'img.jpg')
+        open(fake_img, 'wb').close()
+
+        with open(output, 'w') as f:
+            f.write('\n')  # blank line → hits line 316
+            f.write('not valid json\n')  # bad JSON → hits lines 321-322
+            f.write(json.dumps({'bad': 'record'}) + '\n')  # valid JSON, no filepath key
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.0, [])),
+        ):
+            summary = scoutbot.batch_resumable(
+                filepaths=[fake_img],
+                output_path=str(output),
+                config='v3',
+                show_progress=False,
+            )
+
+        # img.jpg was not in processed set (no valid completed record for it)
+        assert summary['processed'] == 1
+        assert summary['errors'] == 0
+
+    def test_batch_resumable_runs_and_writes_jsonl(self, tmp_path):
+        import scoutbot
+
+        output = tmp_path / 'output.jsonl'
+        fake_imgs = [str(tmp_path / f'{i}.jpg') for i in range(2)]
+        for p in fake_imgs:
+            open(p, 'wb').close()
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch(
+                'scoutbot.pipeline',
+                return_value=(
+                    0.85,
+                    [{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}],
+                ),
+            ),
+        ):
+            summary = scoutbot.batch_resumable(
+                filepaths=fake_imgs,
+                output_path=str(output),
+                config='v3',
+                show_progress=False,
+            )
+
+        assert summary['processed'] == 2
+        assert summary['errors'] == 0
+        assert summary['skipped'] == 0
+        assert summary['total'] == 2
+        assert output.exists()
+        lines = [
+            json.loads(line) for line in output.read_text().splitlines() if line.strip()
+        ]
+        assert len(lines) == 2
+        for rec in lines:
+            assert 'filepath' in rec
+            assert 'wic' in rec
+            assert 'detections' in rec
+            assert 'config' in rec
+
+    def test_batch_resumable_resumes_from_partial_output(self, tmp_path):
+        import scoutbot
+
+        output = tmp_path / 'output.jsonl'
+        img_a = str(tmp_path / 'a.jpg')
+        img_b = str(tmp_path / 'b.jpg')
+        open(img_a, 'wb').close()
+        open(img_b, 'wb').close()
+
+        # Pre-populate with img_a already done
+        with open(output, 'w') as f:
+            f.write(json.dumps({'filepath': img_a, 'wic': 0.5, 'detections': []}) + '\n')
+
+        pipeline_calls = []
+
+        def _fake_pipeline(fp, *args, **kwargs):
+            pipeline_calls.append(fp)
+            return (0.9, [])
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', side_effect=_fake_pipeline),
+        ):
+            summary = scoutbot.batch_resumable(
+                filepaths=[img_a, img_b],
+                output_path=str(output),
+                config='v3',
+                show_progress=False,
+            )
+
+        # Only img_b should have been processed
+        assert pipeline_calls == [img_b]
+        assert summary['processed'] == 1
+        assert summary['skipped'] == 1
+
+    def test_batch_resumable_writes_error_record_on_pipeline_failure(self, tmp_path):
+        """Covers lines 392-402: except Exception path writes an error record."""
+        import scoutbot
+
+        output = tmp_path / 'output.jsonl'
+        fake_img = str(tmp_path / 'img.jpg')
+        open(fake_img, 'wb').close()
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', side_effect=RuntimeError('inference exploded')),
+        ):
+            summary = scoutbot.batch_resumable(
+                filepaths=[fake_img],
+                output_path=str(output),
+                config='v3',
+                show_progress=False,
+            )
+
+        assert summary['errors'] == 1
+        assert summary['processed'] == 0
+        assert output.exists()
+        lines = [
+            json.loads(line) for line in output.read_text().splitlines() if line.strip()
+        ]
+        assert len(lines) == 1
+        assert lines[0]['filepath'] == fake_img
+        assert 'error' in lines[0]
+        assert 'inference exploded' in lines[0]['error']
+
+
+@pytest.mark.slow
+class TestExampleSlow:
+    """Integration test for scoutbot.example() — downloads from network."""
+
+    def test_example_runs_without_error(self):
+        import scoutbot
+
+        # Downloads example image and runs the full pipeline
+        # Requires network access and model download
+        scoutbot.example()

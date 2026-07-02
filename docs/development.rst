@@ -54,6 +54,18 @@ Run coverage on the fast suite:
 
    uv run pytest -m "not slow" --cov=scoutbot --cov-report=html
 
+Testing philosophy
+~~~~~~~~~~~~~~~~~~
+
+New tests must cover meaningful branches — exception handlers, guard clauses, and
+behavioral forks — not just add lines to a coverage metric. Branches that exist only
+to satisfy a metric (e.g. ``if __name__ == '__main__':``) are explicitly excluded.
+
+The mock pattern used throughout: ``unittest.mock.patch`` for network and model
+dependencies, ``tmp_path`` for filesystem, ``CliRunner`` for CLI commands. Only add
+``@pytest.mark.slow`` when a test actually hits the network or loads a real model
+file from disk.
+
 Quality checks
 --------------
 

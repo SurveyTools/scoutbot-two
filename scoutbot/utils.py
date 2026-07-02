@@ -3,6 +3,7 @@
 Scoutbot utilities file for common and handy functions.
 """
 
+import atexit
 import hashlib
 import logging
 import os
@@ -73,14 +74,15 @@ def init_logging():
         'datefmt': '[%X]',
     }
 
-    # Add file-baesd log handler
-    handlers.append(
-        TimedRotatingFileHandler(
-            filename=f'{name}.log',
-            when='midnight',
-            backupCount=DAYS,
-        ),
+    # Add file-based log handler; register explicit close so the file is released
+    # even when pytest initialises logging first (making basicConfig a no-op).
+    file_handler = TimedRotatingFileHandler(
+        filename=f'{name}.log',
+        when='midnight',
+        backupCount=DAYS,
     )
+    atexit.register(file_handler.close)
+    handlers.append(file_handler)
 
     # Add rich (fancy logging) log handler
     rich.reconfigure(**console_kwargs)

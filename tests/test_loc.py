@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.loc module."""
 
+import hashlib
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -168,3 +169,203 @@ class TestExportCoreml:
         )
         src, dst = move_calls[0]
         assert dst == str(tmp_path / 'yolov8-onecls.kaza.mlpackage')
+
+
+class TestLocMd5:
+    """Unit tests for scoutbot.loc._md5()."""
+
+    def test_md5_returns_correct_hex_digest(self, tmp_path):
+        from scoutbot.loc import _md5
+
+        content = b'hello world'
+        f = tmp_path / 'test.bin'
+        f.write_bytes(content)
+
+        result = _md5(f)
+
+        assert result == hashlib.md5(content).hexdigest()
+        assert isinstance(result, str)
+        assert len(result) == 32
+
+    def test_md5_handles_large_file_in_chunks(self, tmp_path):
+        from scoutbot.loc import _md5
+
+        # 20KB — forces multiple 8192-byte chunks
+        content = b'x' * 20_000
+        f = tmp_path / 'large.bin'
+        f.write_bytes(content)
+
+        result = _md5(f)
+        assert result == hashlib.md5(content).hexdigest()
+
+
+class TestLocFetchUnit:
+    """Unit tests for scoutbot.loc.fetch() — no network, no real model."""
+
+    def test_fetch_coreml_returns_path_when_bundle_exists(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3-coreml']
+        bundle = tmp_path / cfg['name']
+        bundle.mkdir()
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.loc.export_coreml') as mock_export,
+        ):
+            result = loc.fetch('v3-coreml')
+
+        mock_export.assert_not_called()
+        assert result == str(bundle)
+
+    def test_fetch_coreml_triggers_export_when_bundle_missing(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3-coreml']
+        bundle = tmp_path / cfg['name']
+
+        def _create_bundle(config, **kwargs):
+            bundle.mkdir(exist_ok=True)
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch(
+                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+            ) as mock_export,
+        ):
+            result = loc.fetch('v3-coreml')
+
+        mock_export.assert_called_once_with('v3-coreml')
+        assert result == str(bundle)
+
+    def test_fetch_pt_returns_cached_path_when_md5_matches(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3']
+        local = tmp_path / cfg['name']
+        local.write_bytes(b'fake model bytes')
+        remote_md5 = hashlib.md5(b'fake model bytes').hexdigest()
+
+        md5_response = MagicMock()
+        md5_response.text = remote_md5 + '  ' + cfg['name']
+        md5_response.raise_for_status = MagicMock()
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('requests.get', return_value=md5_response),
+            patch('scoutbot.loc._md5', return_value=remote_md5),
+        ):
+            result = loc.fetch('v3')
+
+        assert result == str(local)
+
+    def test_fetch_pt_downloads_when_local_missing(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3']
+        local = tmp_path / cfg['name']
+        fake_content = b'model weights'
+        remote_md5 = hashlib.md5(fake_content).hexdigest()
+
+        md5_response = MagicMock()
+        md5_response.text = remote_md5 + '  ' + cfg['name']
+        md5_response.raise_for_status = MagicMock()
+
+        download_response = MagicMock()
+        download_response.raise_for_status = MagicMock()
+        download_response.headers = {'content-length': str(len(fake_content))}
+        download_response.iter_content.return_value = [fake_content]
+        download_response.__enter__ = MagicMock(return_value=download_response)
+        download_response.__exit__ = MagicMock(return_value=False)
+
+        call_count = [0]
+
+        def _get(url, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return md5_response
+            return download_response
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('requests.get', side_effect=_get),
+        ):
+            result = loc.fetch('v3')
+
+        assert result == str(local)
+        assert local.exists()
+        assert local.read_bytes() == fake_content
+
+    def test_fetch_none_config_uses_default(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS[loc.DEFAULT_CONFIG]
+        local = tmp_path / cfg['name']
+        local.write_bytes(b'bytes')
+        remote_md5 = hashlib.md5(b'bytes').hexdigest()
+
+        md5_response = MagicMock()
+        md5_response.text = remote_md5 + '  ' + cfg['name']
+        md5_response.raise_for_status = MagicMock()
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('requests.get', return_value=md5_response),
+            patch('scoutbot.loc._md5', return_value=remote_md5),
+        ):
+            result = loc.fetch(None)
+
+        assert result is not None
+        assert isinstance(result, str)
+
+
+class TestExportCoremlBranches:
+    """Unit tests for export_coreml() branches not covered by TestExportCoreml."""
+
+    def test_early_return_when_target_exists_and_no_force(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3-coreml']
+        target = tmp_path / cfg['name']
+        target.mkdir()
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('ultralytics.YOLO') as MockYOLO,
+        ):
+            result = loc.export_coreml('v3-coreml', force=False)
+
+        MockYOLO.assert_not_called()
+        assert result == str(target)
+
+    def test_rmtree_called_when_target_exists_and_exported_differs(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3-coreml']
+        target = tmp_path / cfg['name']
+        target.mkdir()  # target already exists
+
+        # exported lands somewhere else (different from target)
+        other_dir = tmp_path / 'tmp_export'
+        other_dir.mkdir()
+        exported_path = other_dir / cfg['name']
+        exported_path.mkdir()
+
+        rmtree_calls = []
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('ultralytics.YOLO') as MockYOLO,
+            patch(
+                'shutil.rmtree', side_effect=lambda p, **kw: rmtree_calls.append(str(p))
+            ),
+            patch('shutil.move'),
+        ):
+            MockYOLO.return_value.export.return_value = str(exported_path)
+            loc.export_coreml('v3-coreml', force=True)
+
+        assert any(str(target) in c for c in rmtree_calls), (
+            'shutil.rmtree must remove the existing target bundle '
+            'before shutil.move places the newly-exported one there'
+        )

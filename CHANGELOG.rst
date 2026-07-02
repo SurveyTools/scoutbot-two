@@ -18,6 +18,8 @@ Unreleased
 * Raised declared Python support to ``>=3.10,<3.13``.
 * Reorganized documentation around reader roles, with separate installation, usage,
   configuration, model, performance, development, security, roadmap, API, and CLI pages.
+* Raised fast-suite test coverage from 58% to 92%+ by adding unit tests with mocked
+  SAHI, requests, and coremltools dependencies.
 
 Version 0.2.0
 -------------

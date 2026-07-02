@@ -18,9 +18,9 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Wild Me Scout Bot'
-copyright = '2024'
-author = 'Conservation X Labs'
+project = 'Scoutbot 2026'
+copyright = '2026'
+author = 'Rebel Workflow Team'
 
 
 # -- General configuration ---------------------------------------------------
