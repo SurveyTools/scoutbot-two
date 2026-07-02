@@ -99,9 +99,15 @@ Test coverage
 
 Fast-suite coverage raised from 58% to 92%+ by adding unit tests with mocked SAHI,
 ``requests``, and ``coremltools`` dependencies. All tests use ``unittest.mock`` to avoid
-network or model-file dependencies. The remaining uncovered lines are ``example()``
-(requires network and model download; marked ``@pytest.mark.slow``) and the
-``if __name__ == '__main__':`` CLI guard.
+network or model-file dependencies.
+
+Remaining uncovered lines (all intentional or deferred):
+
+* ``example()`` -- requires network and model download; covered only by ``@pytest.mark.slow``
+* ``if __name__ == '__main__':`` CLI guard -- untestable without subprocess
+* ``scoutbot/scoutbot.py:205-208`` -- ``batch`` CLI ``--output`` file-write branch
+* ``scoutbot/__init__.py:246-250`` -- ``batch()`` ``show_progress=True`` tqdm postfix update
+  (deferred to V2 scope; requires a real or patched tqdm iterator)
 
 Core ML / performance investigations
 ------------------------------------
