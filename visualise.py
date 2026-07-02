@@ -25,7 +25,7 @@ def load_detections(json_path):
     # JSON structure: {image_path: {wic: float, loc: [detections]}}
     # Get the first (and typically only) image entry
     if not data:
-        raise ValueError(f"Empty JSON file: {json_path}")
+        raise ValueError(f'Empty JSON file: {json_path}')
 
     image_key = list(data.keys())[0]
     return data[image_key]
@@ -44,20 +44,20 @@ def visualize_detections(image_path, json_path, threshold=0.0, output_path=None)
     # Load image
     img = cv2.imread(str(image_path))
     if img is None:
-        raise ValueError(f"Could not load image: {image_path}")
+        raise ValueError(f'Could not load image: {image_path}')
 
     # Load detections
     result = load_detections(json_path)
     detections = result.get('loc', [])
     wic_score = result.get('wic', 0.0)
 
-    print(f"Image: {image_path}")
-    print(f"Whole Image Confidence: {wic_score:.4f}")
-    print(f"Total detections: {len(detections)}")
+    print(f'Image: {image_path}')
+    print(f'Whole Image Confidence: {wic_score:.4f}')
+    print(f'Total detections: {len(detections)}')
 
     # Filter by threshold
     filtered_detections = [d for d in detections if d['c'] >= threshold]
-    print(f"Detections above threshold ({threshold}): {len(filtered_detections)}")
+    print(f'Detections above threshold ({threshold}): {len(filtered_detections)}')
 
     # Draw bounding boxes
     for detect in filtered_detections:
@@ -79,7 +79,7 @@ def visualize_detections(image_path, json_path, threshold=0.0, output_path=None)
         cv2.rectangle(img, point1, point2, color, thickness)
 
         # Add label with confidence score
-        text = f"{label}: {conf:.3f}"
+        text = f'{label}: {conf:.3f}'
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 0.5
         font_thickness = 1
@@ -101,15 +101,15 @@ def visualize_detections(image_path, json_path, threshold=0.0, output_path=None)
     # Save output if requested
     if output_path:
         cv2.imwrite(str(output_path), img)
-        print(f"Saved output to: {output_path}")
+        print(f'Saved output to: {output_path}')
 
     # Display image
     # Create window and display
-    window_name = f"ScoutBot Detections - {Path(image_path).name}"
+    window_name = f'ScoutBot Detections - {Path(image_path).name}'
     cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
     cv2.imshow(window_name, img)
 
-    print("\nPress any key to close the window...")
+    print('\nPress any key to close the window...')
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
@@ -118,27 +118,21 @@ def main():
     parser = argparse.ArgumentParser(
         description='Visualize ScoutBot detection results with bounding boxes and confidence scores.'
     )
+    parser.add_argument('image', type=str, help='Path to the input image file')
+    parser.add_argument('json', type=str, help='Path to the ScoutBot JSON output file')
     parser.add_argument(
-        'image',
-        type=str,
-        help='Path to the input image file'
-    )
-    parser.add_argument(
-        'json',
-        type=str,
-        help='Path to the ScoutBot JSON output file'
-    )
-    parser.add_argument(
-        '-t', '--threshold',
+        '-t',
+        '--threshold',
         type=float,
         default=0.0,
-        help='Minimum confidence threshold to display (default: 0.0)'
+        help='Minimum confidence threshold to display (default: 0.0)',
     )
     parser.add_argument(
-        '-o', '--output',
+        '-o',
+        '--output',
         type=str,
         default=None,
-        help='Optional path to save the output image'
+        help='Optional path to save the output image',
     )
 
     args = parser.parse_args()
@@ -148,11 +142,11 @@ def main():
     json_path = Path(args.json)
 
     if not image_path.exists():
-        print(f"Error: Image file not found: {image_path}", file=sys.stderr)
+        print(f'Error: Image file not found: {image_path}', file=sys.stderr)
         sys.exit(1)
 
     if not json_path.exists():
-        print(f"Error: JSON file not found: {json_path}", file=sys.stderr)
+        print(f'Error: JSON file not found: {json_path}', file=sys.stderr)
         sys.exit(1)
 
     output_path = Path(args.output) if args.output else None
@@ -161,7 +155,7 @@ def main():
     try:
         visualize_detections(image_path, json_path, args.threshold, output_path)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        print(f'Error: {e}', file=sys.stderr)
         sys.exit(1)
 
 

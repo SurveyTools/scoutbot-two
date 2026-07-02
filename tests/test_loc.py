@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.loc module."""
+
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 
 class TestLocConfig:
@@ -31,13 +34,19 @@ class TestLocConfig:
             )
             assert 'name' in cfg, f'{name} must have a name key'
             assert cfg['name'].endswith('.mlpackage'), (
-                f"{name} bundle name must end in .mlpackage, got: {cfg['name']}"
+                f'{name} bundle name must end in .mlpackage, got: {cfg["name"]}'
             )
 
             # Shared inference keys must be present
-            for key in ('thresh', 'slice_height', 'slice_width',
-                        'overlap_height_ratio', 'overlap_width_ratio',
-                        'perform_standard_pred', 'postprocess_class_agnostic'):
+            for key in (
+                'thresh',
+                'slice_height',
+                'slice_width',
+                'overlap_height_ratio',
+                'overlap_width_ratio',
+                'perform_standard_pred',
+                'postprocess_class_agnostic',
+            ):
                 assert key in cfg, f'{name} missing shared key: {key}'
 
             # CoreML configs must NOT have download keys (no remote bundle)
@@ -64,7 +73,7 @@ class TestLocConfig:
         for config_name in ['v3', 'v3-cls']:
             config = loc.CONFIGS[config_name]
             for key in required_keys:
-                assert key in config, f"Config {config_name} missing key: {key}"
+                assert key in config, f'Config {config_name} missing key: {key}'
 
     def test_default_config_is_v3(self):
         """Test that default config points to v3."""
@@ -92,6 +101,7 @@ class TestLocConfig:
             assert 0.0 <= config['overlap_width_ratio'] <= 1.0
 
 
+@pytest.mark.slow
 class TestLocFetch:
     """Tests for model fetching."""
 
@@ -140,10 +150,15 @@ class TestExportCoreml:
 
         move_calls = []
 
-        with patch.object(loc, 'CACHE_DIR', tmp_path), \
-             patch('scoutbot.loc.fetch', return_value=str(tmp_path / 'fake.pt')), \
-             patch('ultralytics.YOLO') as MockYOLO, \
-             patch('shutil.move', side_effect=lambda s, d: move_calls.append((str(s), str(d)))):
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.loc.fetch', return_value=str(tmp_path / 'fake.pt')),
+            patch('ultralytics.YOLO') as MockYOLO,
+            patch(
+                'shutil.move',
+                side_effect=lambda s, d: move_calls.append((str(s), str(d))),
+            ),
+        ):
             MockYOLO.return_value.export.return_value = str(other)
             loc.export_coreml('v3-coreml', force=True)
 

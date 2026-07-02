@@ -5,6 +5,7 @@ CLI for ScoutBot v3
 
 A simplified command-line interface for running YOLOv8-based wildlife detection.
 """
+
 import json
 import os
 from os.path import exists
@@ -216,7 +217,8 @@ def batch(
     type=str,
 )
 @click.option(
-    '--output', '-o',
+    '--output',
+    '-o',
     required=True,
     help='Output JSONL file path (results saved incrementally)',
     type=str,
@@ -268,12 +270,12 @@ def batch_resumable(
         show_progress=not no_progress,
     )
 
-    print("\nSummary:")
-    print(f"  Processed: {summary['processed']}")
-    print(f"  Skipped (already done): {summary['skipped']}")
-    print(f"  Errors: {summary['errors']}")
-    print(f"  Total: {summary['total']}")
-    print(f"\nResults saved to: {output}")
+    print('\nSummary:')
+    print(f'  Processed: {summary["processed"]}')
+    print(f'  Skipped (already done): {summary["skipped"]}')
+    print(f'  Errors: {summary["errors"]}')
+    print(f'  Total: {summary["total"]}')
+    print(f'\nResults saved to: {output}')
 
 
 @click.command('fetch')
@@ -290,8 +292,11 @@ def fetch(config):
     '--config',
     default=None,
     type=click.Choice(
-        [k for k, v in loc.CONFIGS.items()
-         if k is not None and isinstance(v, dict) and v.get('backend') == 'coreml'],
+        [
+            k
+            for k, v in loc.CONFIGS.items()
+            if k is not None and isinstance(v, dict) and v.get('backend') == 'coreml'
+        ],
     ),
     help='Core ML config to export (default: all coreml configs).',
 )

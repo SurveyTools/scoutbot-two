@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for benchmarks/benchmark_coreml.py helpers (no model/network needed)."""
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -27,7 +28,9 @@ class TestValidateImages:
     def test_raises_on_lfs_stub(self, tmp_path):
         """Git LFS pointer stubs must produce a clear SystemExit with git lfs pull hint."""
         stub = tmp_path / 'lfs.jpg'
-        stub.write_bytes(b'version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 3391180\n')
+        stub.write_bytes(
+            b'version https://git-lfs.github.com/spec/v1\noid sha256:abc\nsize 3391180\n'
+        )
 
         with pytest.raises(SystemExit, match='Git LFS pointer'):
             self.mod._validate_images([stub])

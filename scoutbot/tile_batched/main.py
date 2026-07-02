@@ -19,7 +19,6 @@ def _coreml_input_size(model_path) -> int:
 
 
 class Yolov8DetectionModel(_Base):
-
     def __init__(self, *args, batch_size: Optional[int] = None, **kwargs):
         self.batch_size = batch_size or DETECTOR_BATCH_SIZE
         self._coreml = False

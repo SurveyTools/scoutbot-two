@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests for ScoutBot CLI."""
+
 from click.testing import CliRunner
 
 
@@ -84,6 +85,7 @@ class TestCLI:
     def test_cli_config_choices(self):
         """Invalid config names are rejected; valid set includes v3-coreml variants."""
         from click.testing import CliRunner
+
         from scoutbot.scoutbot import cli
 
         runner = CliRunner()
@@ -98,6 +100,7 @@ class TestCLI:
     def test_pipeline_help_includes_coreml_configs(self):
         """pipeline --help must list v3-coreml and v3-cls-coreml as valid --config choices."""
         from click.testing import CliRunner
+
         from scoutbot.scoutbot import cli
 
         runner = CliRunner()
@@ -110,6 +113,7 @@ class TestCLI:
     def test_export_coreml_help_lists_coreml_configs(self):
         """export-coreml --help must enumerate the valid coreml config choices."""
         from click.testing import CliRunner
+
         from scoutbot.scoutbot import cli
 
         runner = CliRunner()
@@ -122,6 +126,7 @@ class TestCLI:
     def test_export_coreml_rejects_non_coreml_config_with_click_error(self):
         """Passing a non-CoreML config must produce a Click usage error, not an AssertionError."""
         from click.testing import CliRunner
+
         from scoutbot.scoutbot import cli
 
         runner = CliRunner()
