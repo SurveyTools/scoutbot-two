@@ -109,8 +109,8 @@ Community contribution docs
 
 **Status:** planned
 
-When the project opens for community contributions, add the same documentation
-pass requirement to the public contributor guide, likely ``CONTRIBUTING.md`` or
+When the project opens for community contributions, add the same documentation-pass requirement
+to the public contributor guide, likely ``CONTRIBUTING.md`` or
 an equivalent contributor page. Contributors should be expected to review and
 update affected docs, changelog, and roadmap entries as part of any code, model,
 CLI, configuration, workflow, security, or performance change.

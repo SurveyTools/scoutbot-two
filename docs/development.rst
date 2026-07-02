@@ -97,6 +97,61 @@ Install docs dependencies and build Sphinx:
    uv sync --extra docs
    uv run sphinx-build -M html docs docs/build
 
+Documentation pass
+------------------
+
+Every implementation plan must include a final documentation pass before completion. Review
+whether the work changes user behavior, commands, configuration, models, outputs, dependencies,
+quality checks, security posture, performance characteristics, or roadmap status. Update the
+affected docs in the same change set, or explicitly record why no doc update is needed.
+
+Use these documentation roles to decide what may be impacted:
+
+``README.md``
+   Routes readers and should change when quick-start commands, badges, supported workflows, or
+   top-level project positioning changes.
+
+``docs/installation.rst``
+   Owns install commands, extras, platform setup, CUDA/Core ML setup, and model cache
+   prerequisites.
+
+``docs/usage.rst``
+   Owns CLI/API examples, output schemas, batch/resume behavior, and QA/review interpretation
+   notes.
+
+``docs/configuration.rst``
+   Owns environment variables, config names, devices, thresholds, cache behavior, and runtime
+   controls.
+
+``docs/models.rst``
+   Owns model artifacts, source URLs, MD5 verification, provenance, and model availability.
+
+``docs/coreml.rst``
+   Owns Core ML backend mechanics, export behavior, parity caveats, and Apple-specific backend
+   constraints.
+
+``docs/performance.rst``
+   Owns benchmark interpretation, bottlenecks, observability needs, and hardware comparison
+   caveats.
+
+``docs/api.rst`` and ``docs/cli.rst``
+   Own generated API/CLI reference surfaces.
+
+``docs/development.rst``
+   Owns contributor setup, tests, lint/type checks, CI workflows, and model-integration
+   contributor guidance.
+
+``docs/security.rst``
+   Owns model download policy, integrity verification, dependency/security scanning posture, CI
+   scanning rationale, and data/privacy assumptions.
+
+``docs/roadmap.rst``
+   Owns planned/deferred work and investigation status.
+
+``CHANGELOG.rst``
+   Owns user-visible changes, compatibility changes, workflow changes, and release-note-worthy
+   internal changes.
+
 Model contributors and integrators
 ----------------------------------
 
@@ -111,4 +166,3 @@ New model integration work should include:
 * config schema tests
 * CLI choice tests
 * output compatibility checks
-

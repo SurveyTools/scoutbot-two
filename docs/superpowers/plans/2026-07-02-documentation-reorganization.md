@@ -688,7 +688,7 @@ defines that extra with `Sphinx`, `sphinx-rtd-theme`, and `sphinx-click`.
 **Background:** The reorganization reduces current drift, but future work can reintroduce it.
 Every future implementation plan should include an explicit documentation pass before completion.
 
-- [ ] **Step 1: Add a Documentation Pass rule to `CLAUDE.md`**
+- [x] **Step 1: Add a Documentation Pass rule to `CLAUDE.md`**
 
 Add a rule for all agents:
 
@@ -726,11 +726,11 @@ Use the documentation roles below to decide what may be impacted:
   release-note-worthy internal changes.
 ```
 
-- [ ] **Step 2: Add the same rule to `docs/development.rst`**
+- [x] **Step 2: Add the same rule to `docs/development.rst`**
 
 Include it in the contributor workflow section so external contributors see the requirement.
 
-- [ ] **Step 3: Update future-plan expectations**
+- [x] **Step 3: Update future-plan expectations**
 
 Any future plan under `docs/superpowers/plans/` should include a final checklist item:
 
@@ -742,7 +742,7 @@ Any future plan under `docs/superpowers/plans/` should include a final checklist
 This plan should not retroactively edit historical completed plans; the rule applies to new plans
 after the documentation reorganization lands.
 
-- [ ] **Step 4: Track public contributor equivalent in the roadmap**
+- [x] **Step 4: Track public contributor equivalent in the roadmap**
 
 Add a roadmap item for the future public contribution surface:
 

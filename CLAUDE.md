@@ -97,3 +97,35 @@ uv run ruff check .
 uv run mypy scoutbot
 uv run pre-commit run --all-files
 ```
+
+## Documentation Pass Rule
+
+Every implementation plan must include a final documentation pass before completion. Review
+whether the work changes user behavior, commands, configuration, models, outputs, dependencies,
+quality checks, security posture, performance characteristics, or roadmap status. Update the
+affected docs in the same change set, or explicitly record why no doc update is needed.
+
+Use the documentation roles below to decide what may be impacted:
+
+- `README.md` routes readers and should change when quick-start commands, badges, supported
+  workflows, or top-level project positioning changes.
+- `docs/installation.rst` owns install commands, extras, platform setup, CUDA/Core ML setup,
+  and model cache prerequisites.
+- `docs/usage.rst` owns CLI/API examples, output schemas, batch/resume behavior, and QA/review
+  interpretation notes.
+- `docs/configuration.rst` owns environment variables, config names, devices, thresholds, cache
+  behavior, and runtime controls.
+- `docs/models.rst` owns model artifacts, source URLs, MD5 verification, provenance, and model
+  availability.
+- `docs/coreml.rst` owns Core ML backend mechanics, export behavior, parity caveats, and
+  Apple-specific backend constraints.
+- `docs/performance.rst` owns benchmark interpretation, bottlenecks, observability needs, and
+  hardware comparison caveats.
+- `docs/api.rst` and `docs/cli.rst` own generated API/CLI reference surfaces.
+- `docs/development.rst` owns contributor setup, tests, lint/type checks, CI workflows, and
+  model-integration contributor guidance.
+- `docs/security.rst` owns model download policy, integrity verification, dependency/security
+  scanning posture, CI scanning rationale, and data/privacy assumptions.
+- `docs/roadmap.rst` owns planned/deferred work and investigation status.
+- `CHANGELOG.rst` owns user-visible changes, compatibility changes, workflow changes, and
+  release-note-worthy internal changes.
