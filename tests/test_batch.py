@@ -4,7 +4,10 @@ import json
 import shutil
 from unittest.mock import patch
 
+import pytest
 
+
+@pytest.mark.slow
 class TestBatch:
     """Tests for batch processing."""
 
@@ -54,6 +57,7 @@ class TestBatch:
         assert len(wic_list) == 1
 
 
+@pytest.mark.slow
 class TestBatchResumable:
     """Tests for resumable batch processing."""
 

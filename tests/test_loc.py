@@ -3,6 +3,8 @@
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 
 class TestLocConfig:
     """Tests for LOC configuration."""
@@ -92,6 +94,7 @@ class TestLocConfig:
             assert 0.0 <= config['overlap_width_ratio'] <= 1.0
 
 
+@pytest.mark.slow
 class TestLocFetch:
     """Tests for model fetching."""
 

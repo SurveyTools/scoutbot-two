@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 """Tests for scoutbot.pipeline() function."""
+import pytest
 
 
+@pytest.mark.slow
 class TestPipeline:
     """Tests for single image processing."""
 
