@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """Tests for ScoutBot CLI."""
 
+import json
+from unittest.mock import patch
+
 from click.testing import CliRunner
 
 
@@ -137,3 +140,184 @@ class TestCLI:
             'the error must be caught by Click before reaching loc.export_coreml'
         )
         assert 'invalid' in result.output.lower()
+
+
+class TestCLIExecutionBodies:
+    """Tests for CLI command execution — all scoutbot functions mocked."""
+
+    def test_pipeline_runs_and_prints_json(self, tmp_path):
+        """Covers lines 109-136 and the validator return path (line 23)."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        img = tmp_path / 'test.jpg'
+        img.write_bytes(b'fake')
+
+        with patch('scoutbot.pipeline', return_value=(0.85, [{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}])):
+            runner = CliRunner()
+            result = runner.invoke(cli, ['pipeline', '--device', 'cpu', str(img)])
+
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert str(img) in output
+        assert 'wic' in output[str(img)]
+        assert output[str(img)]['wic'] == 0.85
+
+    def test_pipeline_writes_output_file(self, tmp_path):
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        img = tmp_path / 'test.jpg'
+        img.write_bytes(b'fake')
+        out = tmp_path / 'result.json'
+
+        with patch('scoutbot.pipeline', return_value=(0.0, [])):
+            runner = CliRunner()
+            result = runner.invoke(cli, ['pipeline', '--device', 'cpu', '--output', str(out), str(img)])
+
+        assert result.exit_code == 0
+        assert out.exists()
+        data = json.loads(out.read_text())
+        assert str(img) in data
+
+    def test_batch_runs_and_prints_json(self, tmp_path):
+        """Covers lines 179-210."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        img1 = tmp_path / 'a.jpg'
+        img2 = tmp_path / 'b.jpg'
+        img1.write_bytes(b'fake')
+        img2.write_bytes(b'fake')
+
+        with patch(
+            'scoutbot.batch',
+            return_value=([0.85, 0.0], [[{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}], []]),
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                ['batch', '--device', 'cpu', '--no-progress', str(img1), str(img2)],
+            )
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert str(img1) in data
+        assert str(img2) in data
+
+    def test_batch_resumable_runs_and_prints_summary(self, tmp_path):
+        """Covers lines 253-278."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        img1 = str(tmp_path / 'a.jpg')
+        img2 = str(tmp_path / 'b.jpg')
+        out = tmp_path / 'output.jsonl'
+
+        with patch(
+            'scoutbot.batch_resumable',
+            return_value={'processed': 2, 'skipped': 0, 'errors': 0, 'total': 2},
+        ):
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                ['batch-resumable', '--output', str(out), '--no-progress', img1, img2],
+            )
+
+        assert result.exit_code == 0
+        assert 'Processed: 2' in result.output
+        assert 'Total: 2' in result.output
+
+    def test_fetch_command_calls_scoutbot_fetch(self):
+        """Covers line 287."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        with patch('scoutbot.fetch') as mock_fetch:
+            runner = CliRunner()
+            result = runner.invoke(cli, ['fetch', '--config', 'v3'])
+
+        assert result.exit_code == 0
+        mock_fetch.assert_called_once_with(config='v3')
+
+    def test_get_classes_command_prints_json(self):
+        """Covers lines 337-343."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        with patch('scoutbot.get_classes', return_value=['animal', 'vehicle']):
+            runner = CliRunner()
+            result = runner.invoke(cli, ['get_classes', '--config', 'v3'])
+
+        assert result.exit_code == 0
+        classes = json.loads(result.output)
+        assert classes == ['animal', 'vehicle']
+
+    def test_get_classes_command_writes_output_file(self, tmp_path):
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        out = tmp_path / 'classes.json'
+
+        with patch('scoutbot.get_classes', return_value=['animal']):
+            runner = CliRunner()
+            result = runner.invoke(cli, ['get_classes', '--config', 'v3', '--output', str(out)])
+
+        assert result.exit_code == 0
+        assert out.exists()
+        assert json.loads(out.read_text()) == ['animal']
+
+    def test_export_coreml_command_with_explicit_config(self):
+        """Covers the `if config:` branch of export-coreml (lines 308-310, 318-319)."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        with patch('scoutbot.loc.export_coreml', return_value='/fake/model.mlpackage') as mock_export:
+            runner = CliRunner()
+            result = runner.invoke(cli, ['export-coreml', '--config', 'v3-coreml'])
+
+        assert result.exit_code == 0
+        mock_export.assert_called_once_with('v3-coreml', force=False)
+
+    def test_export_coreml_command_without_config_exports_all(self):
+        """Covers the `else` branch (lines 311-317) — iterates all coreml configs."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+        from scoutbot import loc
+
+        with patch('scoutbot.loc.export_coreml', return_value='/fake/model.mlpackage') as mock_export:
+            runner = CliRunner()
+            result = runner.invoke(cli, ['export-coreml'])
+
+        assert result.exit_code == 0
+        # One call per coreml config (v3-coreml, v3-cls-coreml)
+        expected_configs = [
+            name
+            for name, cfg in loc.CONFIGS.items()
+            if name is not None and isinstance(cfg, dict) and cfg.get('backend') == 'coreml'
+        ]
+        assert mock_export.call_count == len(expected_configs)
+        called_configs = [call.args[0] for call in mock_export.call_args_list]
+        assert sorted(called_configs) == sorted(expected_configs)
+
+    def test_example_command_calls_scoutbot_example(self):
+        """Covers line 327."""
+        from click.testing import CliRunner
+
+        from scoutbot.scoutbot import cli
+
+        with patch('scoutbot.example') as mock_example:
+            runner = CliRunner()
+            result = runner.invoke(cli, ['example'])
+
+        assert result.exit_code == 0
+        mock_example.assert_called_once()
