@@ -177,11 +177,16 @@ Representative results (7 images, warm-up excluded):
      - **2049**
      - **7.01×**
 
-Core ML is fastest in wall-clock on both machines, ahead of MPS as well as CPU. Because the live
-path runs one tile at a time there is no large GPU batch for MPS to amortise, which plays to the
-Neural Engine's per-inference efficiency. The M4's larger unified memory and additional ANE cores
-yield a further speedup over the M1 Pro; batched or concurrent tile inference (not yet
-implemented) may widen that gap further.
+Core ML is fastest in wall-clock on both machines, ahead of MPS as well as CPU. These numbers
+should not be read as a measure of raw M4 / ANE capacity. The current benchmark times the full
+SAHI pipeline and the live path runs one 512×512 tile at a time through Ultralytics' Core ML
+wrapper. That serial per-tile path adds Python, PIL, SAHI, Ultralytics, and Core ML dispatch
+overhead to every tile, so the M1 Pro and M4 results are much closer than the hardware difference
+would suggest. This benchmark proves the Core ML backend is useful in the existing pipeline; it
+does not prove that the pipeline saturates Apple Silicon or that the M4 acceleration path is
+well-utilized. A follow-up benchmark should break out slicing, per-tile model prediction,
+post-processing, direct ``coremltools`` prediction, compute-unit selection, and concurrent or
+batched tile inference.
 
 Parity and caveats
 ~~~~~~~~~~~~~~~~~~~
