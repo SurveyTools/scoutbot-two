@@ -107,7 +107,9 @@ PyTorch-CPU reference.
     uv run python benchmarks/benchmark_coreml.py
     uv run python benchmarks/benchmark_coreml.py --family cls
 
-Representative results on an Apple-silicon Mac (7 images, warm-up excluded):
+Representative results (7 images, warm-up excluded):
+
+**Apple M1 Pro 10/16, 16 GB**
 
 .. list-table::
    :header-rows: 1
@@ -141,9 +143,45 @@ Representative results on an Apple-silicon Mac (7 images, warm-up excluded):
      - **2696**
      - **6.35×**
 
-Core ML is fastest in wall-clock here, ahead of MPS as well as CPU. Because the live path runs
-one tile at a time there is no large GPU batch for MPS to amortise, which plays to the Neural
-Engine's per-inference efficiency.
+**Apple M4, 48 GB**  *(Torch 2.11.0, ultralytics 8.2.103)*
+
+.. list-table::
+   :header-rows: 1
+
+   * - Family
+     - Variant
+     - ms / image
+     - Speedup vs CPU
+   * - onecls
+     - pt-cpu
+     - 27178
+     - 1.00×
+   * - onecls
+     - pt-mps
+     - 3204
+     - 8.48×
+   * - onecls
+     - **coreml**
+     - **2114**
+     - **12.86×**
+   * - cls
+     - pt-cpu
+     - 14368
+     - 1.00×
+   * - cls
+     - pt-mps
+     - 3201
+     - 4.49×
+   * - cls
+     - **coreml**
+     - **2049**
+     - **7.01×**
+
+Core ML is fastest in wall-clock on both machines, ahead of MPS as well as CPU. Because the live
+path runs one tile at a time there is no large GPU batch for MPS to amortise, which plays to the
+Neural Engine's per-inference efficiency. The M4's larger unified memory and additional ANE cores
+yield a further speedup over the M1 Pro; batched or concurrent tile inference (not yet
+implemented) may widen that gap further.
 
 Parity and caveats
 ~~~~~~~~~~~~~~~~~~~
