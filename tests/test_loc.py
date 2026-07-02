@@ -229,7 +229,9 @@ class TestLocFetchUnit:
 
         with (
             patch.object(loc, 'CACHE_DIR', tmp_path),
-            patch('scoutbot.loc.export_coreml', side_effect=_create_bundle) as mock_export,
+            patch(
+                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+            ) as mock_export,
         ):
             result = loc.fetch('v3-coreml')
 
@@ -262,8 +264,6 @@ class TestLocFetchUnit:
 
         cfg = loc.CONFIGS['v3']
         local = tmp_path / cfg['name']
-        remote_md5 = 'abc123deadbeef00' * 2  # 32-char fake md5
-
         fake_content = b'model weights'
         remote_md5 = hashlib.md5(fake_content).hexdigest()
 
@@ -357,7 +357,9 @@ class TestExportCoremlBranches:
             patch.object(loc, 'CACHE_DIR', tmp_path),
             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
             patch('ultralytics.YOLO') as MockYOLO,
-            patch('shutil.rmtree', side_effect=lambda p, **kw: rmtree_calls.append(str(p))),
+            patch(
+                'shutil.rmtree', side_effect=lambda p, **kw: rmtree_calls.append(str(p))
+            ),
             patch('shutil.move'),
         ):
             MockYOLO.return_value.export.return_value = str(exported_path)

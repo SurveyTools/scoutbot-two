@@ -154,7 +154,13 @@ class TestCLIExecutionBodies:
         img = tmp_path / 'test.jpg'
         img.write_bytes(b'fake')
 
-        with patch('scoutbot.pipeline', return_value=(0.85, [{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}])):
+        with patch(
+            'scoutbot.pipeline',
+            return_value=(
+                0.85,
+                [{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}],
+            ),
+        ):
             runner = CliRunner()
             result = runner.invoke(cli, ['pipeline', '--device', 'cpu', str(img)])
 
@@ -175,7 +181,9 @@ class TestCLIExecutionBodies:
 
         with patch('scoutbot.pipeline', return_value=(0.0, [])):
             runner = CliRunner()
-            result = runner.invoke(cli, ['pipeline', '--device', 'cpu', '--output', str(out), str(img)])
+            result = runner.invoke(
+                cli, ['pipeline', '--device', 'cpu', '--output', str(out), str(img)]
+            )
 
         assert result.exit_code == 0
         assert out.exists()
@@ -195,7 +203,10 @@ class TestCLIExecutionBodies:
 
         with patch(
             'scoutbot.batch',
-            return_value=([0.85, 0.0], [[{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}], []]),
+            return_value=(
+                [0.85, 0.0],
+                [[{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}], []],
+            ),
         ):
             runner = CliRunner()
             result = runner.invoke(
@@ -268,7 +279,9 @@ class TestCLIExecutionBodies:
 
         with patch('scoutbot.get_classes', return_value=['animal']):
             runner = CliRunner()
-            result = runner.invoke(cli, ['get_classes', '--config', 'v3', '--output', str(out)])
+            result = runner.invoke(
+                cli, ['get_classes', '--config', 'v3', '--output', str(out)]
+            )
 
         assert result.exit_code == 0
         assert out.exists()
@@ -280,7 +293,9 @@ class TestCLIExecutionBodies:
 
         from scoutbot.scoutbot import cli
 
-        with patch('scoutbot.loc.export_coreml', return_value='/fake/model.mlpackage') as mock_export:
+        with patch(
+            'scoutbot.loc.export_coreml', return_value='/fake/model.mlpackage'
+        ) as mock_export:
             runner = CliRunner()
             result = runner.invoke(cli, ['export-coreml', '--config', 'v3-coreml'])
 
@@ -291,10 +306,12 @@ class TestCLIExecutionBodies:
         """Covers the `else` branch (lines 311-317) — iterates all coreml configs."""
         from click.testing import CliRunner
 
-        from scoutbot.scoutbot import cli
         from scoutbot import loc
+        from scoutbot.scoutbot import cli
 
-        with patch('scoutbot.loc.export_coreml', return_value='/fake/model.mlpackage') as mock_export:
+        with patch(
+            'scoutbot.loc.export_coreml', return_value='/fake/model.mlpackage'
+        ) as mock_export:
             runner = CliRunner()
             result = runner.invoke(cli, ['export-coreml'])
 
@@ -303,7 +320,9 @@ class TestCLIExecutionBodies:
         expected_configs = [
             name
             for name, cfg in loc.CONFIGS.items()
-            if name is not None and isinstance(cfg, dict) and cfg.get('backend') == 'coreml'
+            if name is not None
+            and isinstance(cfg, dict)
+            and cfg.get('backend') == 'coreml'
         ]
         assert mock_export.call_count == len(expected_configs)
         called_configs = [call.args[0] for call in mock_export.call_args_list]

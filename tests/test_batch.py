@@ -438,6 +438,7 @@ class TestBatchUnit:
             patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.0, [])),
+            patch('scoutbot.loc.DEFAULT_CONFIG', 'v3'),
         ):
             scoutbot.batch([fake_img], config=None, show_progress=False)
 
@@ -480,8 +481,8 @@ class TestBatchResumableUnit:
         open(fake_img, 'wb').close()
 
         with open(output, 'w') as f:
-            f.write('\n')                          # blank line → hits line 316
-            f.write('not valid json\n')            # bad JSON → hits lines 321-322
+            f.write('\n')  # blank line → hits line 316
+            f.write('not valid json\n')  # bad JSON → hits lines 321-322
             f.write(json.dumps({'bad': 'record'}) + '\n')  # valid JSON, no filepath key
 
         with (
@@ -513,7 +514,10 @@ class TestBatchResumableUnit:
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch(
                 'scoutbot.pipeline',
-                return_value=(0.85, [{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}]),
+                return_value=(
+                    0.85,
+                    [{'l': 'animal', 'c': 0.85, 'x': 0, 'y': 0, 'w': 5, 'h': 5}],
+                ),
             ),
         ):
             summary = scoutbot.batch_resumable(
@@ -528,7 +532,9 @@ class TestBatchResumableUnit:
         assert summary['skipped'] == 0
         assert summary['total'] == 2
         assert output.exists()
-        lines = [json.loads(l) for l in output.read_text().splitlines() if l.strip()]
+        lines = [
+            json.loads(line) for line in output.read_text().splitlines() if line.strip()
+        ]
         assert len(lines) == 2
         for rec in lines:
             assert 'filepath' in rec
@@ -595,7 +601,9 @@ class TestBatchResumableUnit:
         assert summary['errors'] == 1
         assert summary['processed'] == 0
         assert output.exists()
-        lines = [json.loads(l) for l in output.read_text().splitlines() if l.strip()]
+        lines = [
+            json.loads(line) for line in output.read_text().splitlines() if line.strip()
+        ]
         assert len(lines) == 1
         assert lines[0]['filepath'] == fake_img
         assert 'error' in lines[0]

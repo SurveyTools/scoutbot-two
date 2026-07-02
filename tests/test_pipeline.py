@@ -130,10 +130,12 @@ class TestPipelineUnit:
         fake_img = tmp_path / 'test.jpg'
         fake_img.write_bytes(b'fake')
 
-        fake_result = _fake_sahi_result([
-            (0.85, 'animal', [10.0, 20.0, 50.0, 30.0]),
-            (0.60, 'vehicle', [100.0, 50.0, 20.0, 15.0]),
-        ])
+        fake_result = _fake_sahi_result(
+            [
+                (0.85, 'animal', [10.0, 20.0, 50.0, 30.0]),
+                (0.60, 'vehicle', [100.0, 50.0, 20.0, 15.0]),
+            ]
+        )
 
         with (
             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
@@ -200,6 +202,7 @@ class TestPipelineUnit:
             patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('sahi.predict.get_sliced_prediction', return_value=fake_result),
+            patch('scoutbot.loc.DEFAULT_CONFIG', 'v3'),
         ):
             scoutbot.pipeline(str(fake_img), config=None)
 
