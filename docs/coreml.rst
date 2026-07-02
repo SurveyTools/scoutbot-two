@@ -1,7 +1,7 @@
 Core ML (Apple Neural Engine)
 -----------------------------
 
-ScoutBot can run the v3 / v3-cls localizers as Core ML ``.mlpackage`` bundles, so inference
+Scoutbot can run the v3 / v3-cls localizers as Core ML ``.mlpackage`` bundles, so inference
 is dispatched through Apple's Core ML runtime (and is eligible for the Neural Engine) on
 macOS. The Core ML configs mirror their PyTorch counterparts and produce detections within
 sub-pixel / FP16 tolerance of the ``.pt`` models — see `Parity and caveats`_.

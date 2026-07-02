@@ -1,11 +1,11 @@
 Overview
 --------
 
-ScoutBot is a machine learning package for aerial wildlife survey image processing. It detects
+Scoutbot is a machine learning package for aerial wildlife survey image processing. It detects
 and localises animals in aerial photographs using YOLOv8 with SAHI (Slicing Aided Hyper
 Inference).
 
-ScoutBot supports direct CLI use and integration through its Python API. The same output format is
+Scoutbot supports direct CLI use and integration through its Python API. The same output format is
 used for single-image, batch, and resumable-batch workflows.
 
 Pipeline shape
@@ -25,7 +25,7 @@ The pipeline runs in four stages:
       each fixed-size tile through an exported Core ML bundle on macOS.
 
    4. **Merge/output** — SAHI collects and deduplicates detections across slice boundaries using
-      class-agnostic NMS, then ScoutBot returns pixel-coordinate bounding boxes in the
+      class-agnostic NMS, then Scoutbot returns pixel-coordinate bounding boxes in the
       ``{l, c, x, y, w, h}`` format.
 
 Model configs

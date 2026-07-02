@@ -19,7 +19,7 @@ or similar tools directly.
 Python support
 --------------
 
-ScoutBot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
+Scoutbot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
 ``>=3.10,<3.13``.
 
 Local setup

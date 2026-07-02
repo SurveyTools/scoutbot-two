@@ -1,7 +1,7 @@
 Models
 ------
 
-ScoutBot v3 uses YOLOv8 models trained on KAZA aerial survey data. PyTorch ``.pt`` models are
+Scoutbot v3 uses YOLOv8 models trained on KAZA aerial survey data. PyTorch ``.pt`` models are
 downloaded automatically on first use and cached at ``~/.cache/scoutbot/``. Core ML
 ``.mlpackage`` bundles are exported locally from those source ``.pt`` models.
 
@@ -46,13 +46,13 @@ verification:
    * Model: https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt
    * MD5:   https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5
 
-Core ML configs do not have hosted ``.mlpackage`` artifacts. ScoutBot exports them on demand from
+Core ML configs do not have hosted ``.mlpackage`` artifacts. Scoutbot exports them on demand from
 the verified source ``.pt`` model and stores the resulting bundle in ``~/.cache/scoutbot/``.
 
 Integrity verification
 ~~~~~~~~~~~~~~~~~~~~~~
 
-On each ``fetch()`` call for a hosted ``.pt`` model, ScoutBot:
+On each ``fetch()`` call for a hosted ``.pt`` model, Scoutbot:
 
 1. Downloads the ``.md5`` sidecar.
 2. Compares the sidecar's MD5 against the locally cached model file.

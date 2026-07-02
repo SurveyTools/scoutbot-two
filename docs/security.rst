@@ -18,9 +18,9 @@ See :doc:`models` for the model and MD5 sidecar URLs.
 Integrity verification
 ----------------------
 
-Hosted ``.pt`` models use MD5 sidecar verification. ScoutBot downloads the sidecar, compares it
+Hosted ``.pt`` models use MD5 sidecar verification. Scoutbot downloads the sidecar, compares it
 against any cached model, and downloads/rechecks the model when the cache is absent or mismatched.
-If a downloaded model still does not match the sidecar, ScoutBot raises an error rather than using
+If a downloaded model still does not match the sidecar, Scoutbot raises an error rather than using
 the artifact.
 
 Core ML artifacts
@@ -47,9 +47,9 @@ checks now run in ``.github/workflows/quality.yml``.
 Data and privacy assumptions
 ----------------------------
 
-ScoutBot inference runs locally. ScoutBot itself does not upload image data during inference.
+Scoutbot inference runs locally. Scoutbot itself does not upload image data during inference.
 Users are responsible for the privacy, storage, network, and access-control behavior of any
-surrounding pipeline or infrastructure where ScoutBot is embedded.
+surrounding pipeline or infrastructure where Scoutbot is embedded.
 
 CI posture
 ----------
