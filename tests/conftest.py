@@ -1,8 +1,15 @@
 # -*- coding: utf-8 -*-
 """Shared pytest fixtures for ScoutBot tests."""
 from pathlib import Path
+import logging
 
 import pytest
+
+
+@pytest.fixture(autouse=True, scope='session')
+def shutdown_logging():
+    yield
+    logging.shutdown()
 
 
 @pytest.fixture
