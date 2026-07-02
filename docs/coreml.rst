@@ -6,9 +6,8 @@ is dispatched through Apple's Core ML runtime (and is eligible for the Neural En
 macOS. The Core ML configs mirror their PyTorch counterparts and produce detections within
 sub-pixel / FP16 tolerance of the ``.pt`` models — see `Parity and caveats`_.
 
-This is a macOS feature. It requires ``coremltools``, installed via the optional extra::
-
-    pip install -e ".[coreml]"     # or: uv sync --extra coreml
+This is a macOS feature. It requires ``coremltools``. See :doc:`installation` for Apple
+Silicon setup and explicit export commands.
 
 Configs
 ~~~~~~~
@@ -42,9 +41,9 @@ config — the export happens transparently.
 
 To build (or rebuild) the bundles explicitly::
 
-    scoutbot export-coreml                       # export all coreml configs
-    scoutbot export-coreml --config v3-coreml    # one config
-    scoutbot export-coreml --force               # re-export even if present
+    uv run scoutbot export-coreml                       # export all coreml configs
+    uv run scoutbot export-coreml --config v3-coreml    # one config
+    uv run scoutbot export-coreml --force               # re-export even if present
 
 Or from Python::
 

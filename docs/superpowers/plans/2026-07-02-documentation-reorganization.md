@@ -216,7 +216,7 @@ Do not edit plan files solely to modernize historical instructions unless they a
 - Create: `docs/security.rst`, `docs/changelog.rst`
 - Rename/modify: `docs/scoutbot.rst` -> `docs/api.rst`, `docs/roadmap.md` -> `docs/roadmap.rst`
 
-- [ ] **Step 1: Replace `docs/index.rst` with a navigation-first homepage**
+- [x] **Step 1: Replace `docs/index.rst` with a navigation-first homepage**
 
 Use this structure:
 
@@ -260,7 +260,7 @@ Start with :doc:`installation` and :doc:`usage`. See :doc:`coreml` and
    changelog
 ```
 
-- [ ] **Step 2: Stop including changelog inline**
+- [x] **Step 2: Stop including changelog inline**
 
 Create `docs/changelog.rst` as a thin include:
 
@@ -271,13 +271,13 @@ Changelog
 .. include:: ../CHANGELOG.rst
 ```
 
-- [ ] **Step 3: Remove duplicate includes**
+- [x] **Step 3: Remove duplicate includes**
 
 `docs/api.rst` should contain API reference only. Do not include `overview.rst` or `environment.rst`.
 
 `docs/cli.rst` should contain sphinx-click output only. Do not include `environment.rst`.
 
-- [ ] **Step 4: Rename replacement pages and delete orphaned pages**
+- [x] **Step 4: Rename replacement pages and delete orphaned pages**
 
 Use git-aware moves/deletes:
 
@@ -289,12 +289,12 @@ git rm docs/environment.rst
 
 Do not delete `docs/models.rst`; it remains a first-class model reference page.
 
-- [ ] **Step 5: Keep Sphinx config RST-only and verify sphinx-click**
+- [x] **Step 5: Keep Sphinx config RST-only and verify sphinx-click**
 
 Confirm `docs/conf.py` includes `sphinx_click` in `extensions`. Do not add MyST unless the
 roadmap remains Markdown; the chosen path is to convert the roadmap to RST.
 
-- [ ] **Step 6: Add docs dependencies and RTD alignment**
+- [x] **Step 6: Add docs dependencies and RTD alignment**
 
 Add a `docs` optional dependency group to `pyproject.toml`:
 
@@ -322,7 +322,7 @@ only `requirements.txt`. Keep this explicit enough that RTD can build `docs/cli.
 - Create/modify: `docs/configuration.rst`
 - Delete: `docs/environment.rst`
 
-- [ ] **Step 1: Slim `README.md`**
+- [x] **Step 1: Slim `README.md`**
 
 Use sections:
 
@@ -353,7 +353,7 @@ The badge block should include:
 [![Quality](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/quality.yml)
 ```
 
-- [ ] **Step 1a: Add README routing table**
+- [x] **Step 1a: Add README routing table**
 
 Add a compact routing table under `Where to Go Next`:
 
@@ -370,7 +370,7 @@ Add a compact routing table under `Where to Go Next`:
 Use relative links to the final Sphinx source files or published docs URL, depending on the
 project's preferred README convention.
 
-- [ ] **Step 2: Update install docs**
+- [x] **Step 2: Update install docs**
 
 `docs/installation.rst` must cover:
 
@@ -381,7 +381,7 @@ project's preferred README convention.
 - model cache path and first-run download behavior
 - Core ML setup currently duplicated in `docs/coreml.rst`; move install/setup commands here and leave `docs/coreml.rst` with a link back to installation
 
-- [ ] **Step 3: Update usage docs**
+- [x] **Step 3: Update usage docs**
 
 `docs/usage.rst` must include:
 
@@ -399,7 +399,7 @@ project's preferred README convention.
   - reviewers should map detections back to original images by filename/order in JSON or JSONL output
   - common review caveats are threshold-borderline detections, duplicate/merged boxes near tile boundaries, and class-label uncertainty for multi-class configs
 
-- [ ] **Step 3a: Update overview docs**
+- [x] **Step 3a: Update overview docs**
 
 `docs/overview.rst` must mention:
 
@@ -408,7 +408,7 @@ project's preferred README convention.
 - Core ML uses the same SAHI/output path but a different backend/export/cache path
 - direct CLI users and integration/API users are both supported
 
-- [ ] **Step 4: Consolidate model and environment docs**
+- [x] **Step 4: Consolidate model and environment docs**
 
 `docs/configuration.rst` must include:
 
@@ -420,7 +420,7 @@ project's preferred README convention.
 
 `docs/environment.rst` is deleted after this content is migrated. Do not leave it as a Sphinx orphan.
 
-- [ ] **Step 5: Keep `docs/models.rst` as the model artifact reference**
+- [x] **Step 5: Keep `docs/models.rst` as the model artifact reference**
 
 `docs/models.rst` remains in the toctree. Update it to cover:
 
