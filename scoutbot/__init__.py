@@ -298,7 +298,7 @@ def batch_resumable(
     Returns:
         dict: Summary with keys 'processed', 'skipped', 'errors', 'total'
     """
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     from tqdm import tqdm
 
@@ -373,7 +373,7 @@ def batch_resumable(
                     'filepath': filepath,
                     'wic': wic_,
                     'detections': detects,
-                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                     'config': config,
                 }
 
@@ -394,7 +394,7 @@ def batch_resumable(
                 error_record = {
                     'filepath': filepath,
                     'error': str(e),
-                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'timestamp': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
                     'config': config,
                 }
                 f.write(json.dumps(error_record) + '\n')
