@@ -113,7 +113,7 @@ def fetch(config=DEFAULT_CONFIG) -> str:
         log.debug(f'Using local Core ML model: {local_path}')
         return str(local_path)
 
-    response = requests.get(cfg['md5_url'], timeout=30)
+    response = requests.get(str(cfg['md5_url']), timeout=30)
     response.raise_for_status()
     remote_md5 = response.text.strip().split()[0]
 
@@ -122,7 +122,7 @@ def fetch(config=DEFAULT_CONFIG) -> str:
         return str(local_path)
 
     log.info(f'Downloading {cfg["name"]}...')
-    with requests.get(cfg['url'], stream=True, timeout=120) as r:
+    with requests.get(str(cfg['url']), stream=True, timeout=120) as r:
         r.raise_for_status()
         total = int(r.headers.get('content-length', 0))
         with (

@@ -352,7 +352,7 @@ test = [
 
 ```toml
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_unused_configs = true
 ignore_missing_imports = true
 ```
