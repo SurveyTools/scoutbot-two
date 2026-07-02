@@ -357,9 +357,10 @@ class TestApiEnvVarConfig:
 
     def test_get_classes_uses_loc_default_config_when_no_config_given(self):
         """scoutbot.get_classes() with no args must delegate to loc.DEFAULT_CONFIG."""
+        from unittest.mock import MagicMock
+
         import scoutbot
         from scoutbot import loc
-        from unittest.mock import MagicMock
 
         mock_model = MagicMock()
         mock_model.category_names = ['animal']

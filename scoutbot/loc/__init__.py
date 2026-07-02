@@ -71,7 +71,7 @@ CONFIGS = {
         'postprocess_class_agnostic': True,
     },
 }
-CONFIGS[None] = CONFIGS[DEFAULT_CONFIG]
+CONFIGS[None] = CONFIGS[DEFAULT_CONFIG]  # type: ignore[index]
 
 
 def _md5(filepath: Path) -> str:
@@ -100,7 +100,7 @@ def fetch(config=DEFAULT_CONFIG) -> str:
 
     cfg = CONFIGS[config]
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    local_path = CACHE_DIR / cfg['name']
+    local_path = CACHE_DIR / str(cfg['name'])
 
     # Core ML bundles are local-only directory packages: no remote URL to fetch and
     # no single file to hash. If absent, export one on demand from the source .pt.
@@ -155,7 +155,7 @@ def export_coreml(config, force: bool = False) -> str:
     cfg = CONFIGS[config]
     assert cfg.get('backend') == 'coreml', f'{config} is not a Core ML config'
 
-    target = CACHE_DIR / cfg['name']
+    target = CACHE_DIR / str(cfg['name'])
     if target.exists() and not force:
         log.debug(f'Core ML model already present: {target}')
         return str(target)

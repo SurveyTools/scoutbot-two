@@ -197,6 +197,7 @@ def batch(
         tuple ( list ( float ), list ( list ( dict ) ) ): list of wic scores, list of detection lists
     """
     import time
+
     from tqdm import tqdm
 
     if config is None:
@@ -293,6 +294,7 @@ def batch_resumable(
         dict: Summary with keys 'processed', 'skipped', 'errors', 'total'
     """
     from datetime import datetime
+
     from tqdm import tqdm
 
     if config is None:

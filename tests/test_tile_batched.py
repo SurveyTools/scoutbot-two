@@ -60,6 +60,7 @@ class TestPerformInferenceNoneBoxes:
     def test_none_boxes_produces_empty_prediction(self):
         """result.boxes=None (from a misidentified model) must not raise AttributeError."""
         import numpy as np
+
         from scoutbot.tile_batched.main import Yolov8DetectionModel
 
         instance = MagicMock(spec=Yolov8DetectionModel)
@@ -86,6 +87,7 @@ class TestPerformInferenceConfKwarg:
         """model.predict() must receive conf=confidence_threshold."""
         import numpy as np
         import torch
+
         from scoutbot.tile_batched.main import Yolov8DetectionModel
 
         instance = MagicMock(spec=Yolov8DetectionModel)
@@ -114,6 +116,7 @@ class TestPerformInferenceConfKwarg:
         """CoreML path must also receive conf=confidence_threshold alongside imgsz."""
         import numpy as np
         import torch
+
         from scoutbot.tile_batched.main import Yolov8DetectionModel
 
         instance = MagicMock(spec=Yolov8DetectionModel)

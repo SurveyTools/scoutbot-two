@@ -2,9 +2,9 @@
 '''
 Scoutbot utilities file for common and handy functions.
 '''
+import hashlib
 import logging
 import os
-import hashlib
 from logging.handlers import TimedRotatingFileHandler
 
 DAYS = 21
