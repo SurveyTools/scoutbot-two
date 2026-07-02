@@ -41,10 +41,19 @@ jobs:
         run: uv sync --extra test
 
       - name: Run fast/offline tests
-        run: uv run pytest -m "not slow" --cov=./ --cov-append --random-order-seed=1
+        run: uv run pytest -m "not slow" --cov=scoutbot --cov-report=term-missing --cov-report=json --random-order-seed=1
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+      - name: Write coverage summary
+        run: |
+          uv run python - <<'EOF'
+          import json, os
+          with open('coverage.json') as f:
+              data = json.load(f)
+          t = data['totals']
+          lines = [
+              '## Coverage\n\n',
+              f"**{t['percent_covered_display']}%** — {t['covered_lines']} of {t['num_statements']} lines\n",
+          ]
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.writelines(lines)
+          EOF

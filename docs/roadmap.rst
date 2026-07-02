@@ -40,6 +40,29 @@ installation:
   during model load; interrupts the per-family header. Suppress or redirect to
   stderr during benchmark runs.
 
+CI coverage reporting
+---------------------
+
+**Status:** in-progress
+
+The codecov upload step was removed from ``.github/workflows/testing.yml`` because
+no Codecov account exists; the upload was silently failing with a token error.
+
+A GitHub Actions job summary step was added in its place: pytest runs with
+``--cov-report=json`` and a small Python snippet writes the percentage and line
+counts to ``$GITHUB_STEP_SUMMARY``, making coverage visible on every PR in the
+Actions UI with no external account.
+
+Remaining options for further coverage tooling:
+
+1. **Codecov free tier** -- create a free account at `codecov.io`, add the repo,
+   store ``CODECOV_TOKEN`` in GitHub Actions secrets, and restore the
+   ``codecov/codecov-action`` step. Provides per-PR diff coverage annotations and
+   a README badge. Requires an ongoing Codecov account.
+
+2. **``--cov-fail-under``** -- enforce a minimum threshold in CI. Already listed
+   in Quality workflow v2 scope below.
+
 Quality workflow -- v2 scope
 ----------------------------
 
