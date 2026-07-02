@@ -21,9 +21,9 @@ CLI is defined in `scoutbot/scoutbot.py` using Click.
 This project uses `uv` as its Python runner. **Never run `python`, `pytest`, `ruff`, `mypy`, or similar tools directly.** Always prefix with `uv run`:
 
 ```bash
-uv run pytest
+uv run pytest -m "not slow"
 uv run python -m scoutbot ...
-uv run mypy scoutbot/
+uv run mypy scoutbot
 uv run ruff check .
 ```
 
@@ -31,10 +31,13 @@ uv run ruff check .
 
 ```bash
 # Install (editable, with dev/test extras)
-uv pip install -e ".[test]"
+uv sync --extra test
 
-# Run all tests
-uv run pytest
+# Run fast/offline tests
+uv run pytest -m "not slow"
+
+# Run slow tests that download models or run real inference
+uv run pytest -m "slow"
 
 # Run a single test
 uv run pytest tests/test_loc.py::TestLoc::test_configs -v
@@ -43,9 +46,12 @@ uv run pytest tests/test_loc.py::TestLoc::test_configs -v
 uv run pytest -k "test_pipeline" -v
 
 # With coverage
-uv run pytest --cov=scoutbot
+uv run pytest -m "not slow" --cov=scoutbot
 
-# Pre-commit linting (also runs on git commit)
+# Quality checks
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy scoutbot
 uv run pre-commit run --all-files
 ```
 
@@ -63,7 +69,9 @@ uv run pre-commit run --all-files
 
 ### Model configs (`CONFIGS` keys)
 - `v3` — single-class KAZA detector (`yolov8-onecls.kaza.pt`)
-- `v3-cls` — classification variant
+- `v3-cls` — multi-class species detector (`yolov8-cls.kaza.pt`)
+- `v3-coreml` — Core ML export of `v3` for macOS
+- `v3-cls-coreml` — Core ML export of `v3-cls` for macOS
 
 Default config is `v3`; overridable via `LOC_CONFIG` or `CONFIG` env vars, or the `--config` CLI flag.
 
@@ -77,4 +85,15 @@ Default config is `v3`; overridable via `LOC_CONFIG` or `CONFIG` env vars, or th
 
 ## Code Style
 
-Formatting: Brunette (Black fork). Linting: flake8. Imports sorted by isort. All enforced via pre-commit hooks — run `pre-commit run --all-files` before committing. Flake8 config and ignore list are in `setup.cfg`.
+Formatting and linting: Ruff. Type checking: scoped mypy on `scoutbot/`. Tests use pytest with
+the `slow` marker for model-download and real-inference tests. Tool configuration lives in
+`pyproject.toml`; `setup.cfg` is not the quality-tool source of truth.
+
+```bash
+uv run pytest -m "not slow"
+uv run pytest -m "slow"
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy scoutbot
+uv run pre-commit run --all-files
+```

@@ -508,7 +508,7 @@ as a separate implementation task.
 - Create: `docs/security.rst`
 - Modify: `README.md`
 
-- [ ] **Step 1: Update `CLAUDE.md`**
+- [x] **Step 1: Update `CLAUDE.md`**
 
 Replace stale style section with the final quality workflow. Expected content:
 
@@ -531,7 +531,7 @@ uv run pre-commit run --all-files
 ```
 ````
 
-- [ ] **Step 2: Create `docs/development.rst`**
+- [x] **Step 2: Create `docs/development.rst`**
 
 Include:
 
@@ -551,7 +551,7 @@ Include:
   - future registry work is tracked in `docs/superpowers/plans/2026-05-09-scoutbot-registry.md`
   - new model integration expectations should include artifact provenance, integrity verification, config schema tests, CLI choice tests, and output compatibility checks
 
-- [ ] **Step 3: Create `docs/security.rst`**
+- [x] **Step 3: Create `docs/security.rst`**
 
 Own the security/governance reviewer content here. Include:
 
@@ -563,7 +563,7 @@ Own the security/governance reviewer content here. Include:
 - data/privacy assumption: ScoutBot inference runs locally; image data is not uploaded by ScoutBot itself, though users are responsible for their surrounding pipeline/storage environment
 - CI posture: `testing.yml` runs fast/offline tests, `quality.yml` runs Ruff and scoped mypy
 
-- [ ] **Step 4: Update README development section**
+- [x] **Step 4: Update README development section**
 
 Keep it short and link to `docs/development.rst`.
 
