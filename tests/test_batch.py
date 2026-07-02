@@ -2,6 +2,7 @@
 """Tests for scoutbot.batch() and scoutbot.batch_resumable() functions."""
 import json
 import shutil
+from unittest.mock import patch
 
 
 class TestBatch:
@@ -194,3 +195,174 @@ class TestBatchResumable:
         assert summary['processed'] == 0
         assert summary['skipped'] == 1
         assert summary['total'] == 1
+
+
+class TestBatchResumableProgressBar:
+    """Unit tests for batch_resumable progress bar behaviour (no model/network needed)."""
+
+    def _fake_tqdm(self, captured):
+        """Return a tqdm stand-in that records the disable kwarg."""
+        def factory(iterable, **kwargs):
+            captured.update(kwargs)
+
+            class FakePbar:
+                def __iter__(self):
+                    return iter(iterable)
+
+                def set_postfix(self, **kw):
+                    pass
+
+            return FakePbar()
+
+        return factory
+
+    def test_progress_shown_when_show_progress_true(self, tmp_path):
+        """show_progress=True must not be suppressed by the QUIET module constant."""
+        import scoutbot
+
+        assert scoutbot.QUIET is True, (
+            'QUIET must be True (VERBOSE env var unset) for this test to prove the regression'
+        )
+
+        captured = {}
+
+        with patch('tqdm.tqdm', self._fake_tqdm(captured)), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', return_value=(0.5, [])):
+            scoutbot.batch_resumable(
+                filepaths=['fake.jpg'],
+                output_path=str(tmp_path / 'out.jsonl'),
+                show_progress=True,
+            )
+
+        assert captured.get('disable') is False, (
+            'progress bar must be enabled when show_progress=True; '
+            'check that QUIET is not short-circuiting the disable flag in batch_resumable'
+        )
+
+    def test_progress_hidden_when_show_progress_false(self, tmp_path):
+        """show_progress=False must suppress the progress bar regardless of QUIET."""
+        import scoutbot
+
+        captured = {}
+
+        with patch('tqdm.tqdm', self._fake_tqdm(captured)), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', return_value=(0.5, [])):
+            scoutbot.batch_resumable(
+                filepaths=['fake.jpg'],
+                output_path=str(tmp_path / 'out.jsonl'),
+                show_progress=False,
+            )
+
+        assert captured.get('disable') is True
+
+
+class TestBatchResumableErrorResume:
+    """Unit tests for resume-on-error behaviour (no model/network needed)."""
+
+    def test_errored_files_retried_on_resume(self, tmp_path):
+        """A file that errored previously must be retried, not silently skipped."""
+        import scoutbot
+
+        output = tmp_path / 'out.jsonl'
+
+        # Seed JSONL: one success record, one error record
+        with open(output, 'w') as f:
+            f.write(json.dumps({
+                'filepath': 'good.jpg',
+                'wic': 0.5,
+                'detections': [],
+                'config': 'v3',
+            }) + '\n')
+            f.write(json.dumps({
+                'filepath': 'bad.jpg',
+                'error': 'some transient error',
+                'config': 'v3',
+            }) + '\n')
+
+        processed = []
+
+        def mock_pipeline(filepath, *args, **kwargs):
+            processed.append(filepath)
+            return 0.0, []
+
+        with patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', side_effect=mock_pipeline):
+            summary = scoutbot.batch_resumable(
+                filepaths=['good.jpg', 'bad.jpg'],
+                output_path=str(output),
+                show_progress=False,
+            )
+
+        assert 'good.jpg' not in processed, 'successfully completed file must be skipped'
+        assert 'bad.jpg' in processed, 'previously errored file must be retried'
+        assert summary['skipped'] == 1
+        assert summary['processed'] == 1
+
+    def test_successful_files_still_skipped_on_resume(self, tmp_path):
+        """Files completed successfully must continue to be skipped on resume."""
+        import scoutbot
+
+        output = tmp_path / 'out.jsonl'
+
+        with open(output, 'w') as f:
+            f.write(json.dumps({
+                'filepath': 'done.jpg',
+                'wic': 0.9,
+                'detections': [],
+                'config': 'v3',
+            }) + '\n')
+
+        processed = []
+
+        def mock_pipeline(filepath, *args, **kwargs):
+            processed.append(filepath)
+            return 0.0, []
+
+        with patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel'), \
+             patch('scoutbot.pipeline', side_effect=mock_pipeline):
+            summary = scoutbot.batch_resumable(
+                filepaths=['done.jpg'],
+                output_path=str(output),
+                show_progress=False,
+            )
+
+        assert 'done.jpg' not in processed
+        assert summary['skipped'] == 1
+        assert summary['processed'] == 0
+
+
+class TestApiEnvVarConfig:
+    """LOC_CONFIG/CONFIG env vars must be respected by public API functions."""
+
+    def test_fetch_uses_loc_default_config_when_no_config_given(self):
+        """scoutbot.fetch() with no args must delegate to loc.DEFAULT_CONFIG."""
+        import scoutbot
+        from scoutbot import loc
+
+        with patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch:
+            scoutbot.fetch()
+
+        mock_fetch.assert_called_with(config='v3-cls')
+
+    def test_get_classes_uses_loc_default_config_when_no_config_given(self):
+        """scoutbot.get_classes() with no args must delegate to loc.DEFAULT_CONFIG."""
+        import scoutbot
+        from scoutbot import loc
+        from unittest.mock import MagicMock
+
+        mock_model = MagicMock()
+        mock_model.category_names = ['animal']
+
+        with patch.object(loc, 'DEFAULT_CONFIG', 'v3-cls'), \
+             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'), \
+             patch('scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model):
+            result = scoutbot.get_classes()
+
+        assert result == ['animal']

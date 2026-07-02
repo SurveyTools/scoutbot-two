@@ -82,7 +82,8 @@ class TestCLI:
         assert result.exit_code != 0
 
     def test_cli_config_choices(self):
-        """Test that config only accepts v3 or v3-cls."""
+        """Invalid config names are rejected; valid set includes v3-coreml variants."""
+        from click.testing import CliRunner
         from scoutbot.scoutbot import cli
 
         runner = CliRunner()
@@ -93,3 +94,41 @@ class TestCLI:
 
         result = runner.invoke(cli, ['pipeline', '--config', 'phase1', 'test.jpg'])
         assert result.exit_code != 0
+
+    def test_pipeline_help_includes_coreml_configs(self):
+        """pipeline --help must list v3-coreml and v3-cls-coreml as valid --config choices."""
+        from click.testing import CliRunner
+        from scoutbot.scoutbot import cli
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['pipeline', '--help'])
+
+        assert result.exit_code == 0
+        assert 'v3-coreml' in result.output
+        assert 'v3-cls-coreml' in result.output
+
+    def test_export_coreml_help_lists_coreml_configs(self):
+        """export-coreml --help must enumerate the valid coreml config choices."""
+        from click.testing import CliRunner
+        from scoutbot.scoutbot import cli
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['export-coreml', '--help'])
+
+        assert result.exit_code == 0
+        assert 'v3-coreml' in result.output
+        assert 'v3-cls-coreml' in result.output
+
+    def test_export_coreml_rejects_non_coreml_config_with_click_error(self):
+        """Passing a non-CoreML config must produce a Click usage error, not an AssertionError."""
+        from click.testing import CliRunner
+        from scoutbot.scoutbot import cli
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['export-coreml', '--config', 'v3'])
+
+        assert result.exit_code != 0
+        assert 'AssertionError' not in result.output, (
+            'the error must be caught by Click before reaching loc.export_coreml'
+        )
+        assert 'invalid' in result.output.lower()

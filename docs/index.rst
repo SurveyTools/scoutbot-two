@@ -17,6 +17,7 @@ Contents
    Home <self>
    overview
    models
+   coreml
    environment
    scoutbot
    cli

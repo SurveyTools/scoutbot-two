@@ -20,6 +20,7 @@ dependencies = [
     "requests",
     "rich",
     "sahi==0.11.36",
+    "scikit-image>=0.21.0",
     "tqdm",
     "ultralytics==8.2.103",
 ]
@@ -34,6 +35,11 @@ all = [
     "pytest >= 6.2.2",
     "pycodestyle",
     "pytest-cov",
+]
+# Core ML inference (Apple Neural Engine) on macOS. Ultralytics imports coremltools
+# at inference time to run .mlpackage models; gated to Darwin to keep Linux installs clean.
+coreml = [
+    "coremltools ; sys_platform == 'darwin'",
 ]
 
 [project.urls]

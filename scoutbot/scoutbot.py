@@ -27,7 +27,7 @@ model_option = [
         '--config',
         help='Which ML model to use for inference',
         default='v3',
-        type=click.Choice(['v3', 'v3-cls']),
+        type=click.Choice([k for k in loc.CONFIGS if k is not None]),
     ),
 ]
 
@@ -144,12 +144,18 @@ def pipeline(
 @add_options(model_option)
 @add_options(v3_options)
 @add_options(output_option)
+@click.option(
+    '--no-progress',
+    is_flag=True,
+    help='Disable progress bar',
+)
 def batch(
     filepaths,
     config,
     output,
     device,
     loc_thresh,
+    no_progress,
 ):
     """
     Run the ScoutBot pipeline in batch on a list of input image filepaths.
@@ -184,6 +190,7 @@ def batch(
         overlap_width_ratio=loc.CONFIGS[config]['overlap_width_ratio'],
         perform_standard_pred=loc.CONFIGS[config]['perform_standard_pred'],
         postprocess_class_agnostic=loc.CONFIGS[config]['postprocess_class_agnostic'],
+        show_progress=not no_progress,
     )
     results = zip(filepaths, wic_list, detects_list)
 
@@ -278,6 +285,35 @@ def fetch(config):
     scoutbot.fetch(config=config)
 
 
+@click.command('export-coreml')
+@click.option(
+    '--config',
+    default=None,
+    type=click.Choice(
+        [k for k, v in loc.CONFIGS.items()
+         if k is not None and isinstance(v, dict) and v.get('backend') == 'coreml'],
+    ),
+    help='Core ML config to export (default: all coreml configs).',
+)
+@click.option('--force', is_flag=True, help='Re-export even if the bundle exists.')
+def export_coreml(config, force):
+    """
+    Export Core ML (.mlpackage) models from their source .pt models.
+    """
+    if config:
+        configs = [config]
+    else:
+        configs = [
+            name
+            for name, cfg in loc.CONFIGS.items()
+            if name is not None
+            and isinstance(cfg, dict)
+            and cfg.get('backend') == 'coreml'
+        ]
+    for name in configs:
+        print(loc.export_coreml(name, force=force))
+
+
 @click.command('example')
 def example():
     """
@@ -314,6 +350,7 @@ cli.add_command(pipeline)
 cli.add_command(batch)
 cli.add_command(batch_resumable)
 cli.add_command(fetch)
+cli.add_command(export_coreml)
 cli.add_command(example)
 cli.add_command(get_classes)
 
