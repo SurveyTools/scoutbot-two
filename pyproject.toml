@@ -40,6 +40,11 @@ all = [
     "ruff",
     "mypy",
 ]
+docs = [
+    "Sphinx>=5,<6",
+    "sphinx-rtd-theme",
+    "sphinx-click",
+]
 # Core ML inference (Apple Neural Engine) on macOS. Ultralytics imports coremltools
 # at inference time to run .mlpackage models; gated to Darwin to keep Linux installs clean.
 coreml = [

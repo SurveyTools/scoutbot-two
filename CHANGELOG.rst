@@ -2,6 +2,23 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+* Added Core ML documentation for ``v3-coreml`` and ``v3-cls-coreml`` configs, export behavior,
+  parity caveats, and Apple Silicon benchmark interpretation.
+* Fixed Core ML and YOLO loading correctness issues: macOS-only ``.mlpackage`` loading is now
+  guarded, YOLO models are loaded with ``task='detect'`` to avoid classifier misidentification,
+  and empty/``None`` detection boxes return an empty prediction list instead of crashing.
+* Fixed type-checking issues in model fetch/export code by normalizing model config values before
+  path, URL, and progress-bar use.
+* Applied Ruff formatting and lint fixes as part of the quality-tool migration.
+* Removed the stale CodeQL workflow and documented the replacement quality gates:
+  ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
+* Raised declared Python support to ``>=3.10,<3.13``.
+* Reorganized documentation around reader roles, with separate installation, usage,
+  configuration, model, performance, development, security, roadmap, API, and CLI pages.
+
 Version 0.2.0
 -------------
 

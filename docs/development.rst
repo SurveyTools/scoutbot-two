@@ -1,0 +1,171 @@
+Development
+===========
+
+This page covers contributor setup, tests, formatting, linting, type checking, CI workflows,
+documentation builds, and model-integration contributor guidance.
+
+Runtime rule
+------------
+
+Use ``uv`` for Python and tool commands. Do not run ``python``, ``pytest``, ``ruff``, ``mypy``,
+or similar tools directly.
+
+.. code-block:: bash
+
+   uv run pytest -m "not slow"
+   uv run ruff check .
+   uv run mypy scoutbot
+
+Python support
+--------------
+
+ScoutBot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
+``>=3.10,<3.13``.
+
+Local setup
+-----------
+
+Install development and test dependencies with the ``test`` extra:
+
+.. code-block:: bash
+
+   uv sync --extra test
+
+This installs pytest, pytest-cov, pytest-random-order, Ruff, and mypy.
+
+Testing
+-------
+
+Fast/offline tests are the default local and CI path:
+
+.. code-block:: bash
+
+   uv run pytest -m "not slow"
+
+Slow tests download models or run real inference:
+
+.. code-block:: bash
+
+   uv run pytest -m "slow"
+
+Run coverage on the fast suite:
+
+.. code-block:: bash
+
+   uv run pytest -m "not slow" --cov=scoutbot --cov-report=html
+
+Quality checks
+--------------
+
+Ruff handles formatting, linting, and import ordering:
+
+.. code-block:: bash
+
+   uv run ruff format --check .
+   uv run ruff check .
+
+Scoped mypy checks library code:
+
+.. code-block:: bash
+
+   uv run mypy scoutbot
+
+Run all configured pre-commit hooks:
+
+.. code-block:: bash
+
+   uv run pre-commit run --all-files
+
+CI workflows
+------------
+
+``.github/workflows/testing.yml``
+   Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, and 3.12, installs
+   with ``uv sync --extra test``, and runs ``uv run pytest -m "not slow"`` with coverage.
+
+``.github/workflows/quality.yml``
+   Runs on pull requests and pushes to ``main``. It installs with ``uv sync --extra test`` and
+   runs Ruff format check, Ruff lint, and ``uv run mypy scoutbot``.
+
+Documentation builds
+--------------------
+
+Install docs dependencies and build Sphinx:
+
+.. code-block:: bash
+
+   uv sync --extra docs
+   uv run sphinx-build -M html docs docs/build
+
+Documentation pass
+------------------
+
+Every implementation plan must include a final documentation pass before completion. Review
+whether the work changes user behavior, commands, configuration, models, outputs, dependencies,
+quality checks, security posture, performance characteristics, or roadmap status. Update the
+affected docs in the same change set, or explicitly record why no doc update is needed.
+
+This section mirrors the agent-facing rule in ``CLAUDE.md``. Keep both copies aligned until a
+public contributor guide becomes the shared source for contributor documentation requirements.
+
+Use these documentation roles to decide what may be impacted:
+
+``README.md``
+   Routes readers and should change when quick-start commands, badges, supported workflows, or
+   top-level project positioning changes.
+
+``docs/installation.rst``
+   Owns install commands, extras, platform setup, CUDA/Core ML setup, and model cache
+   prerequisites.
+
+``docs/usage.rst``
+   Owns CLI/API examples, output schemas, batch/resume behavior, and QA/review interpretation
+   notes.
+
+``docs/configuration.rst``
+   Owns environment variables, config names, devices, thresholds, cache behavior, and runtime
+   controls.
+
+``docs/models.rst``
+   Owns model artifacts, source URLs, MD5 verification, provenance, and model availability.
+
+``docs/coreml.rst``
+   Owns Core ML backend mechanics, export behavior, parity caveats, and Apple-specific backend
+   constraints.
+
+``docs/performance.rst``
+   Owns benchmark interpretation, bottlenecks, observability needs, and hardware comparison
+   caveats.
+
+``docs/api.rst`` and ``docs/cli.rst``
+   Own generated API/CLI reference surfaces.
+
+``docs/development.rst``
+   Owns contributor setup, tests, lint/type checks, CI workflows, and model-integration
+   contributor guidance.
+
+``docs/security.rst``
+   Owns model download policy, integrity verification, dependency/security scanning posture, CI
+   scanning rationale, and data/privacy assumptions.
+
+``docs/roadmap.rst``
+   Owns planned/deferred work and investigation status.
+
+``CHANGELOG.rst``
+   Owns user-visible changes, compatibility changes, workflow changes, and release-note-worthy
+   internal changes.
+
+Model contributors and integrators
+----------------------------------
+
+The current public model-extension API is not mature. Model configs live in
+``scoutbot/loc/__init__.py`` today, and future registry work is tracked in
+``docs/superpowers/plans/2026-05-09-scoutbot-registry.md`` and :doc:`roadmap`.
+
+New model integration work should include:
+
+* artifact provenance
+* integrity verification
+* config schema tests
+* CLI choice tests
+* output compatibility checks
