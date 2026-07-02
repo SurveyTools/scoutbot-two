@@ -443,7 +443,7 @@ extension API.
 - Modify: `docs/coreml.rst`
 - Create: `docs/performance.rst`
 
-- [ ] **Step 1: Keep `coreml.rst` backend-focused**
+- [x] **Step 1: Keep `coreml.rst` backend-focused**
 
 Keep:
 
@@ -457,7 +457,7 @@ Task 3 owns moving Core ML install/setup commands from `coreml.rst` to `installa
 Task 4 owns benchmark/performance content only: move benchmark interpretation to
 `performance.rst`, leaving a short link from `coreml.rst`.
 
-- [ ] **Step 2: Create `performance.rst`**
+- [x] **Step 2: Create `performance.rst`**
 
 Include:
 
@@ -477,7 +477,7 @@ Include:
   - direct `coremltools` prediction timing
   - concurrent/batched tile inference experiment
 
-- [ ] **Step 3: Link future observability spec**
+- [x] **Step 3: Link future observability spec**
 
 Reserve a section:
 
@@ -492,7 +492,7 @@ spec for implementation details.
 
 Replace this with an actual link once the observability spec exists.
 
-- [ ] **Step 4: Keep benchmark code changes out of this documentation plan**
+- [x] **Step 4: Keep benchmark code changes out of this documentation plan**
 
 Do not modify `benchmarks/benchmark_coreml.py` in this documentation reorganization. Benchmark
 output cleanup is tracked in `docs/roadmap.rst` under "Benchmark hardening" and should be handled
