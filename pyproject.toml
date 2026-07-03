@@ -5,12 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "scoutbot"
 version = "0.2.0"
-description = "The computer vision for Wild Me's Scout project"
+description = "The computer vision for Wild Me's Scout project ... and beyond"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
 license = {text = "Apache-2.0"}
 authors = [
-    {name = "Wild Me", email = "dev@wildme.org"}
+    {name = "Rebel Workflow Team"},
+    {name = "Wild Me"}
 ]
 dependencies = [
     "click",
