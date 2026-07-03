@@ -20,9 +20,13 @@ Usage:
 """
 
 import argparse
+import importlib.util
+import io
 import json
 import time
+import warnings
 from collections import defaultdict
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import scoutbot
@@ -44,6 +48,17 @@ VARIANTS = [
 
 LOC_THRESH = 0.45
 WRAPPER_EVENT_NAMES = {'pipeline', 'batch', 'batch_resumable'}
+_NOISY_WARNINGS = (
+    (
+        UserWarning,
+        r"'has_mps' is deprecated, please use 'torch\.backends\.mps\.is_built\(\)'",
+    ),
+    (
+        UserWarning,
+        r'\[coremltools\] Torch version .* has not been tested with coremltools',
+    ),
+    (SyntaxWarning, r'.*invalid escape sequence.*'),
+)
 
 
 def read_event_stream(path):
@@ -112,6 +127,19 @@ def _collapse_unique_values(values):
     if len(values) == 1:
         return values[0]
     return values
+
+
+def _coremltools_available():
+    return importlib.util.find_spec('coremltools') is not None
+
+
+@contextmanager
+def _suppress_benchmark_noise():
+    with warnings.catch_warnings():
+        for category, message in _NOISY_WARNINGS:
+            warnings.filterwarnings('ignore', message=message, category=category)
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            yield
 
 
 def _write_summary(path, summary):
@@ -238,17 +266,21 @@ def _parity(ref_dets, test_dets):
     return worst_px, worst_conf, unmatched_ref, len(remaining)
 
 
-def benchmark_family(label, pt_config, coreml_config, images):
+def benchmark_family(label, pt_config, coreml_config, images, include_coreml=True):
     print(f'\n=== Family: {label}  ({pt_config} vs {coreml_config}) ===')
     print(f'Images: {len(images)} (first is warm-up, excluded from timing)\n')
 
     results = {}
     detections_by_variant = {}
     summaries = {}
-    for vlabel, kind, device in VARIANTS:
+    variants = VARIANTS if include_coreml else [
+        variant for variant in VARIANTS if variant[0] != 'coreml'
+    ]
+    for vlabel, kind, device in variants:
         config = pt_config if kind == 'pt' else coreml_config
         try:
-            mean_ms, dets, summary = _run_variant(config, device, images)
+            with _suppress_benchmark_noise():
+                mean_ms, dets, summary = _run_variant(config, device, images)
         except Exception as exc:  # noqa: BLE001 - report and continue (e.g. no MPS)
             print(f'  {vlabel:<8} SKIPPED: {type(exc).__name__}: {exc}')
             continue
@@ -332,12 +364,16 @@ def main(argv=None):
 
     families = FAMILIES if args.family == 'all' else {args.family: FAMILIES[args.family]}
     summaries = {}
+    coremltools_available = _coremltools_available()
+    if not coremltools_available:
+        print('coreml variant skipped: coremltools not installed')
     for label, (pt_config, coreml_config) in families.items():
         summaries[label] = benchmark_family(
             label,
             pt_config,
             coreml_config,
             images,
+            include_coreml=coremltools_available,
         )
 
     if args.summary_json is not None:

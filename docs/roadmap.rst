@@ -86,24 +86,23 @@ Benchmark hardening
 
 **Status:** done
 
-``benchmarks/benchmark_coreml.py`` now emits structured phase timings, a JSON summary option, and
-clean skip handling when a variant cannot run.
+``benchmarks/benchmark_coreml.py`` now emits structured phase timings, a JSON summary option,
+clean skip handling when a variant cannot run, and benchmark-side suppression for the known
+third-party warning / log noise described below.
 
 Missing ``coremltools`` is not clean
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When ``coremltools`` is not installed, each family block prints an inline
-``SKIPPED: ModuleNotFoundError: No module named 'coremltools'`` row mixed into
-the results table. The benchmark should detect the missing module once at
-startup, print a single clear message such as ``coreml variant skipped:
-coremltools not installed -- run: uv sync --extra coreml``, and omit the Core ML
-column from the results table entirely.
+When ``coremltools`` is not installed, the benchmark now detects the missing
+module once at startup, prints a single clear message such as ``coreml variant
+skipped: coremltools not installed -- run: uv sync --extra coreml``, and omits
+the Core ML column from the results table entirely.
 
 Third-party noise in output
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Several noisy lines appear during benchmark runs regardless of ``coremltools``
-installation:
+The benchmark now suppresses the known noisy lines that appeared during runs
+regardless of ``coremltools`` installation:
 
 * **SAHI deprecation warning** -- ``sahi/utils/torch_utils.py:80: UserWarning:
   'has_mps' is deprecated, please use 'torch.backends.mps.is_built()'`` appears

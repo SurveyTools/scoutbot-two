@@ -3,7 +3,9 @@
 
 import importlib.util
 import sys
+import warnings
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -113,3 +115,92 @@ def test_parse_jsonl_event_stream_round_trips(tmp_path):
         {'name': 'pipeline', 'duration_ns': 10},
         {'name': 'fetch', 'duration_ns': 20},
     ]
+
+
+def test_missing_coremltools_is_skipped_once_at_startup(tmp_path, capsys):
+    bench = _load_benchmark()
+
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    run_calls = []
+
+    def _run_variant(config, device, images):
+        run_calls.append((config, device))
+        if config.endswith('coreml'):
+            raise ModuleNotFoundError("No module named 'coremltools'")
+        return (
+            1.0,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 0,
+                'tile_count': 0,
+                'compute_units_requested': None,
+                'compute_units_actual': None,
+            },
+        )
+
+    with (
+        patch.object(bench, '_run_variant', side_effect=_run_variant),
+        patch('importlib.util.find_spec', return_value=None),
+    ):
+        bench.main(['--images', str(tmp_path)])
+
+    captured = capsys.readouterr()
+    assert run_calls == [
+        ('v3', 'cpu'),
+        ('v3', 'mps'),
+        ('v3-cls', 'cpu'),
+        ('v3-cls', 'mps'),
+    ]
+    assert captured.out.count('coremltools not installed') == 1
+    assert 'ModuleNotFoundError' not in captured.out
+    assert '  coreml ' not in captured.out
+
+
+def test_benchmark_family_suppresses_known_third_party_noise(tmp_path, capsys):
+    bench = _load_benchmark()
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    def _noisy_run_variant(config, device, images):
+        warnings.warn(
+            "'has_mps' is deprecated, please use 'torch.backends.mps.is_built()'",
+            UserWarning,
+        )
+        warnings.warn(
+            '[coremltools] Torch version X.Y.Z has not been tested with coremltools',
+            UserWarning,
+        )
+        warnings.warn(
+            'SyntaxWarning: invalid escape sequence "\\_"',
+            SyntaxWarning,
+        )
+        print('Loading example.mlpackage for CoreML inference...')
+        return (
+            12.3,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 0,
+                'tile_count': 0,
+                'compute_units_requested': None,
+                'compute_units_actual': None,
+            },
+        )
+
+    with patch.object(bench, '_run_variant', side_effect=_noisy_run_variant):
+        bench.benchmark_family('cls', 'v3-cls', 'v3-cls-coreml', [image])
+
+    captured = capsys.readouterr()
+    assert 'Loading example.mlpackage for CoreML inference...' not in captured.out
+    assert "'has_mps' is deprecated" not in captured.out
+    assert 'has not been tested with coremltools' not in captured.out
+    assert 'invalid escape sequence' not in captured.out
+    assert '=== Family: cls  (v3-cls vs v3-cls-coreml) ===' in captured.out
+    assert 'Images: 1 (first is warm-up, excluded from timing)' in captured.out
