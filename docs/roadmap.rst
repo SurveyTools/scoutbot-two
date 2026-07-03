@@ -240,6 +240,29 @@ integrations. Until that is mature, model configs remain internal implementation
 ``scoutbot/loc/__init__.py`` and new model work should include artifact provenance, integrity
 verification, config schema tests, CLI choice tests, and output compatibility checks.
 
+Model registry evolution / model-family lineage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+The current registry plan should be treated as the first offline-first implementation step, not the
+final registry contract. The longer-term design work belongs in the sibling ``pipeline-design``
+project, where ``stage-3-ai-detection.md`` and ``schema-family.md`` already frame
+``model_registry.json`` as survey-level infrastructure and leave the survey-level versus run-level
+boundary open for refinement.
+
+Future registry work should define how the registry represents:
+
+* model families and canonical family identifiers
+* parent/child relationships between base models and fine-tuned variants
+* versioned aliases for the same family across training or export iterations
+* compatibility metadata for Stage 3 consumers and pipeline integrations
+* the split between survey-level registry facts and per-run provenance in detection outputs
+
+The current ScoutBot registry plan should continue to focus on offline fetch, local provenance, and
+CLI plumbing. The richer family/lineage contract should be designed as a follow-on spec so future
+model integrations can grow without reworking the registry format from scratch.
+
 Community contribution docs
 ---------------------------
 
