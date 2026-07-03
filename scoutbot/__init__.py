@@ -35,8 +35,10 @@ import json
 import os
 from os.path import exists
 from pathlib import Path
+from time import perf_counter_ns
 
 from scoutbot import utils
+from scoutbot._observability import emit
 
 log = utils.init_logging()
 QUIET = not utils.VERBOSE
@@ -48,7 +50,7 @@ version = VERSION
 __version__ = VERSION
 
 
-def fetch(config=None):
+def fetch(config=None, observer=None):
     """
     Fetch the YOLOv8 model file from CDN if it does not exist locally.
 
@@ -61,7 +63,9 @@ def fetch(config=None):
     """
     if config is None:
         config = loc.DEFAULT_CONFIG
-    return loc.fetch(config=config)
+    if observer is None:
+        return loc.fetch(config=config)
+    return loc.fetch(config=config, observer=observer)
 
 
 def pipeline(
@@ -76,6 +80,7 @@ def pipeline(
     overlap_width_ratio=0.25,
     perform_standard_pred=False,
     postprocess_class_agnostic=True,
+    observer=None,
 ):
     """
     Run the ML pipeline on a given image filepath and return the detections.
@@ -116,51 +121,91 @@ def pipeline(
     if config is None:
         config = loc.DEFAULT_CONFIG
 
+    started_ns = perf_counter_ns()
+    observer_kwargs = {'observer': observer} if observer is not None else {}
     if batched_detection_model is None:
-        yolov8_model_path = loc.fetch(config=config)
+        yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
 
         batched_detection_model = tile_batched.Yolov8DetectionModel(
             model_path=yolov8_model_path,
             confidence_threshold=loc_thresh,
             device=backend_device,
+            **observer_kwargs,
         )
 
-    det_result = get_sliced_prediction(
-        image=filepath,
-        detection_model=batched_detection_model,
-        slice_height=slice_height,
-        slice_width=slice_width,
-        overlap_height_ratio=overlap_height_ratio,
-        overlap_width_ratio=overlap_width_ratio,
-        perform_standard_pred=perform_standard_pred,
-        postprocess_class_agnostic=postprocess_class_agnostic,
-        verbose=0,
-    )
-
-    coco_prediction_list = []
-    for object_prediction in det_result.object_prediction_list:
-        coco_prediction_list.append(
-            object_prediction.to_coco_prediction(image_id=None).json
+    try:
+        det_result = get_sliced_prediction(
+            image=filepath,
+            detection_model=batched_detection_model,
+            slice_height=slice_height,
+            slice_width=slice_width,
+            overlap_height_ratio=overlap_height_ratio,
+            overlap_width_ratio=overlap_width_ratio,
+            perform_standard_pred=perform_standard_pred,
+            postprocess_class_agnostic=postprocess_class_agnostic,
+            verbose=0,
         )
 
-    wic_score = max([item['score'] for item in coco_prediction_list], default=0)
+        coco_prediction_list = []
+        for object_prediction in det_result.object_prediction_list:
+            coco_prediction_list.append(
+                object_prediction.to_coco_prediction(image_id=None).json
+            )
 
-    detects = []
-    for pred in coco_prediction_list:
-        detects.append(
+        wic_score = max([item['score'] for item in coco_prediction_list], default=0)
+
+        detects = []
+        for pred in coco_prediction_list:
+            detects.append(
+                {
+                    'l': pred['category_name'],
+                    'c': pred['score'],
+                    'x': pred['bbox'][0],
+                    'y': pred['bbox'][1],
+                    'w': pred['bbox'][2],
+                    'h': pred['bbox'][3],
+                }
+            )
+
+        wic_ = round(wic_score, 4)
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
             {
-                'l': pred['category_name'],
-                'c': pred['score'],
-                'x': pred['bbox'][0],
-                'y': pred['bbox'][1],
-                'w': pred['bbox'][2],
-                'h': pred['bbox'][3],
-            }
+                'name': 'pipeline',
+                'status': 'ok',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'filepath': filepath,
+                'backend': 'coreml'
+                if str(getattr(batched_detection_model, 'model_path', '')).endswith('.mlpackage')
+                else 'pt',
+                'device': backend_device,
+                'detections': len(detects),
+                'wic': wic_,
+            },
         )
-
-    wic_ = round(wic_score, 4)
-
-    return wic_, detects
+        return wic_, detects
+    except Exception as exc:
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'pipeline',
+                'status': 'error',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'filepath': filepath,
+                'backend': 'coreml' if str(getattr(batched_detection_model, 'model_path', '')).endswith('.mlpackage') else 'pt',
+                'device': backend_device,
+                'error_type': type(exc).__name__,
+            },
+        )
+        raise
 
 
 def batch(
@@ -175,6 +220,7 @@ def batch(
     perform_standard_pred=False,
     postprocess_class_agnostic=True,
     show_progress=True,
+    observer=None,
 ):
     """
     Run the ML pipeline on a batch of image filepaths and return detections.
@@ -206,12 +252,15 @@ def batch(
     if config is None:
         config = loc.DEFAULT_CONFIG
 
-    yolov8_model_path = loc.fetch(config=config)
+    started_ns = perf_counter_ns()
+    observer_kwargs = {'observer': observer} if observer is not None else {}
+    yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
         model_path=yolov8_model_path,
         confidence_threshold=loc_thresh,
         device=backend_device,
+        **observer_kwargs,
     )
 
     wic_list = []
@@ -226,31 +275,75 @@ def batch(
 
     t_start = time.time()
 
-    for i, filepath in enumerate(iterator):
-        wic_, detects = pipeline(
-            filepath,
-            config,
-            batched_detection_model=batched_detection_model,
-            backend_device=backend_device,
-            loc_thresh=loc_thresh,
-            slice_height=slice_height,
-            slice_width=slice_width,
-            overlap_height_ratio=overlap_height_ratio,
-            overlap_width_ratio=overlap_width_ratio,
-            perform_standard_pred=perform_standard_pred,
-            postprocess_class_agnostic=postprocess_class_agnostic,
-        )
-        wic_list.append(wic_)
-        detects_list.append(detects)
-
-        if show_progress:
-            elapsed = time.time() - t_start
-            mean_s = elapsed / (i + 1)
-            iterator.set_postfix(
-                {'file': Path(filepath).name[:20], 's/img': f'{mean_s:.1f}'}
+    status = 'ok'
+    try:
+        for i, filepath in enumerate(iterator):
+            wic_, detects = pipeline(
+                filepath,
+                config,
+                batched_detection_model=batched_detection_model,
+                backend_device=backend_device,
+                loc_thresh=loc_thresh,
+                slice_height=slice_height,
+                slice_width=slice_width,
+                overlap_height_ratio=overlap_height_ratio,
+                overlap_width_ratio=overlap_width_ratio,
+                perform_standard_pred=perform_standard_pred,
+                postprocess_class_agnostic=postprocess_class_agnostic,
+                observer=observer,
             )
+            wic_list.append(wic_)
+            detects_list.append(detects)
 
-    return wic_list, detects_list
+            if show_progress:
+                elapsed = time.time() - t_start
+                mean_s = elapsed / (i + 1)
+                iterator.set_postfix(
+                    {'file': Path(filepath).name[:20], 's/img': f'{mean_s:.1f}'}
+                )
+        return wic_list, detects_list
+    except Exception as exc:
+        status = 'error'
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'batch',
+                'status': status,
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'backend': 'coreml'
+                if str(yolov8_model_path).endswith('.mlpackage')
+                else 'pt',
+                'device': backend_device,
+                'file_count': len(filepaths),
+                'processed': len(wic_list),
+                'error_type': type(exc).__name__,
+            },
+        )
+        raise
+    finally:
+        if status == 'ok':
+            ended_ns = perf_counter_ns()
+            emit(
+                observer,
+                {
+                    'name': 'batch',
+                    'status': status,
+                    'started_ns': started_ns,
+                    'ended_ns': ended_ns,
+                    'duration_ns': ended_ns - started_ns,
+                    'config': config,
+                    'backend': 'coreml'
+                    if str(yolov8_model_path).endswith('.mlpackage')
+                    else 'pt',
+                    'device': backend_device,
+                    'file_count': len(filepaths),
+                    'processed': len(wic_list),
+                },
+            )
 
 
 def batch_resumable(
@@ -266,6 +359,7 @@ def batch_resumable(
     perform_standard_pred=False,
     postprocess_class_agnostic=True,
     show_progress=True,
+    observer=None,
 ):
     """
     Process images with automatic resume capability.
@@ -305,6 +399,8 @@ def batch_resumable(
     if config is None:
         config = loc.DEFAULT_CONFIG
 
+    started_ns = perf_counter_ns()
+    observer_kwargs = {'observer': observer} if observer is not None else {}
     output_path = Path(output_path)
 
     processed = set()
@@ -325,21 +421,42 @@ def batch_resumable(
 
     if not remaining:
         log.info('All files already processed')
-        return {
+        result = {
             'processed': 0,
             'skipped': len(filepaths),
             'errors': 0,
             'total': len(filepaths),
         }
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'batch_resumable',
+                'status': 'ok',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'backend': 'unknown',
+                'device': backend_device,
+                'output_path': str(output_path),
+                'file_count': len(filepaths),
+                'skipped': len(filepaths),
+                'processed': 0,
+                'errors': 0,
+            },
+        )
+        return result
 
     log.info(f'Resuming: {len(processed)} done, {len(remaining)} remaining')
 
-    yolov8_model_path = loc.fetch(config=config)
+    yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
         model_path=yolov8_model_path,
         confidence_threshold=loc_thresh,
         device=backend_device,
+        **observer_kwargs,
     )
 
     processed_count = 0
@@ -367,6 +484,7 @@ def batch_resumable(
                     overlap_width_ratio=overlap_width_ratio,
                     perform_standard_pred=perform_standard_pred,
                     postprocess_class_agnostic=postprocess_class_agnostic,
+                    observer=observer,
                 )
 
                 record = {
@@ -405,12 +523,34 @@ def batch_resumable(
                 f.flush()
                 error_count += 1
 
-    return {
+    result = {
         'processed': processed_count,
         'skipped': len(processed),
         'errors': error_count,
         'total': len(filepaths),
     }
+    ended_ns = perf_counter_ns()
+    emit(
+        observer,
+        {
+            'name': 'batch_resumable',
+            'status': 'ok',
+            'started_ns': started_ns,
+            'ended_ns': ended_ns,
+            'duration_ns': ended_ns - started_ns,
+            'config': config,
+            'backend': 'coreml'
+            if str(yolov8_model_path).endswith('.mlpackage')
+            else 'pt',
+            'device': backend_device,
+            'output_path': str(output_path),
+            'file_count': len(filepaths),
+            'processed': result['processed'],
+            'skipped': result['skipped'],
+            'errors': result['errors'],
+        },
+    )
+    return result
 
 
 def get_classes(config=None):

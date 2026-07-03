@@ -170,6 +170,28 @@ class TestExportCoreml:
         src, dst = move_calls[0]
         assert dst == str(tmp_path / 'yolov8-onecls.kaza.mlpackage')
 
+    def test_export_coreml_emits_observability_event(self, tmp_path):
+        from scoutbot import loc
+        from scoutbot._observability import list_observer
+
+        cfg = loc.CONFIGS['v3-coreml']
+        target = tmp_path / cfg['name']
+        target.mkdir()
+
+        observer_events = []
+        observer = list_observer(observer_events)
+
+        with patch.object(loc, 'CACHE_DIR', tmp_path):
+            result = loc.export_coreml('v3-coreml', force=False, observer=observer)
+
+        assert result == str(target)
+        events = [event for event in observer_events if event['name'] == 'export_coreml']
+        assert events, 'export_coreml() must emit an observability event'
+        event = events[0]
+        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+            assert key in event
+        assert event['cache_hit'] is True
+
 
 class TestLocMd5:
     """Unit tests for scoutbot.loc._md5()."""
@@ -238,6 +260,35 @@ class TestLocFetchUnit:
         mock_export.assert_called_once_with('v3-coreml')
         assert result == str(bundle)
 
+    def test_fetch_coreml_forwards_observer_and_emits_event(self, tmp_path):
+        from scoutbot import loc
+        from scoutbot._observability import list_observer
+
+        cfg = loc.CONFIGS['v3-coreml']
+        bundle = tmp_path / cfg['name']
+
+        def _create_bundle(config, **kwargs):
+            assert kwargs.get('observer') is not None
+            bundle.mkdir(exist_ok=True)
+
+        observer_events = []
+        observer = list_observer(observer_events)
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.loc.export_coreml', side_effect=_create_bundle) as mock_export,
+        ):
+            result = loc.fetch('v3-coreml', observer=observer)
+
+        mock_export.assert_called_once()
+        assert mock_export.call_args.kwargs['observer'] == observer
+        assert result == str(bundle)
+        events = [event for event in observer_events if event['name'] == 'fetch']
+        assert events, 'fetch() must emit an observability event'
+        event = events[0]
+        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+            assert key in event
+
     def test_fetch_pt_returns_cached_path_when_md5_matches(self, tmp_path):
         from scoutbot import loc
 
@@ -258,6 +309,71 @@ class TestLocFetchUnit:
             result = loc.fetch('v3')
 
         assert result == str(local)
+
+    def test_fetch_emits_observer_event_for_cached_pt_model(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3']
+        local = tmp_path / cfg['name']
+        local.write_bytes(b'fake model bytes')
+        remote_md5 = hashlib.md5(b'fake model bytes').hexdigest()
+
+        md5_response = MagicMock()
+        md5_response.text = remote_md5 + '  ' + cfg['name']
+        md5_response.raise_for_status = MagicMock()
+
+        events = []
+
+        class Collector:
+            def emit(self, event):
+                events.append(event)
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('requests.get', return_value=md5_response),
+            patch('scoutbot.loc._md5', return_value=remote_md5),
+        ):
+            result = loc.fetch('v3', observer=Collector())
+
+        assert result == str(local)
+        assert events
+        event = events[0]
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+            'cache_hit',
+        ):
+            assert key in event
+
+    def test_fetch_emits_observer_event_for_coreml_bundle(self, tmp_path):
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3-coreml']
+        bundle = tmp_path / cfg['name']
+        bundle.mkdir()
+
+        events = []
+
+        class Collector:
+            def emit(self, event):
+                events.append(event)
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.loc.export_coreml') as mock_export,
+        ):
+            result = loc.fetch('v3-coreml', observer=Collector())
+
+        mock_export.assert_not_called()
+        assert result == str(bundle)
+        assert events
+        assert events[0]['backend'] == 'coreml'
+        assert events[0]['device'] == 'coreml'
 
     def test_fetch_pt_downloads_when_local_missing(self, tmp_path):
         from scoutbot import loc

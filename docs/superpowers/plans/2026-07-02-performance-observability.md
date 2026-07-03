@@ -45,7 +45,7 @@
 
 **Goal:** Add opt-in timing/event hooks that can be enabled without changing inference outputs or default behavior.
 
-- [ ] **Step 1: Write failing tests for disabled and enabled observability**
+- [x] **Step 1: Write failing tests for disabled and enabled observability**
 
 Create `tests/test_observability.py` with tests that describe the new contract:
 
@@ -102,7 +102,7 @@ Add focused tests in `tests/test_pipeline.py`, `tests/test_batch.py`, and `tests
 - The observer hook should be minimally asserted in the first test: prove the event fires and the
   required keys above are present, not just the event name.
 
-- [ ] **Step 2: Run the tests to confirm they fail for missing hooks**
+- [x] **Step 2: Run the tests to confirm they fail for missing hooks**
 
 Run:
 
@@ -112,7 +112,7 @@ uv run pytest tests/test_observability.py tests/test_pipeline.py tests/test_batc
 
 Expected: failures for missing `observer=` plumbing and missing observability module / event helpers.
 
-- [ ] **Step 3: Implement the private helper and hook plumbing**
+- [x] **Step 3: Implement the private helper and hook plumbing**
 
 Add `scoutbot/_observability.py` with:
 
@@ -138,7 +138,7 @@ For `tile_batched/main.py`, map the requested compute unit to `compute_units_req
 runtime / fallback target to `compute_units_actual`; if the actual target cannot be resolved, emit
 `null` for that field.
 
-- [ ] **Step 4: Run the targeted tests again**
+- [x] **Step 4: Run the targeted tests again**
 
 Run:
 
