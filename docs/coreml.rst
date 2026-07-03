@@ -92,10 +92,36 @@ optional ``observer=`` argument, and the private observability layer emits struc
 state events for model fetch, export, load, batch execution, and per-image pipeline runs.
 
 Those events carry the cache-hit / export state that explains whether the bundle was reused or
-rebuilt, and the benchmark summary can surface Core ML compute-unit metadata when the runtime can
-provide it. The same model can also carry direct ``coremltools`` prediction timing for the Core ML
-path when that diagnostic is enabled. The current implementation is intentionally lightweight: no
-observer means no extra work.
+rebuilt, and the benchmark summary surfaces Core ML compute-unit metadata directly from the event
+stream. The current implementation is intentionally lightweight: no observer means no extra work.
+
+Compute-unit metadata
+^^^^^^^^^^^^^^^^^^^^^
+
+Each inference event can carry two compute-unit fields:
+
+``compute_units_requested``
+   The compute-unit hint passed to the Core ML runtime at model load time (e.g.
+   ``cpu_and_ne``, ``all``). This is set by the Scoutbot runtime and reflects what was asked
+   for; it is always known for Core ML variants and ``None`` for plain PyTorch variants.
+
+``compute_units_actual``
+   The compute units the Core ML runtime actually used for a given prediction. This value is
+   read back from the runtime after inference. When the runtime does not expose this
+   information (or the information is unavailable for a given invocation), the field is
+   ``None``, and the benchmark renders it as ``null`` rather than ``unknown``.
+
+The distinction matters when diagnosing ANE engagement: ``requested=cpu_and_ne`` with
+``actual=null`` means the runtime accepted the model but did not report which hardware unit
+ran it, whereas ``actual=cpu_and_gpu`` means the ANE was not used despite the hint.
+
+The benchmark aggregates these fields across all timed inference events. If every event
+reports the same value the summary collapses to a single scalar; if values differ across
+events the summary keeps the full list so mixed-unit runs are visible.
+
+For non-Core ML variants (``pt-cpu``, ``pt-mps``) neither field is set, so the benchmark
+omits the compute-unit suffix entirely — the phase-total line shows only tile and invocation
+counts.
 
 When investigating the M1 / M4 gap, use the structured benchmark summary in :doc:`performance`
 to separate the serial SAHI tile overhead from the Core ML-specific work.

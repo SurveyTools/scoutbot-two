@@ -67,6 +67,34 @@ hardware throughput benchmark. Earlier M1 / M4 wall-clock numbers were too close
 included this dispatch overhead. The structured summary exists so future investigations can see
 which phase is actually expensive instead of guessing from one aggregate number.
 
+Compute-unit observability
+--------------------------
+
+The benchmark phase-total output now surfaces Core ML compute-unit metadata when the runtime
+provides it. The suffix on each phase-total line takes one of three forms:
+
+* **Non-Core ML variants** (``pt-cpu``, ``pt-mps``): no suffix. Compute-unit fields are not
+  applicable and are omitted entirely so the line stays uncluttered::
+
+      pt-cpu   tiles=128 invocations=2
+
+* **Core ML variant with known actual**: both fields are printed::
+
+      coreml   tiles=128 invocations=2 requested=cpu_and_ne actual=cpu_and_ne
+
+* **Core ML variant where actual cannot be determined**: the requested value is shown and
+  ``actual`` is rendered as ``null`` (not ``unknown``) to make the absence explicit::
+
+      coreml   tiles=128 invocations=2 requested=cpu_and_ne actual=null
+
+The ``requested`` value is the compute-unit hint passed to Core ML at model load time.
+The ``actual`` value is read back from the runtime after inference; ``null`` means the
+runtime did not expose this information for that invocation, not that inference failed.
+
+When ``actual=null`` appears, confirm ANE engagement via Activity Monitor's *Neural Engine*
+column (0% means the model fell back to CPU/GPU), or investigate whether the ``coremltools``
+version exposes the compute-unit readback API for the installed runtime.
+
 What remains deferred
 ---------------------
 
@@ -75,7 +103,6 @@ follow-up work:
 
 * concurrent or batched tile inference experiments
 * direct hardware counters for ANE utilization
-* more detailed attribution when a run falls back from the requested compute units
 
 Observability Follow-up
 -----------------------

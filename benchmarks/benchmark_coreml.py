@@ -273,9 +273,11 @@ def benchmark_family(label, pt_config, coreml_config, images, include_coreml=Tru
     results = {}
     detections_by_variant = {}
     summaries = {}
-    variants = VARIANTS if include_coreml else [
-        variant for variant in VARIANTS if variant[0] != 'coreml'
-    ]
+    variants = (
+        VARIANTS
+        if include_coreml
+        else [variant for variant in VARIANTS if variant[0] != 'coreml']
+    )
     for vlabel, kind, device in variants:
         config = pt_config if kind == 'pt' else coreml_config
         try:
@@ -323,10 +325,14 @@ def benchmark_family(label, pt_config, coreml_config, images, include_coreml=Tru
         )
         req = summary.get('compute_units_requested')
         actual = summary.get('compute_units_actual')
+        if req is None:
+            suffix = ''
+        else:
+            suffix = f' requested={req} actual={actual if actual is not None else "null"}'
         print(
             f'  {vlabel:<8} tiles={summary.get("tile_count", 0)} '
-            f'invocations={summary.get("model_invocations", 0)} '
-            f'requested={req or "unknown"} actual={actual or "unknown"}'
+            f'invocations={summary.get("model_invocations", 0)}'
+            f'{suffix}'
         )
         if phase_bits:
             print(f'    {phase_bits}')

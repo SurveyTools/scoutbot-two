@@ -204,8 +204,18 @@ The structured benchmark makes the remaining work explicit:
 * break out slicing, per-tile prediction, post-processing, and Core ML dispatch overhead in the
   benchmark summaries
 * investigate parallel or batched tile inference for the Core ML path
-* confirm ANE engagement via Activity Monitor / ``coremltools`` compute-unit API
 * run the M4 follow-up benchmark once the pipeline overhead is better understood
+
+Core ML compute-unit metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** done
+
+The benchmark now emits ``compute_units_requested`` and ``compute_units_actual`` in the
+phase-total summary for Core ML variants. When the runtime does not expose the actual value,
+the benchmark renders ``actual=null`` (not ``actual=unknown``) so the absence is explicit.
+Non-Core ML variants omit the compute-unit suffix entirely. See :doc:`performance` for output
+format details and :doc:`coreml` for field semantics.
 
 Performance observability spec
 ------------------------------
