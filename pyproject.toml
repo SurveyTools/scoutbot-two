@@ -96,5 +96,10 @@ ignore = [
     "E501",  # line too long (handled by formatter)
 ]
 
+[tool.uv.audit]
+# torch.jit.script memory-corruption CVE; no upstream fix available.
+# ScoutBot does not use torch.jit.script — remove this entry once torch ships a fix.
+ignore-until-fixed = ["GHSA-rrmf-rvhw-rf47"]
+
 [tool.ruff.format]
 quote-style = "single"
