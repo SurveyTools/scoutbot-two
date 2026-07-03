@@ -44,8 +44,6 @@ def test_missing_coremltools_is_reported_once(tmp_path, capsys):
     image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
 
     def _run_variant(config, device, images):
-        if config.endswith('coreml'):
-            raise RuntimeError('coremltools missing')
         return (
             1.0,
             {str(image): []},
@@ -60,9 +58,14 @@ def test_missing_coremltools_is_reported_once(tmp_path, capsys):
             },
         )
 
-    with patch.object(benchmark_coreml, '_run_variant', side_effect=_run_variant):
+    with (
+        patch.object(benchmark_coreml, '_run_variant', side_effect=_run_variant),
+        patch('importlib.util.find_spec', return_value=None),
+    ):
         benchmark_coreml.main(['--family', 'onecls', '--images', str(tmp_path)])
 
     captured = capsys.readouterr()
-    assert captured.out.count('SKIPPED') == 1
+    # main() prints 'coreml variant skipped: coremltools not installed' (lowercase)
+    # before calling benchmark_family(); the coreml row never reaches the results table.
+    assert 'coremltools not installed' in captured.out
     assert 'Traceback' not in captured.out

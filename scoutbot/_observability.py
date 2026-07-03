@@ -46,7 +46,7 @@ def emit(observer: Observer | None, event: Mapping[str, Any]) -> None:
         if hasattr(observer, 'emit'):
             observer.emit(dict(event))
         else:
-            observer(dict(event))
+            observer(dict(event))  # type: ignore[operator]
     except Exception:  # pragma: no cover - observer failures are intentionally swallowed
         log.debug('Observability observer failed', exc_info=True)
 
