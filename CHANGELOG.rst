@@ -23,7 +23,8 @@ Unreleased
   ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
 * Published rendered docs to GitHub Pages and retired Read the Docs so the README routes
   readers to HTML instead of raw ``.rst`` sources.
-* Raised declared Python support to ``>=3.10,<3.13``.
+* Raised declared Python support to ``>=3.10,<3.14`` and added Python 3.13 to the supported
+  target matrix.
 * Reorganized documentation around reader roles, with separate installation, usage,
   configuration, model, performance, development, security, roadmap, API, and CLI pages.
 * Raised fast-suite test coverage from 58% to 92%+ by adding unit tests with mocked

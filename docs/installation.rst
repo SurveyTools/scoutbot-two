@@ -7,7 +7,7 @@ Apple Silicon Core ML runs.
 Python support
 --------------
 
-Scoutbot currently supports Python 3.10, 3.11, and 3.12.
+Scoutbot currently supports Python 3.10, 3.11, 3.12, and 3.13.
 
 Direct local install
 --------------------

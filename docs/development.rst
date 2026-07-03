@@ -19,8 +19,8 @@ or similar tools directly.
 Python support
 --------------
 
-Scoutbot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
-``>=3.10,<3.13``.
+Scoutbot currently supports Python 3.10, 3.11, 3.12, and 3.13. The package metadata declares
+``>=3.10,<3.14``.
 
 Local setup
 -----------
@@ -92,7 +92,7 @@ CI workflows
 ------------
 
 ``.github/workflows/testing.yml``
-   Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, and 3.12, installs
+   Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, 3.12, and 3.13, installs
    with ``uv sync --extra test``, and runs ``uv run pytest -m "not slow"`` with coverage.
 
 ``.github/workflows/quality.yml``
