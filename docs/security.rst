@@ -32,10 +32,10 @@ locally from verified source ``.pt`` models and cached in ``~/.cache/scoutbot/``
 Dependency and scanning posture
 -------------------------------
 
-Dependencies and tool configuration are managed through ``pyproject.toml``. The current quality
-workflow runs Ruff and scoped mypy. Additional security/dependency scanning is planned rather than
-enabled today; :doc:`roadmap` tracks ``pip-audit`` and Bandit-style scanning for a future quality
-workflow expansion.
+Dependencies and tool configuration are managed through ``pyproject.toml``. The quality workflow
+runs Ruff, scoped mypy, and ``uv audit --locked`` for dependency vulnerability scanning against
+the locked project graph. Bandit-style static security scanning remains deferred; see
+:doc:`roadmap` for the remaining v2 quality scope.
 
 CodeQL removal rationale
 ------------------------
@@ -55,5 +55,5 @@ CI posture
 ----------
 
 ``testing.yml`` runs fast/offline tests across supported Python versions. ``quality.yml`` runs
-Ruff formatting/linting and scoped mypy. Slow tests that download models or run real inference are
-kept out of the default CI test path.
+Ruff formatting/linting, scoped mypy, and ``uv audit --locked``. Slow tests that download models
+or run real inference are kept out of the default CI test path.

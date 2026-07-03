@@ -5,6 +5,10 @@ Changelog
 Unreleased
 ----------
 
+* Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.
+  Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215. Added
+  ``ignore-until-fixed`` in ``[tool.uv.audit]`` for GHSA-rrmf-rvhw-rf47 (``torch`` CVE,
+  no upstream fix available).
 * The Core ML benchmark phase-total output now shows ``requested=<val> actual=<val>`` for
   Core ML variants (or ``actual=null`` when the runtime does not expose the actual compute
   unit). Non-Core ML variants (``pt-cpu``, ``pt-mps``) omit the suffix entirely instead of

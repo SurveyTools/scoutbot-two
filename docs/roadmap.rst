@@ -119,8 +119,8 @@ Quality workflow -- v2 scope
    ``[[tool.mypy.overrides]]`` per library; revisit ``ignore_missing_imports = true``
 3. Ruff rule expansion -- enable ``UP`` (restores deferred pyupgrade behaviour),
    ``B``, ``C4``, ``SIM`` one group per PR
-4. Security / dependency scanning -- ``pip-audit`` on ``uv.lock``, tuned
-   ``bandit``
+4. Security / dependency scanning -- ``uv audit --locked`` on ``uv.lock`` (done;
+   ``pip-audit`` is not used). ``bandit`` remains deferred.
 5. macOS CI runner for Core ML path (expensive; consider self-hosted M-series)
 
 The quality work and the dependency currency policy above should stay aligned so breaking

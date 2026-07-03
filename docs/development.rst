@@ -82,6 +82,12 @@ Scoped mypy checks library code:
 
    uv run mypy scoutbot
 
+Dependency vulnerability scanning audits the locked project graph:
+
+.. code-block:: bash
+
+   uv audit --locked --preview-features audit-command
+
 Run all configured pre-commit hooks:
 
 .. code-block:: bash
@@ -97,7 +103,8 @@ CI workflows
 
 ``.github/workflows/quality.yml``
    Runs on pull requests and pushes to ``main``. It installs with ``uv sync --extra test`` and
-   runs Ruff format check, Ruff lint, and ``uv run mypy scoutbot``.
+   runs Ruff format check, Ruff lint, ``uv run mypy scoutbot``, and a locked-graph dependency
+   audit (``uv audit --locked``).
 
 Documentation builds
 --------------------
