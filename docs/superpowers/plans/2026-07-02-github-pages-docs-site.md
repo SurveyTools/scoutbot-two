@@ -17,7 +17,7 @@
 
 **Goal:** Build the Sphinx HTML site on pushes to `main` and deploy it to GitHub Pages.
 
-- [ ] **Step 1: Write the workflow**
+- [x] **Step 1: Write the workflow**
 
 Add a workflow that builds docs from `docs/` and publishes the rendered HTML:
 
@@ -75,10 +75,10 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
 ```
 
-- [ ] **Step 2: Verify the workflow syntax matches the repo’s current Actions style**
+- [x] **Step 2: Verify the workflow syntax matches the repo’s current Actions style**
 
 Confirm the workflow uses the same modern Actions family as the existing CI:
 
@@ -89,7 +89,7 @@ sed -n '1,120p' .github/workflows/quality.yml
 
 Expected: the Pages workflow follows the same `actions/checkout@v7`, `actions/setup-python@v6`, and `astral-sh/setup-uv@v8.2.0` pattern.
 
-- [ ] **Step 3: Confirm the workflow only runs on main and manual dispatch**
+- [x] **Step 3: Confirm the workflow only runs on main and manual dispatch**
 
 Run a grep check:
 
