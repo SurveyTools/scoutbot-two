@@ -95,7 +95,7 @@ Default config is `v3`; overridable via `LOC_CONFIG` or `CONFIG` env vars, or th
 
 Formatting and linting: Ruff. Type checking: scoped mypy on `scoutbot/`. Tests use pytest with
 the `slow` marker for model-download and real-inference tests. Tool configuration lives in
-`pyproject.toml`; `setup.cfg` is not the quality-tool source of truth.
+`pyproject.toml`.
 
 ```bash
 uv run pytest -m "not slow"
