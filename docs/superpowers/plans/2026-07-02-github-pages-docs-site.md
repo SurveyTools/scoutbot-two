@@ -108,7 +108,7 @@ Expected: the site deploys only on `main` merges and manual triggers.
 
 **Goal:** Stop sending readers to raw `.rst` files from the README and point them at the rendered site instead.
 
-- [ ] **Step 1: Replace source-doc links with the published site root**
+- [x] **Step 1: Replace source-doc links with the published site root**
 
 Update the README’s docs-routing table so the main reader paths point to the live site rather than repository source files. Use the rendered docs root plus page names, for example:
 
@@ -124,7 +124,7 @@ Update the README’s docs-routing table so the main reader paths point to the l
 
 Use the repository’s published Pages URL as the base for all README links.
 
-- [ ] **Step 2: Point the top-level docs section at the rendered site**
+- [x] **Step 2: Point the top-level docs section at the rendered site**
 
 Update the README’s documentation note so it tells readers to use the live site, not the source tree:
 
@@ -136,7 +136,7 @@ Read the rendered ScoutBot docs at https://surveytools.github.io/scoutbot-2026/.
 
 Keep the local build command for maintainers only.
 
-- [ ] **Step 3: Verify no README links still point to raw `.rst` docs**
+- [x] **Step 3: Verify no README links still point to raw `.rst` docs**
 
 Run:
 
@@ -157,7 +157,7 @@ Expected: no user-facing README routing links point to Sphinx source files.
 
 **Goal:** Make the rendered site the documented home for users and keep maintainer notes accurate.
 
-- [ ] **Step 1: Add a short site-oriented note to the docs landing page**
+- [x] **Step 1: Add a short site-oriented note to the docs landing page**
 
 If the docs landing page should mention where to find the hosted site, add a small note near the top of `docs/index.rst`:
 
@@ -167,7 +167,7 @@ ScoutBot docs are published on GitHub Pages; this repository contains the Sphinx
 
 Keep the toctree unchanged unless the site layout itself needs changes.
 
-- [ ] **Step 2: Update roadmap or development notes if they still talk about local-only docs**
+- [x] **Step 2: Update roadmap or development notes if they still talk about local-only docs**
 
 Search for any language that implies the docs are only meant to be built locally:
 
@@ -177,7 +177,7 @@ rg -n "build the Sphinx docs locally|Open `docs/build/html/index.html`|RTD|Read 
 
 If any user-facing text still suggests local-only docs, rewrite it to reference the hosted site and keep the local build command as a maintainer path.
 
-- [ ] **Step 3: Verify the site still builds cleanly**
+- [x] **Step 3: Verify the site still builds cleanly**
 
 Run:
 

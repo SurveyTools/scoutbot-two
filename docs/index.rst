@@ -5,6 +5,9 @@ Scoutbot
 Scoutbot is a YOLOv8-based pipeline for detecting and localising wildlife in
 high-resolution aerial survey imagery.
 
+Scoutbot docs are published on GitHub Pages; this repository contains the
+Sphinx source.
+
 Acknowledgement
 ---------------
 
