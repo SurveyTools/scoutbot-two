@@ -8,19 +8,19 @@ version = "0.2.0"
 description = "The computer vision for Wild Me's Scout project"
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 authors = [
     {name = "Wild Me", email = "dev@wildme.org"}
 ]
 dependencies = [
     "click",
-    "dill>=0.4.0",
     "numpy",
+    # sahi and ultralytics both depend on opencv-python (GUI build); this overrides
+    # them with the headless build so CI and server environments without a display work.
     "opencv-python-headless>=4.7.0",
     "requests",
     "rich",
     "sahi==0.11.36",
-    "scikit-image>=0.21.0",
     "tqdm",
     "ultralytics==8.2.103",
 ]
