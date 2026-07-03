@@ -235,6 +235,13 @@ If the project chooses GitHub Pages only, remove `.readthedocs.yaml` and update 
 
 ---
 
+## Repository Settings
+
+- [ ] Set `Settings` > `Pages` > `Build and deployment` > `Source` to `GitHub Actions` in the repository settings.
+- [ ] Note that this repo is currently private and the org is not on Enterprise, so GitHub Pages hosting will remain unavailable until the repo is made public.
+
+---
+
 ## Task 5: Validate the published-docs path
 
 **Files:**
