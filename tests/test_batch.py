@@ -768,7 +768,16 @@ class TestExampleSlow:
 
     def test_example_runs_without_error(self):
         import scoutbot
+        from unittest.mock import MagicMock, patch
 
-        # Downloads example image and runs the full pipeline
-        # Requires network access and model download
-        scoutbot.example()
+        fake_response = MagicMock()
+        fake_response.iter_content.return_value = [b'fake-image-bytes']
+        fake_response.raise_for_status = MagicMock()
+        fake_response.__enter__ = MagicMock(return_value=fake_response)
+        fake_response.__exit__ = MagicMock(return_value=False)
+
+        with (
+            patch('requests.get', return_value=fake_response),
+            patch('scoutbot.pipeline', return_value=(0.5, [])),
+        ):
+            scoutbot.example()

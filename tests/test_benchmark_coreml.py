@@ -80,3 +80,36 @@ class TestValidateImages:
 
         message = str(exc_info.value)
         assert '3' in message
+
+
+def test_aggregate_events_sums_phases_and_unattributed():
+    bench = _load_benchmark()
+
+    summary = bench.aggregate_events(
+        [
+            {'name': 'slice_generation', 'duration_ns': 10},
+            {'name': 'per_tile_prediction', 'duration_ns': 20},
+            {'name': 'per_tile_prediction', 'duration_ns': 5},
+        ],
+        total_wall_ns=40,
+    )
+
+    assert summary['phase_totals_ns']['slice_generation'] == 10
+    assert summary['phase_totals_ns']['per_tile_prediction'] == 25
+    assert summary['unattributed_ns'] == 5
+
+
+def test_parse_jsonl_event_stream_round_trips(tmp_path):
+    bench = _load_benchmark()
+    path = tmp_path / 'events.jsonl'
+    path.write_text(
+        '{"name": "pipeline", "duration_ns": 10}\n'
+        '{"name": "fetch", "duration_ns": 20}\n'
+    )
+
+    events = bench.read_event_stream(path)
+
+    assert events == [
+        {'name': 'pipeline', 'duration_ns': 10},
+        {'name': 'fetch', 'duration_ns': 20},
+    ]

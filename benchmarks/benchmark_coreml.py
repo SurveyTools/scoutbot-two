@@ -20,11 +20,14 @@ Usage:
 """
 
 import argparse
+import json
 import time
+from collections import defaultdict
 from pathlib import Path
 
 import scoutbot
 from scoutbot import loc, tile_batched
+from scoutbot._observability import list_observer
 
 # (label, pt_config, coreml_config)
 FAMILIES = {
@@ -40,37 +43,130 @@ VARIANTS = [
 ]
 
 LOC_THRESH = 0.45
+WRAPPER_EVENT_NAMES = {'pipeline', 'batch', 'batch_resumable'}
 
 
-def _build_model(config, device):
-    model_path = loc.fetch(config=config)
+def read_event_stream(path):
+    """Read a JSON Lines event stream into a list of dicts."""
+    events = []
+    with open(path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            events.append(json.loads(line))
+    return events
+
+
+def aggregate_events(events, total_wall_ns):
+    """Aggregate observability events into a benchmark summary dict."""
+    phase_totals_ns = defaultdict(int)
+    phase_counts = defaultdict(int)
+    compute_units_requested = set()
+    compute_units_actual = set()
+    tile_count = 0
+    model_invocations = 0
+    event_count = 0
+    observed_duration_ns = 0
+
+    for event in events:
+        event_count += 1
+        name = event.get('name')
+        duration_ns = event.get('duration_ns')
+        if name and isinstance(duration_ns, (int, float)):
+            if name not in WRAPPER_EVENT_NAMES:
+                phase_totals_ns[name] += int(duration_ns)
+                phase_counts[name] += 1
+                observed_duration_ns += int(duration_ns)
+        if name in WRAPPER_EVENT_NAMES:
+            continue
+
+        if name == 'perform_inference':
+            model_invocations += 1
+            tile_count += int(event.get('tile_count') or 0)
+
+        requested = event.get('compute_units_requested')
+        actual = event.get('compute_units_actual')
+        if requested is not None:
+            compute_units_requested.add(requested)
+        if actual is not None:
+            compute_units_actual.add(actual)
+
+    summary = {
+        'event_count': event_count,
+        'phase_totals_ns': dict(sorted(phase_totals_ns.items())),
+        'phase_counts': dict(sorted(phase_counts.items())),
+        'unattributed_ns': max(int(total_wall_ns) - observed_duration_ns, 0),
+        'model_invocations': model_invocations,
+        'tile_count': tile_count,
+        'compute_units_requested': _collapse_unique_values(compute_units_requested),
+        'compute_units_actual': _collapse_unique_values(compute_units_actual),
+    }
+    return summary
+
+
+def _collapse_unique_values(values):
+    values = sorted(values)
+    if not values:
+        return None
+    if len(values) == 1:
+        return values[0]
+    return values
+
+
+def _write_summary(path, summary):
+    path = Path(path)
+    path.write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n')
+
+
+def _build_model(config, device, observer=None):
+    model_path = loc.fetch(config=config, observer=observer)
     return tile_batched.Yolov8DetectionModel(
         model_path=model_path,
         confidence_threshold=LOC_THRESH,
         device=device,
+        observer=observer,
     )
 
 
 def _run_variant(config, device, images):
-    """Return (mean_ms_per_image, {image_path: detections})."""
-    model = _build_model(config, device)
+    """Return (mean_ms_per_image, {image_path: detections}, summary)."""
+    events = []
+    observer = list_observer(events)
+    model = _build_model(config, device, observer=observer)
     timings = []
+    warmup_ns = 0
+    timed_events = []
     detections = {}
     for idx, img in enumerate(images):
-        t0 = time.perf_counter()
+        event_start = len(events)
+        t0_ns = time.perf_counter_ns()
         _wic, dets = scoutbot.pipeline(
             str(img),
             config=config,
             batched_detection_model=model,
             backend_device=device,
             loc_thresh=LOC_THRESH,
+            observer=observer,
         )
-        elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        elapsed_ns = time.perf_counter_ns() - t0_ns
+        elapsed_ms = elapsed_ns / 1_000_000.0
         detections[str(img)] = dets
+        image_events = events[event_start:]
         if idx > 0:  # discard the first run (warm-up: lazy load, caches, allocator)
             timings.append(elapsed_ms)
+            timed_events.extend(image_events)
+        else:
+            warmup_ns = elapsed_ns
     mean_ms = sum(timings) / len(timings) if timings else float('nan')
-    return mean_ms, detections
+    total_wall_ns = sum(int(round(ms * 1_000_000)) for ms in timings)
+    summary = aggregate_events(timed_events, total_wall_ns=total_wall_ns)
+    summary['warmup_images'] = 1 if len(images) > 0 else 0
+    summary['timed_images'] = max(len(images) - 1, 0)
+    summary['warmup_wall_ns'] = warmup_ns
+    summary['mean_ms_per_image'] = mean_ms
+    summary['wall_ms'] = sum(timings)
+    return mean_ms, detections, summary
 
 
 def _center(d):
@@ -148,15 +244,17 @@ def benchmark_family(label, pt_config, coreml_config, images):
 
     results = {}
     detections_by_variant = {}
+    summaries = {}
     for vlabel, kind, device in VARIANTS:
         config = pt_config if kind == 'pt' else coreml_config
         try:
-            mean_ms, dets = _run_variant(config, device, images)
+            mean_ms, dets, summary = _run_variant(config, device, images)
         except Exception as exc:  # noqa: BLE001 - report and continue (e.g. no MPS)
             print(f'  {vlabel:<8} SKIPPED: {type(exc).__name__}: {exc}')
             continue
         results[vlabel] = mean_ms
         detections_by_variant[vlabel] = dets
+        summaries[vlabel] = summary
 
     ref = detections_by_variant.get('pt-cpu')
 
@@ -178,14 +276,37 @@ def benchmark_family(label, pt_config, coreml_config, images):
                 worst_px = max(worst_px, wp)
                 worst_conf = max(worst_conf, wc)
                 tot_unmatched += ur + ut
-            parity = (
-                f'worst {worst_px:.2f}px / {worst_conf:.4f} conf, '
-                f'{tot_unmatched} unmatched'
-            )
+                parity = (
+                    f'worst {worst_px:.2f}px / {worst_conf:.4f} conf, '
+                    f'{tot_unmatched} unmatched'
+                )
         print(f'  {vlabel:<8} {ms:>12.1f} {speedup:>9}  {parity}')
 
+    print('\n  phase totals (timed runs):')
+    for vlabel in results:
+        summary = summaries.get(vlabel, {})
+        phase_totals = summary.get('phase_totals_ns', {})
+        phase_bits = ', '.join(
+            f'{name}={ns / 1_000_000:.1f}ms' for name, ns in phase_totals.items()
+        )
+        req = summary.get('compute_units_requested')
+        actual = summary.get('compute_units_actual')
+        print(
+            f'  {vlabel:<8} tiles={summary.get("tile_count", 0)} '
+            f'invocations={summary.get("model_invocations", 0)} '
+            f'requested={req or "unknown"} actual={actual or "unknown"}'
+        )
+        if phase_bits:
+            print(f'    {phase_bits}')
 
-def main():
+    return {
+        'family': label,
+        'timings_ms': results,
+        'variants': summaries,
+    }
+
+
+def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--images', default='examples', help='dir of images to benchmark')
     ap.add_argument(
@@ -194,7 +315,12 @@ def main():
         default='all',
         help='which detector family to benchmark',
     )
-    args = ap.parse_args()
+    ap.add_argument(
+        '--summary-json',
+        default=None,
+        help='optional path for a machine-readable JSON summary',
+    )
+    args = ap.parse_args(argv)
 
     image_dir = Path(args.images)
     images = sorted(
@@ -205,8 +331,19 @@ def main():
     _validate_images(images)
 
     families = FAMILIES if args.family == 'all' else {args.family: FAMILIES[args.family]}
+    summaries = {}
     for label, (pt_config, coreml_config) in families.items():
-        benchmark_family(label, pt_config, coreml_config, images)
+        summaries[label] = benchmark_family(
+            label,
+            pt_config,
+            coreml_config,
+            images,
+        )
+
+    if args.summary_json is not None:
+        _write_summary(args.summary_json, summaries)
+
+    return summaries
 
 
 if __name__ == '__main__':

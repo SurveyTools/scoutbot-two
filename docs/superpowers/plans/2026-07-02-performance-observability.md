@@ -167,7 +167,7 @@ git commit -m "feat: add runtime observability hooks"
 
 **Goal:** Replace the current single wall-clock benchmark with phase-level JSON Lines collection and summary output.
 
-- [ ] **Step 1: Write failing tests for benchmark aggregation and hardening**
+- [x] **Step 1: Write failing tests for benchmark aggregation and hardening**
 
 Extend `tests/test_benchmark_coreml.py` and add `tests/test_benchmark_coreml_observability.py` with tests that pin the new behavior:
 
@@ -206,7 +206,7 @@ Cover these cases explicitly:
 - one-line missing-`coremltools` skip behavior
 - third-party noise cleanup staying out of the result table
 
-- [ ] **Step 2: Run the tests to confirm the current benchmark shape fails them**
+- [x] **Step 2: Run the tests to confirm the current benchmark shape fails them**
 
 Before running the benchmark tests, add `pythonpath = ["benchmarks", "tests"]` under
 `[tool.pytest.ini_options]` in `pyproject.toml` so the test modules can import the benchmark
@@ -220,7 +220,7 @@ uv run pytest tests/test_benchmark_coreml.py tests/test_benchmark_coreml_observa
 
 Expected: failures because the current benchmark still measures one opaque wall-clock number and does not consume JSONL events.
 
-- [ ] **Step 3: Refactor `benchmarks/benchmark_coreml.py` around structured collection**
+- [x] **Step 3: Refactor `benchmarks/benchmark_coreml.py` around structured collection**
 
 Update the benchmark so it:
 
@@ -239,7 +239,7 @@ uv run python benchmarks/benchmark_coreml.py
 uv run python benchmarks/benchmark_coreml.py --family cls
 ```
 
-- [ ] **Step 4: Run the benchmark tests and a focused smoke check**
+- [x] **Step 4: Run the benchmark tests and a focused smoke check**
 
 Run:
 

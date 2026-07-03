@@ -65,6 +65,7 @@ include-package-data = true
 minversion = "5.4"
 addopts = "-v --durations-min=1.0 --color=yes -ra"
 testpaths = ["tests"]
+pythonpath = ["benchmarks", "tests"]
 filterwarnings = ["default"]
 markers = [
     "slow: marks tests that download models or run real inference (deselect with '-m \"not slow\"')",
