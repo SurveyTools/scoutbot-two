@@ -266,3 +266,80 @@ class TestPerformInferenceNdarrayInput:
             source = call_kwargs.args[0]
         assert isinstance(source, list)
         assert len(source) == 1
+
+
+class TestLoadModelStoresComputeUnitsActual:
+    """Tests that load_model() calls _resolve_compute_units_actual and stores the result."""
+
+    def test_load_model_stores_compute_units_actual_for_mlpackage(self):
+        """load_model() for a .mlpackage must store _compute_units_actual on self.
+
+        Fails today because:
+          1. _resolve_compute_units_actual does not exist in the module yet.
+          2. load_model() does not call it and does not set self._compute_units_actual.
+        After Task 2, instance._compute_units_actual must equal the probe return value.
+        """
+        from scoutbot.tile_batched.main import Yolov8DetectionModel
+
+        instance = MagicMock(spec=Yolov8DetectionModel)
+        instance.model_path = '/fake/model.mlpackage'
+
+        with (
+            patch.object(sys, 'platform', 'darwin'),
+            patch('scoutbot.tile_batched.main._coreml_input_size', return_value=512),
+            patch('ultralytics.YOLO'),
+            patch(
+                'scoutbot.tile_batched.main._resolve_compute_units_actual',
+                return_value='cpu_and_gpu',
+                create=True,  # attribute doesn't exist yet; create=True avoids AttributeError
+            ),
+        ):
+            Yolov8DetectionModel.load_model(instance)
+
+        # Fails today: load_model() does not set _compute_units_actual.
+        assert instance._compute_units_actual == 'cpu_and_gpu'
+
+
+class TestPerformInferenceComputeUnitsActual:
+    """Tests that perform_inference() emits compute_units_actual in its event."""
+
+    def test_perform_inference_coreml_emits_compute_units_actual(self):
+        """perform_inference() for a CoreML model must include compute_units_actual
+        in the emitted observability event.
+
+        Fails today because perform_inference() does not read _compute_units_actual
+        from self and does not include it in the event dict.
+        """
+        import numpy as np
+        import torch
+
+        from scoutbot._observability import list_observer
+        from scoutbot.tile_batched.main import Yolov8DetectionModel
+
+        instance = MagicMock(spec=Yolov8DetectionModel)
+        instance._coreml = True
+        instance._coreml_imgsz = 512
+        instance.batch_size = 128
+        instance.device = 'cpu'
+        instance.confidence_threshold = 0.45
+        instance.model = MagicMock()
+        # Set the attribute directly; the real code will read it and include it in the event.
+        instance._compute_units_actual = 'cpu_and_gpu'
+
+        events = []
+        observer = list_observer(events)
+        instance.observer = observer
+
+        fake_boxes = MagicMock()
+        fake_boxes.data = torch.zeros((0, 6))
+        fake_result = MagicMock()
+        fake_result.boxes = fake_boxes
+        instance.model.predict.return_value = [fake_result]
+
+        Yolov8DetectionModel.perform_inference(
+            instance, [np.zeros((512, 512, 3), dtype=np.uint8)]
+        )
+
+        infer_event = next(e for e in events if e['name'] == 'perform_inference')
+        # Fails today: perform_inference() does not emit compute_units_actual.
+        assert infer_event['compute_units_actual'] == 'cpu_and_gpu'

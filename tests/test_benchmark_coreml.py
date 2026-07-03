@@ -105,8 +105,7 @@ def test_parse_jsonl_event_stream_round_trips(tmp_path):
     bench = _load_benchmark()
     path = tmp_path / 'events.jsonl'
     path.write_text(
-        '{"name": "pipeline", "duration_ns": 10}\n'
-        '{"name": "fetch", "duration_ns": 20}\n'
+        '{"name": "pipeline", "duration_ns": 10}\n{"name": "fetch", "duration_ns": 20}\n'
     )
 
     events = bench.read_event_stream(path)
@@ -159,6 +158,70 @@ def test_missing_coremltools_is_skipped_once_at_startup(tmp_path, capsys):
     assert captured.out.count('coremltools not installed') == 1
     assert 'ModuleNotFoundError' not in captured.out
     assert '  coreml ' not in captured.out
+
+
+def test_aggregate_events_collects_compute_units_from_events():
+    """aggregate_events() must propagate compute_units_* fields from the event stream
+    into the summary dict.  Passes today (the aggregation logic already handles the
+    fields); documents the contract so Task 2's emitted events are verified end-to-end.
+    """
+    bench = _load_benchmark()
+
+    events = [
+        {
+            'name': 'fetch',
+            'duration_ns': 1_000_000,
+            'compute_units_requested': 'cpu_and_ne',
+        },
+        {
+            'name': 'perform_inference',
+            'duration_ns': 5_000_000,
+            'tile_count': 4,
+            'compute_units_actual': 'cpu_and_gpu',
+        },
+    ]
+
+    summary = bench.aggregate_events(events, total_wall_ns=10_000_000)
+
+    assert summary['compute_units_requested'] == 'cpu_and_ne'
+    assert summary['compute_units_actual'] == 'cpu_and_gpu'
+
+
+def test_benchmark_family_renders_null_for_none_compute_units_actual(tmp_path, capsys):
+    """benchmark_family() must print `actual=null` (not `actual=unknown`) when
+    compute_units_actual is None.
+
+    Fails today because the code uses `actual or "unknown"` which maps None → "unknown".
+    Task 3 must change the rendering to use "null" for explicitly-absent values.
+    """
+    bench = _load_benchmark()
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    def _run_variant_with_none_actual(config, device, images):
+        return (
+            10.0,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 2,
+                'tile_count': 8,
+                # requested is set; actual is None (no hardware probe yet in Task 2).
+                'compute_units_requested': 'cpu_and_ne',
+                'compute_units_actual': None,
+            },
+        )
+
+    with patch.object(bench, '_run_variant', side_effect=_run_variant_with_none_actual):
+        bench.benchmark_family('onecls', 'v3', 'v3-coreml', [image, image])
+
+    captured = capsys.readouterr()
+    # Fails today: prints `actual=unknown` instead of `actual=null`.
+    assert 'actual=null' in captured.out, (
+        f'Expected "actual=null" in benchmark output; got:\n{captured.out}'
+    )
 
 
 def test_benchmark_family_suppresses_known_third_party_noise(tmp_path, capsys):

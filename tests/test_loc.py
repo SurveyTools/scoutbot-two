@@ -188,7 +188,15 @@ class TestExportCoreml:
         events = [event for event in observer_events if event['name'] == 'export_coreml']
         assert events, 'export_coreml() must emit an observability event'
         event = events[0]
-        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
             assert key in event
         assert event['cache_hit'] is True
 
@@ -276,7 +284,9 @@ class TestLocFetchUnit:
 
         with (
             patch.object(loc, 'CACHE_DIR', tmp_path),
-            patch('scoutbot.loc.export_coreml', side_effect=_create_bundle) as mock_export,
+            patch(
+                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+            ) as mock_export,
         ):
             result = loc.fetch('v3-coreml', observer=observer)
 
@@ -286,7 +296,15 @@ class TestLocFetchUnit:
         events = [event for event in observer_events if event['name'] == 'fetch']
         assert events, 'fetch() must emit an observability event'
         event = events[0]
-        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
             assert key in event
 
     def test_fetch_pt_returns_cached_path_when_md5_matches(self, tmp_path):
@@ -433,6 +451,107 @@ class TestLocFetchUnit:
 
         assert result is not None
         assert isinstance(result, str)
+
+
+class TestCoremlComputeUnitsConfig:
+    """Tests that Core ML CONFIGS entries declare compute_units_requested."""
+
+    def test_v3_coreml_config_has_compute_units_requested(self):
+        from scoutbot import loc
+
+        # This key does not exist yet — fails with KeyError until Task 2 adds it.
+        requested = loc.CONFIGS['v3-coreml']['compute_units_requested']
+        assert isinstance(requested, str) and requested, (
+            'v3-coreml compute_units_requested must be a non-empty string'
+        )
+
+    def test_v3_cls_coreml_config_has_compute_units_requested(self):
+        from scoutbot import loc
+
+        # This key does not exist yet — fails with KeyError until Task 2 adds it.
+        requested = loc.CONFIGS['v3-cls-coreml']['compute_units_requested']
+        assert isinstance(requested, str) and requested, (
+            'v3-cls-coreml compute_units_requested must be a non-empty string'
+        )
+
+
+class TestFetchComputeUnitsEmission:
+    """Tests that fetch() emits / omits compute_units_requested per backend."""
+
+    def test_fetch_coreml_emits_compute_units_requested(self, tmp_path):
+        from scoutbot import loc
+        from scoutbot._observability import list_observer
+
+        cfg = loc.CONFIGS['v3-coreml']
+        bundle = tmp_path / cfg['name']
+        bundle.mkdir()
+
+        events = []
+        observer = list_observer(events)
+
+        with patch.object(loc, 'CACHE_DIR', tmp_path):
+            loc.fetch('v3-coreml', observer=observer)
+
+        fetch_event = next(e for e in events if e['name'] == 'fetch')
+        # Fails today: CONFIGS lacks the key (KeyError) and fetch() does not emit it.
+        requested = loc.CONFIGS['v3-coreml']['compute_units_requested']
+        assert fetch_event['compute_units_requested'] == requested
+
+    def test_fetch_v3_does_not_emit_compute_units_requested(self, tmp_path):
+        """PT backend fetch events must never carry compute_units_requested."""
+        from scoutbot import loc
+        from scoutbot._observability import list_observer
+
+        cfg = loc.CONFIGS['v3']
+        local = tmp_path / cfg['name']
+        local.write_bytes(b'fake model bytes')
+        remote_md5 = hashlib.md5(b'fake model bytes').hexdigest()
+
+        md5_response = MagicMock()
+        md5_response.text = remote_md5 + '  ' + cfg['name']
+        md5_response.raise_for_status = MagicMock()
+
+        events = []
+        observer = list_observer(events)
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('requests.get', return_value=md5_response),
+            patch('scoutbot.loc._md5', return_value=remote_md5),
+        ):
+            loc.fetch('v3', observer=observer)
+
+        fetch_event = next(e for e in events if e['name'] == 'fetch')
+        # Guard: PT backends must never carry compute_units_requested (key must be absent).
+        assert 'compute_units_requested' not in fetch_event
+
+    def test_fetch_v3_cls_does_not_emit_compute_units_requested(self, tmp_path):
+        """PT backend fetch events for v3-cls must never carry compute_units_requested."""
+        from scoutbot import loc
+        from scoutbot._observability import list_observer
+
+        cfg = loc.CONFIGS['v3-cls']
+        local = tmp_path / cfg['name']
+        local.write_bytes(b'fake model bytes')
+        remote_md5 = hashlib.md5(b'fake model bytes').hexdigest()
+
+        md5_response = MagicMock()
+        md5_response.text = remote_md5 + '  ' + cfg['name']
+        md5_response.raise_for_status = MagicMock()
+
+        events = []
+        observer = list_observer(events)
+
+        with (
+            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('requests.get', return_value=md5_response),
+            patch('scoutbot.loc._md5', return_value=remote_md5),
+        ):
+            loc.fetch('v3-cls', observer=observer)
+
+        fetch_event = next(e for e in events if e['name'] == 'fetch')
+        # Guard: PT backends must never carry compute_units_requested (key must be absent).
+        assert 'compute_units_requested' not in fetch_event
 
 
 class TestExportCoremlBranches:

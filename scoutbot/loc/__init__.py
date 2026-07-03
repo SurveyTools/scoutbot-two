@@ -53,6 +53,7 @@ CONFIGS = {
         'name': 'yolov8-onecls.kaza.mlpackage',
         'backend': 'coreml',
         'source': 'v3',
+        'compute_units_requested': 'all',
         'thresh': 0.45,
         'slice_height': 512,
         'slice_width': 512,
@@ -65,6 +66,7 @@ CONFIGS = {
         'name': 'yolov8-cls.kaza.mlpackage',
         'backend': 'coreml',
         'source': 'v3-cls',
+        'compute_units_requested': 'all',
         'thresh': 0.45,
         'slice_height': 512,
         'slice_width': 512,
@@ -132,6 +134,7 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
                 'device': 'coreml',
                 'cache_hit': cache_hit,
                 'model_path': str(local_path),
+                'compute_units_requested': cfg.get('compute_units_requested'),
             },
         )
         return str(local_path)
@@ -232,6 +235,7 @@ def export_coreml(config, force: bool = False, observer=None) -> str:
                 'source_config': cfg['source'],
                 'target_path': str(target),
                 'cache_hit': True,
+                'compute_units_requested': cfg.get('compute_units_requested'),
             },
         )
         return str(target)
@@ -272,6 +276,7 @@ def export_coreml(config, force: bool = False, observer=None) -> str:
             'source_config': cfg['source'],
             'target_path': str(target),
             'cache_hit': False,
+            'compute_units_requested': cfg.get('compute_units_requested'),
         },
     )
     return str(target)
