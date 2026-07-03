@@ -4,6 +4,83 @@ Roadmap
 Lightweight tracking for deferred work. Status values are ``planned``,
 ``in-progress``, or ``done``.
 
+Current priorities
+------------------
+
+1. **Performance observability and benchmark hardening** -- the Core ML timings are still too
+   close across machines, so the next step is to instrument the pipeline and separate real model
+   cost from preprocessing and dispatch overhead.
+2. **Release and distribution** -- define the release/tagging checklist, resolve the Python 3.13
+   ceiling, and plan package distribution carefully. PyPI publishing is likely deferred until the
+   old project namespace and ownership are clarified.
+3. **Quality and compatibility** -- finish the quality workflow hardening, add dependency-currency
+   policy, and expand platform coverage beyond the current macOS-focused Core ML work.
+
+Release and distribution
+------------------------
+
+**Status:** planned
+
+PyPI publishing
+~~~~~~~~~~~~~~~
+
+There is no publish workflow yet. The old Wild Me Scoutbot project already occupied the PyPI
+namespace, so reusing that name without resolving ownership would be confusing. Treat PyPI
+publishing as deferred until the project name, namespace, and ownership path are clarified.
+
+Python 3.13 support
+~~~~~~~~~~~~~~~~~~~
+
+The package metadata still declares ``requires-python = ">=3.10,<3.13"``, which blocks users whose
+environments have already moved to Python 3.13. Track the compatibility work needed to lift that
+ceiling, starting with the test matrix and any dependency constraints that still pin 3.12.
+
+Release readiness
+~~~~~~~~~~~~~~~~~
+
+GitHub Pages now covers the docs site, but the project still needs a documented release path for
+version tagging and release-note hygiene so the codebase can move from internal iteration to
+public consumption cleanly. Package distribution details remain dependent on the PyPI namespace
+decision above.
+
+Compatibility and platform support
+-----------------------------------
+
+**Status:** planned
+
+Output schema stability
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The detection dict format (``l``, ``c``, ``x``, ``y``, ``w``, ``h``) is relied on by pipeline
+integrators, but the roadmap does not yet state whether that schema is stable across releases. Add
+an explicit compatibility policy and versioning note before making further output changes.
+
+Windows / cross-platform CI
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The base PyTorch pipeline should work beyond macOS, but the repository has no stated support level
+or CI coverage for Windows. Add a lightweight cross-platform smoke test path so non-Core ML code
+stays honest on other operating systems.
+
+GPU / CUDA guidance
+~~~~~~~~~~~~~~~~~~~
+
+``--device`` is documented, but there is no explicit support statement or validation path for CUDA
+workflows. Add guidance that states what is supported, what is best-effort, and how to verify GPU
+execution when a CUDA environment is available.
+
+Dependency and maintenance policy
+---------------------------------
+
+**Status:** planned
+
+Dependency currency policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``ultralytics``, ``sahi``, and ``torch`` move quickly. The roadmap should define how dependency
+updates are absorbed, how breaking changes are evaluated, and what gets pinned versus left to
+track upstream.
+
 Benchmark hardening
 -------------------
 
@@ -80,6 +157,9 @@ Quality workflow -- v2 scope
 4. Security / dependency scanning -- ``pip-audit`` on ``uv.lock``, tuned
    ``bandit``
 5. macOS CI runner for Core ML path (expensive; consider self-hosted M-series)
+
+The quality work and the dependency currency policy above should stay aligned so breaking
+dependency upgrades are caught in CI instead of surfacing in release work.
 
 Documentation reorganization
 ----------------------------
