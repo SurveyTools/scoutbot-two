@@ -109,6 +109,9 @@ Install docs dependencies and build Sphinx:
    uv sync --extra docs
    uv run sphinx-build -M html docs docs/build
 
+GitHub Pages is the canonical hosted docs site. Route readers to rendered HTML and keep local
+Sphinx builds as a maintainer path.
+
 Documentation pass
 ------------------
 

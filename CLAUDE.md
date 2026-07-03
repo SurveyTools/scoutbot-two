@@ -105,6 +105,9 @@ whether the work changes user behavior, commands, configuration, models, outputs
 quality checks, security posture, performance characteristics, or roadmap status. Update the
 affected docs in the same change set, or explicitly record why no doc update is needed.
 
+GitHub Pages is the canonical hosted docs site. Route readers to rendered HTML and keep local
+Sphinx builds as a maintainer path.
+
 Use the documentation roles below to decide what may be impacted:
 
 - `README.md` routes readers and should change when quick-start commands, badges, supported

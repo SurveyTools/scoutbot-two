@@ -243,14 +243,14 @@ If the project chooses GitHub Pages only, remove `.readthedocs.yaml` and update 
 
 **Goal:** Prove the site builds and the routing text matches the new hosting model.
 
-- [ ] **Step 1: Build the docs locally**
+- [x] **Step 1: Build the docs locally**
 
 ```bash
 uv sync --extra docs
 uv run sphinx-build -b html docs docs/_build/html
 ```
 
-- [ ] **Step 2: Check for stale source-doc links in the README**
+- [x] **Step 2: Check for stale source-doc links in the README**
 
 ```bash
 rg -n "docs/[a-z0-9_-]+\\.rst" README.md
@@ -258,7 +258,7 @@ rg -n "docs/[a-z0-9_-]+\\.rst" README.md
 
 Expected: no public routing links point to raw `.rst` files.
 
-- [ ] **Step 3: Check the workflow paths**
+- [x] **Step 3: Check the workflow paths**
 
 ```bash
 rg -n "upload-pages-artifact|deploy-pages|docs/_build/html" .github/workflows/docs-pages.yml
@@ -266,7 +266,7 @@ rg -n "upload-pages-artifact|deploy-pages|docs/_build/html" .github/workflows/do
 
 Expected: the workflow uploads and deploys the Sphinx HTML output directory.
 
-- [ ] **Step 4: Confirm the rendered site will include the raw Sphinx directives**
+- [x] **Step 4: Confirm the rendered site will include the raw Sphinx directives**
 
 Because the site is HTML, `sphinx-click` and other directives should render as documentation, not source text. Verify by opening the generated output locally:
 
@@ -284,6 +284,6 @@ Expected: `True`.
 
 ## Documentation Pass
 
-- [ ] Update `CLAUDE.md` and `docs/development.rst` if the new site hosting model changes the docs ownership or contribution workflow.
-- [ ] Update `docs/roadmap.rst` to record whether GitHub Pages is now the canonical docs site and whether RTD is retired or retained.
-- [ ] Update `CHANGELOG.rst` if the hosting change is user-visible or part of the release notes.
+- [x] Update `CLAUDE.md` and `docs/development.rst` if the new site hosting model changes the docs ownership or contribution workflow.
+- [x] Update `docs/roadmap.rst` to record whether GitHub Pages is now the canonical docs site and whether RTD is retired or retained.
+- [x] Update `CHANGELOG.rst` if the hosting change is user-visible or part of the release notes.
