@@ -32,6 +32,7 @@ test = [
     "pytest-random-order",
     "ruff",
     "mypy",
+    "bandit",
 ]
 all = [
     "pytest",
@@ -95,6 +96,13 @@ ignore = [
     "E301",  # expected 1 blank line
     "E501",  # line too long (handled by formatter)
 ]
+
+[tool.bandit]
+# tests/ is excluded: pytest assertions (B101) are expected and not a security concern.
+# B101 (assert_used) is skipped globally: the production asserts are internal invariants,
+# not security gates; converting them to explicit raises is tracked as a code quality item.
+exclude_dirs = ["tests"]
+skips = ["B101"]
 
 [tool.uv.audit]
 # torch.jit.script memory-corruption CVE; no upstream fix available.

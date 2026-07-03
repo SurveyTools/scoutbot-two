@@ -34,3 +34,6 @@ jobs:
 
       - name: Dependency audit
         run: uv audit --locked --preview-features audit-command
+
+      - name: Bandit security scan
+        run: uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/
