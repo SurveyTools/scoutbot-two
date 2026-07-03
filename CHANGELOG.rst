@@ -5,6 +5,10 @@ Changelog
 Unreleased
 ----------
 
+* Added Bandit source-code security scanning to the quality workflow (``bandit -c pyproject.toml
+  -r scoutbot/ benchmarks/``). B101 (assert-used) is skipped; ``tests/`` is excluded. Fixed
+  ``hashlib.md5()`` → ``hashlib.md5(usedforsecurity=False)`` to reflect its use as a file
+  integrity check rather than a cryptographic hash.
 * Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.
   Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215. Added
   ``ignore-until-fixed`` in ``[tool.uv.audit]`` for GHSA-rrmf-rvhw-rf47 (``torch`` CVE,

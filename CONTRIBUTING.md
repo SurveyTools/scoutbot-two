@@ -36,7 +36,8 @@ uv sync --extra test
 ```
 
 This installs the project in editable mode with pytest, pytest-cov, pytest-random-order, Ruff,
-and mypy.
+mypy, and Bandit. For a full maintainer environment that also includes the Sphinx doc toolchain
+and Core ML support (macOS only), use `--extra all` instead.
 
 **Runtime rule:** always prefix Python tool invocations with `uv run`. Never call `python`,
 `pytest`, `ruff`, `mypy`, or similar tools directly — they may resolve to a different environment.
@@ -176,6 +177,7 @@ uv run ruff format --check .
 uv run ruff check .
 uv run mypy scoutbot
 uv audit --locked --preview-features audit-command
+uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/
 ```
 
 All five must pass. CI enforces the same checks.

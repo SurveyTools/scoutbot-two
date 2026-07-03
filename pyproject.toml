@@ -26,6 +26,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+all = [
+    "scoutbot[test]",
+    "scoutbot[docs]",
+    "scoutbot[coreml]",
+]
 test = [
     "pytest",
     "pytest-cov",
@@ -33,13 +38,6 @@ test = [
     "ruff",
     "mypy",
     "bandit",
-]
-all = [
-    "pytest",
-    "pytest-cov",
-    "pytest-random-order",
-    "ruff",
-    "mypy",
 ]
 docs = [
     "Sphinx>=5,<6",
