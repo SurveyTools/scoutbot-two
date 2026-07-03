@@ -92,6 +92,9 @@ Documentation was reorganized around reader intent, separating user guide, refer
 development, security, roadmap, and changelog content into discrete Sphinx pages. An ongoing
 documentation-pass rule was established for future agent and contributor work.
 
+GitHub Pages is now the canonical hosted docs site. The repository keeps the Sphinx source and
+builds HTML on merge to ``main``. Read the Docs has been retired and its config file removed.
+
 Test coverage
 -------------
 

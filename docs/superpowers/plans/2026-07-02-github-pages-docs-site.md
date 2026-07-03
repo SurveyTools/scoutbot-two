@@ -198,7 +198,7 @@ Expected: clean Sphinx build, including `sphinx-click` pages like `cli.rst`.
 
 **Goal:** Avoid running two doc hosting systems unless there is a clear reason to keep both.
 
-- [ ] **Step 1: Choose the hosting policy**
+- [x] **Step 1: Choose the hosting policy**
 
 If GitHub Pages becomes the canonical docs site, decide whether Read the Docs remains:
 
@@ -209,7 +209,7 @@ Option B: deprecate RTD and leave GitHub Pages as the only hosted docs site.
 
 Document the choice in the plan execution notes before changing files.
 
-- [ ] **Step 2: If RTD is kept, confirm it still builds the same source**
+- [x] **Step 2: If RTD is kept, confirm it still builds the same source**
 
 Make sure `.readthedocs.yaml` continues to install the `docs` extra and point at `docs/conf.py`:
 
@@ -229,7 +229,7 @@ python:
         - docs
 ```
 
-- [ ] **Step 3: If RTD is removed, delete the config file and stop mentioning it in docs**
+- [x] **Step 3: If RTD is removed, delete the config file and stop mentioning it in docs**
 
 If the project chooses GitHub Pages only, remove `.readthedocs.yaml` and update any docs that still mention RTD.
 
