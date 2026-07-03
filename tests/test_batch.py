@@ -3,9 +3,16 @@
 
 import json
 import shutil
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
+
+
+def _empty_sahi_result():
+    class _Result:
+        object_prediction_list = []
+
+    return _Result()
 
 
 @pytest.mark.slow
@@ -56,6 +63,44 @@ class TestBatch:
         )
 
         assert len(wic_list) == 1
+
+    def test_batch_forwards_observer_and_emits_event(self, sample_image):
+        import scoutbot
+        from scoutbot._observability import list_observer
+
+        observer_events = []
+        observer = list_observer(observer_events)
+        mock_model = MagicMock()
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
+            patch(
+                'scoutbot.tile_batched.Yolov8DetectionModel',
+                return_value=mock_model,
+            ),
+            patch('scoutbot.pipeline', return_value=(0.5, [])) as mock_pipeline,
+        ):
+            scoutbot.batch(
+                [sample_image], config='v3', show_progress=False, observer=observer
+            )
+
+        mock_fetch.assert_called_once_with(config='v3', observer=observer)
+        mock_pipeline.assert_called_once()
+        assert mock_pipeline.call_args.kwargs['observer'] == observer
+
+        batch_events = [event for event in observer_events if event['name'] == 'batch']
+        assert batch_events, 'batch() must emit an observability event'
+        event = batch_events[0]
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
+            assert key in event
 
 
 @pytest.mark.slow
@@ -200,6 +245,47 @@ class TestBatchResumable:
         assert summary['processed'] == 0
         assert summary['skipped'] == 1
         assert summary['total'] == 1
+
+    def test_batch_resumable_forwards_observer_and_emits_event(
+        self, sample_image, temp_output
+    ):
+        import scoutbot
+        from scoutbot._observability import list_observer
+
+        observer_events = []
+        observer = list_observer(observer_events)
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.5, [])) as mock_pipeline,
+        ):
+            scoutbot.batch_resumable(
+                [sample_image],
+                temp_output,
+                config='v3',
+                show_progress=False,
+                observer=observer,
+            )
+
+        mock_fetch.assert_called_once_with(config='v3', observer=observer)
+        assert mock_pipeline.call_args.kwargs['observer'] == observer
+
+        events = [
+            event for event in observer_events if event['name'] == 'batch_resumable'
+        ]
+        assert events, 'batch_resumable() must emit an observability event'
+        event = events[0]
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
+            assert key in event
 
 
 class TestBatchResumableProgressBar:
@@ -444,6 +530,48 @@ class TestBatchUnit:
 
         mock_fetch.assert_called_once_with(config='v3')
 
+    def test_batch_emits_observer_events(self, tmp_path):
+        import scoutbot
+
+        fake_imgs = [str(tmp_path / f'{i}.jpg') for i in range(2)]
+        for p in fake_imgs:
+            open(p, 'wb').close()
+
+        events = []
+
+        class Collector:
+            def emit(self, event):
+                events.append(event)
+
+        def _fake_pipeline(filepath, *args, observer=None, **kwargs):
+            if observer is not None:
+                observer.emit(
+                    {
+                        'name': 'pipeline',
+                        'started_ns': 1,
+                        'ended_ns': 2,
+                        'duration_ns': 1,
+                        'config': kwargs.get('config', 'v3'),
+                        'backend': 'pt',
+                        'device': kwargs.get('backend_device', 'cpu'),
+                    }
+                )
+            return 0.5, []
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', side_effect=_fake_pipeline),
+        ):
+            scoutbot.batch(
+                fake_imgs, config='v3', show_progress=False, observer=Collector()
+            )
+
+        names = [event['name'] for event in events]
+        assert 'batch' in names
+        assert names.count('pipeline') == 2
+        assert all('started_ns' in event for event in events)
+
 
 class TestBatchResumableUnit:
     """Unit tests for scoutbot.batch_resumable() — no model or network."""
@@ -609,6 +737,52 @@ class TestBatchResumableUnit:
         assert 'error' in lines[0]
         assert 'inference exploded' in lines[0]['error']
 
+    def test_batch_resumable_emits_observer_events(self, tmp_path):
+        import scoutbot
+
+        output = tmp_path / 'output.jsonl'
+        fake_img = str(tmp_path / 'img.jpg')
+        open(fake_img, 'wb').close()
+
+        events = []
+
+        class Collector:
+            def emit(self, event):
+                events.append(event)
+
+        def _fake_pipeline(filepath, *args, observer=None, **kwargs):
+            if observer is not None:
+                observer.emit(
+                    {
+                        'name': 'pipeline',
+                        'started_ns': 1,
+                        'ended_ns': 2,
+                        'duration_ns': 1,
+                        'config': kwargs.get('config', 'v3'),
+                        'backend': 'pt',
+                        'device': kwargs.get('backend_device', 'cpu'),
+                    }
+                )
+            return 0.5, []
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', side_effect=_fake_pipeline),
+        ):
+            scoutbot.batch_resumable(
+                filepaths=[fake_img],
+                output_path=str(output),
+                config='v3',
+                show_progress=False,
+                observer=Collector(),
+            )
+
+        names = [event['name'] for event in events]
+        assert 'batch_resumable' in names
+        assert names.count('pipeline') == 1
+        assert all('started_ns' in event for event in events)
+
 
 @pytest.mark.slow
 class TestExampleSlow:
@@ -617,6 +791,14 @@ class TestExampleSlow:
     def test_example_runs_without_error(self):
         import scoutbot
 
-        # Downloads example image and runs the full pipeline
-        # Requires network access and model download
-        scoutbot.example()
+        fake_response = MagicMock()
+        fake_response.iter_content.return_value = [b'fake-image-bytes']
+        fake_response.raise_for_status = MagicMock()
+        fake_response.__enter__ = MagicMock(return_value=fake_response)
+        fake_response.__exit__ = MagicMock(return_value=False)
+
+        with (
+            patch('requests.get', return_value=fake_response),
+            patch('scoutbot.pipeline', return_value=(0.5, [])),
+        ):
+            scoutbot.example()

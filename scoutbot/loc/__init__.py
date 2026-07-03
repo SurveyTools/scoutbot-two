@@ -7,11 +7,13 @@ import hashlib
 import os
 import shutil
 from pathlib import Path
+from time import perf_counter_ns
 
 import requests
 from tqdm import tqdm
 
 from scoutbot import log
+from scoutbot._observability import emit
 
 CACHE_DIR = Path.home() / '.cache' / 'scoutbot'
 
@@ -51,6 +53,7 @@ CONFIGS = {
         'name': 'yolov8-onecls.kaza.mlpackage',
         'backend': 'coreml',
         'source': 'v3',
+        'compute_units_requested': 'all',
         'thresh': 0.45,
         'slice_height': 512,
         'slice_width': 512,
@@ -63,6 +66,7 @@ CONFIGS = {
         'name': 'yolov8-cls.kaza.mlpackage',
         'backend': 'coreml',
         'source': 'v3-cls',
+        'compute_units_requested': 'all',
         'thresh': 0.45,
         'slice_height': 512,
         'slice_width': 512,
@@ -83,7 +87,7 @@ def _md5(filepath: Path) -> str:
     return h.hexdigest()
 
 
-def fetch(config=DEFAULT_CONFIG) -> str:
+def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     """
     Fetch the YOLOv8 model file, downloading only if absent or hash-mismatched.
 
@@ -99,6 +103,7 @@ def fetch(config=DEFAULT_CONFIG) -> str:
     if config is None:
         config = DEFAULT_CONFIG
 
+    started_ns = perf_counter_ns()
     cfg = CONFIGS[config]
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     local_path = CACHE_DIR / str(cfg['name'])
@@ -106,11 +111,32 @@ def fetch(config=DEFAULT_CONFIG) -> str:
     # Core ML bundles are local-only directory packages: no remote URL to fetch and
     # no single file to hash. If absent, export one on demand from the source .pt.
     if cfg.get('backend') == 'coreml':
+        cache_hit = local_path.exists()
         if not local_path.exists():
             log.info(f'Core ML model missing, exporting: {cfg["name"]}')
-            export_coreml(config)
+            if observer is None:
+                export_coreml(config)
+            else:
+                export_coreml(config, observer=observer)
         assert local_path.exists(), f'Core ML export failed: {local_path}'
         log.debug(f'Using local Core ML model: {local_path}')
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'fetch',
+                'status': 'ok',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'backend': 'coreml',
+                'device': 'coreml',
+                'cache_hit': cache_hit,
+                'model_path': str(local_path),
+                'compute_units_requested': cfg.get('compute_units_requested'),
+            },
+        )
         return str(local_path)
 
     response = requests.get(str(cfg['md5_url']), timeout=30)
@@ -119,6 +145,22 @@ def fetch(config=DEFAULT_CONFIG) -> str:
 
     if local_path.exists() and _md5(local_path) == remote_md5:
         log.debug(f'Model up to date: {local_path}')
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'fetch',
+                'status': 'ok',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'backend': 'pt',
+                'device': 'cpu',
+                'cache_hit': True,
+                'model_path': str(local_path),
+            },
+        )
         return str(local_path)
 
     log.info(f'Downloading {cfg["name"]}...')
@@ -135,10 +177,26 @@ def fetch(config=DEFAULT_CONFIG) -> str:
 
     assert _md5(local_path) == remote_md5, f'MD5 mismatch after download: {cfg["name"]}'
     log.info(f'Saved: {local_path}')
+    ended_ns = perf_counter_ns()
+    emit(
+        observer,
+        {
+            'name': 'fetch',
+            'status': 'ok',
+            'started_ns': started_ns,
+            'ended_ns': ended_ns,
+            'duration_ns': ended_ns - started_ns,
+            'config': config,
+            'backend': 'pt',
+            'device': 'cpu',
+            'cache_hit': False,
+            'model_path': str(local_path),
+        },
+    )
     return str(local_path)
 
 
-def export_coreml(config, force: bool = False) -> str:
+def export_coreml(config, force: bool = False, observer=None) -> str:
     """
     Export a Core ML ``.mlpackage`` from its source ``.pt`` model into the cache.
 
@@ -157,14 +215,37 @@ def export_coreml(config, force: bool = False) -> str:
     cfg = CONFIGS[config]
     assert cfg.get('backend') == 'coreml', f'{config} is not a Core ML config'
 
+    started_ns = perf_counter_ns()
     target = CACHE_DIR / str(cfg['name'])
     if target.exists() and not force:
         log.debug(f'Core ML model already present: {target}')
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'export_coreml',
+                'status': 'ok',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'backend': 'coreml',
+                'device': 'coreml',
+                'force': force,
+                'source_config': cfg['source'],
+                'target_path': str(target),
+                'cache_hit': True,
+                'compute_units_requested': cfg.get('compute_units_requested'),
+            },
+        )
         return str(target)
 
     from ultralytics import YOLO
 
-    pt_path = fetch(cfg['source'])
+    if observer is None:
+        pt_path = fetch(cfg['source'])
+    else:
+        pt_path = fetch(cfg['source'], observer=observer)
     imgsz = cfg.get('slice_width', 640)
     log.info(f'Exporting {cfg["name"]} from {Path(pt_path).name} (imgsz={imgsz})...')
 
@@ -179,4 +260,23 @@ def export_coreml(config, force: bool = False) -> str:
         shutil.move(str(exported), str(target))
 
     log.info(f'Saved: {target}')
+    ended_ns = perf_counter_ns()
+    emit(
+        observer,
+        {
+            'name': 'export_coreml',
+            'status': 'ok',
+            'started_ns': started_ns,
+            'ended_ns': ended_ns,
+            'duration_ns': ended_ns - started_ns,
+            'config': config,
+            'backend': 'coreml',
+            'device': 'coreml',
+            'force': force,
+            'source_config': cfg['source'],
+            'target_path': str(target),
+            'cache_hit': False,
+            'compute_units_requested': cfg.get('compute_units_requested'),
+        },
+    )
     return str(target)

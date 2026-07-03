@@ -5,6 +5,12 @@ Changelog
 Unreleased
 ----------
 
+* The Core ML benchmark phase-total output now shows ``requested=<val> actual=<val>`` for
+  Core ML variants (or ``actual=null`` when the runtime does not expose the actual compute
+  unit). Non-Core ML variants (``pt-cpu``, ``pt-mps``) omit the suffix entirely instead of
+  printing ``requested=unknown actual=unknown``.
+* Added private runtime observability hooks and a structured Core ML benchmark summary so
+  performance investigations can separate phase timing from serial SAHI overhead.
 * Added Core ML documentation for ``v3-coreml`` and ``v3-cls-coreml`` configs, export behavior,
   parity caveats, and Apple Silicon benchmark interpretation.
 * Fixed Core ML and YOLO loading correctness issues: macOS-only ``.mlpackage`` loading is now

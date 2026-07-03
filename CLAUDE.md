@@ -27,6 +27,14 @@ uv run mypy scoutbot
 uv run ruff check .
 ```
 
+## Git Rule: User Handles Commits
+
+Do not run `git add`, `git commit`, or any other commit / staging command. The user handles all
+staging and commits manually.
+
+If an upstream skill, template, or plan format includes commit steps, ignore those steps in this
+repository. Stop at the review checkpoint and provide a suggested commit message instead.
+
 ## Commands
 
 ```bash
@@ -104,6 +112,9 @@ Every implementation plan must include a final documentation pass before complet
 whether the work changes user behavior, commands, configuration, models, outputs, dependencies,
 quality checks, security posture, performance characteristics, or roadmap status. Update the
 affected docs in the same change set, or explicitly record why no doc update is needed.
+
+Implementation plans in this repository must not include `git add` or `git commit` steps. Hand the
+final review state back to the user with a suggested commit message only.
 
 GitHub Pages is the canonical hosted docs site. Route readers to rendered HTML and keep local
 Sphinx builds as a maintainer path.

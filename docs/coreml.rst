@@ -84,13 +84,61 @@ That subclass is Core ML-aware, with all special handling contained in it — no
 Everything downstream (``result.boxes.data``, SAHI's class-agnostic NMS, the
 ``{l, c, x, y, w, h}`` pixel-dict output) is identical to the ``.pt`` path.
 
+Runtime observability
+~~~~~~~~~~~~~~~~~~~~~
+
+Scoutbot now exposes opt-in runtime hooks for the Core ML path. The public entry points accept an
+optional ``observer=`` argument, and the private observability layer emits structured timing and
+state events for model fetch, export, load, batch execution, and per-image pipeline runs.
+
+Those events carry the cache-hit / export state that explains whether the bundle was reused or
+rebuilt, and the benchmark summary surfaces Core ML compute-unit metadata directly from the event
+stream. The current implementation is intentionally lightweight: no observer means no extra work.
+
+Compute-unit metadata
+^^^^^^^^^^^^^^^^^^^^^
+
+Each inference event can carry two compute-unit fields:
+
+``compute_units_requested``
+   The compute-unit hint passed to the Core ML runtime at model load time (e.g.
+   ``cpu_and_ne``, ``all``). This is set by the Scoutbot runtime and reflects what was asked
+   for; it is always known for Core ML variants and ``None`` for plain PyTorch variants.
+
+``compute_units_actual``
+   The physical hardware that executed inference, as reported by the Core ML runtime.
+   Currently always ``null``: coremltools does not expose a public API to query which
+   hardware unit (ANE, GPU, or CPU) ran a given prediction — ``MLModel.compute_unit``
+   returns the loading parameter, not a runtime measurement. The field and the call site
+   are retained so a future coremltools release that adds a real runtime query can be
+   wired in without touching callers. For now the benchmark renders it as ``actual=null``.
+
+   To confirm ANE engagement in practice, watch Activity Monitor's Neural Engine column
+   while the benchmark runs: non-zero Neural Engine % indicates ANE utilisation.
+
+The distinction matters when diagnosing performance: ``requested=all actual=null`` is the
+expected output on current Apple Silicon — it means Core ML selected the best available
+hardware but the runtime did not report which unit won.
+
+The benchmark aggregates these fields across all timed inference events. If every event
+reports the same value the summary collapses to a single scalar; if values differ across
+events the summary keeps the full list so mixed-unit runs are visible.
+
+For non-Core ML variants (``pt-cpu``, ``pt-mps``) neither field is set, so the benchmark
+omits the compute-unit suffix entirely — the phase-total line shows only tile and invocation
+counts.
+
+When investigating the M1 / M4 gap, use the structured benchmark summary in :doc:`performance`
+to separate the serial SAHI tile overhead from the Core ML-specific work.
+
 Performance and benchmarks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Core ML benchmark numbers, interpretation caveats, and planned diagnostics live in
-:doc:`performance`. The short version: Core ML is currently fastest in full-pipeline wall-clock
-tests, but the M1 and M4 results are closer than expected because the benchmark measures the
-full serial SAHI/Ultralytics/Core ML tile path rather than raw Apple Silicon capacity.
+:doc:`performance`. The short version: the benchmark now reports phase-level timings and an
+optional JSON summary, which makes the M1 / M4 comparison more useful than the old single wall-
+clock number. The benchmark still measures the full serial SAHI/Ultralytics/Core ML tile path
+rather than raw Apple Silicon capacity.
 
 Parity and caveats
 ~~~~~~~~~~~~~~~~~~~

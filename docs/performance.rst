@@ -1,15 +1,21 @@
 Performance
 ===========
 
-This page covers benchmark interpretation, known bottlenecks, and planned observability work for
-Scoutbot performance investigations.
+This page explains how Scoutbot measures Core ML performance and how to read the current
+benchmark output.
 
 Core ML benchmark
 -----------------
 
 ``benchmarks/benchmark_coreml.py`` runs the full SAHI-tiled pipeline over the images in
-``examples/`` for each variant and reports wall-clock per image plus detection parity against the
-PyTorch-CPU reference.
+``examples/`` for each variant. The benchmark now produces two views of the same run:
+
+* a human-readable comparison table for quick inspection
+* an optional machine-readable JSON summary via ``--summary-json``
+
+The benchmark is still a full pipeline test, not an isolated model microbenchmark. It measures
+the serial tile path that Scoutbot actually uses, so the numbers include Python, SAHI,
+Ultralytics, Core ML dispatch, and post-processing overhead.
 
 .. note::
 
@@ -25,110 +31,82 @@ PyTorch-CPU reference.
 
    uv run python benchmarks/benchmark_coreml.py
    uv run python benchmarks/benchmark_coreml.py --family cls
+   uv run python benchmarks/benchmark_coreml.py --summary-json benchmark-summary.json
 
-Representative results (7 images, warm-up excluded):
+What the benchmark records
+--------------------------
 
-**Apple M1 Pro 10/16, 16 GB**
+The structured benchmark summary tracks the timings that matter for the M1 / M4 gap:
 
-.. list-table::
-   :header-rows: 1
-
-   * - Family
-     - Variant
-     - ms / image
-     - Speedup vs CPU
-   * - onecls
-     - pt-cpu
-     - 29443
-     - 1.00×
-   * - onecls
-     - pt-mps
-     - 5049
-     - 5.83×
-   * - onecls
-     - **coreml**
-     - **2705**
-     - **10.88×**
-   * - cls
-     - pt-cpu
-     - 17112
-     - 1.00×
-   * - cls
-     - pt-mps
-     - 4834
-     - 3.54×
-   * - cls
-     - **coreml**
-     - **2696**
-     - **6.35×**
-
-**Apple M4, 48 GB**  *(Torch 2.11.0, ultralytics 8.2.103)*
-
-.. list-table::
-   :header-rows: 1
-
-   * - Family
-     - Variant
-     - ms / image
-     - Speedup vs CPU
-   * - onecls
-     - pt-cpu
-     - 27178
-     - 1.00×
-   * - onecls
-     - pt-mps
-     - 3204
-     - 8.48×
-   * - onecls
-     - **coreml**
-     - **2114**
-     - **12.86×**
-   * - cls
-     - pt-cpu
-     - 14368
-     - 1.00×
-   * - cls
-     - pt-mps
-     - 3201
-     - 4.49×
-   * - cls
-     - **coreml**
-     - **2049**
-     - **7.01×**
-
-Interpretation
---------------
-
-Core ML is fastest in wall-clock on both machines, ahead of MPS as well as CPU. These numbers
-should not be read as a measure of raw M4 / ANE capacity.
-
-The current benchmark times the full SAHI pipeline. The live Core ML path runs one 512×512 tile
-at a time through Ultralytics' Core ML wrapper. That serial per-tile path adds Python, PIL, SAHI,
-Ultralytics, and Core ML dispatch overhead to every tile, so the M1 Pro and M4 results are much
-closer than the hardware difference would suggest.
-
-The benchmark proves the Core ML backend is useful in the existing pipeline. It does not prove
-that the pipeline saturates Apple Silicon or that the M4 acceleration path is well-utilized.
-
-Diagnostics needed
-------------------
-
-A follow-up benchmark should break out:
-
-* image discovery and validation time
-* image decode/load time
-* slice generation time
+* image discovery and validation
+* image decode / load time
+* model fetch / export / load time
+* slice generation
 * per-tile model invocation count
-* per-tile model wall time
-* post-processing/NMS time
-* JSON/result serialization time
-* Core ML compute-unit selection
-* direct ``coremltools`` prediction timing
+* per-tile prediction time
+* post-processing / NMS time
+* result serialization
+* Core ML compute-unit metadata where the runtime can provide it
+* direct ``coremltools`` prediction timing when the Core ML path exposes it
+
+The summary also records warm-up timing separately so the first image does not contaminate the
+timed average.
+
+How to read the output
+----------------------
+
+The human table is for people. It shows mean milliseconds per image, relative speedup, and parity
+against the PyTorch CPU baseline.
+
+The JSON summary is for automation. It is intended for downstream analysis, pipeline diagnostics,
+and future agentic tuning. The machine-readable form is useful when Scoutbot is part of a broader
+pipeline and the benchmark result needs to be consumed without scraping terminal output.
+
+The Core ML run still reflects the real serial tile path, so it should not be read as a clean
+hardware throughput benchmark. Earlier M1 / M4 wall-clock numbers were too close because they
+included this dispatch overhead. The structured summary exists so future investigations can see
+which phase is actually expensive instead of guessing from one aggregate number.
+
+Compute-unit observability
+--------------------------
+
+The benchmark phase-total output now surfaces Core ML compute-unit metadata when the runtime
+provides it. The suffix on each phase-total line takes one of three forms:
+
+* **Non-Core ML variants** (``pt-cpu``, ``pt-mps``): no suffix. Compute-unit fields are not
+  applicable and are omitted entirely so the line stays uncluttered::
+
+      pt-cpu   tiles=128 invocations=2
+
+* **Core ML variant with known actual**: both fields are printed::
+
+      coreml   tiles=128 invocations=2 requested=cpu_and_ne actual=cpu_and_ne
+
+* **Core ML variant where actual cannot be determined**: the requested value is shown and
+  ``actual`` is rendered as ``null`` (not ``unknown``) to make the absence explicit::
+
+      coreml   tiles=128 invocations=2 requested=cpu_and_ne actual=null
+
+The ``requested`` value is the compute-unit hint passed to Core ML at model load time.
+The ``actual`` value is read back from the runtime after inference; ``null`` means the
+runtime did not expose this information for that invocation, not that inference failed.
+
+When ``actual=null`` appears, confirm ANE engagement via Activity Monitor's *Neural Engine*
+column (0% means the model fell back to CPU/GPU), or investigate whether the ``coremltools``
+version exposes the compute-unit readback API for the installed runtime.
+
+What remains deferred
+---------------------
+
+The current benchmark does not try to measure every possible optimization. The following remain
+follow-up work:
+
 * concurrent or batched tile inference experiments
+* direct hardware counters for ANE utilization
 
 Observability Follow-up
 -----------------------
 
-The next investigation should add structured benchmark phase timings before claiming
-hardware-specific Core ML throughput. The planned observability spec is tracked in
-:doc:`roadmap`.
+The next investigation is tracked in :doc:`roadmap`. The benchmark now emits structured phase
+timings and a machine-readable summary, so the follow-up can focus on explaining the remaining
+overhead instead of inferring it from a single opaque wall-clock number.

@@ -3,7 +3,9 @@
 
 import importlib.util
 import sys
+import warnings
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -80,3 +82,180 @@ class TestValidateImages:
 
         message = str(exc_info.value)
         assert '3' in message
+
+
+def test_aggregate_events_sums_phases_and_unattributed():
+    bench = _load_benchmark()
+
+    summary = bench.aggregate_events(
+        [
+            {'name': 'slice_generation', 'duration_ns': 10},
+            {'name': 'per_tile_prediction', 'duration_ns': 20},
+            {'name': 'per_tile_prediction', 'duration_ns': 5},
+        ],
+        total_wall_ns=40,
+    )
+
+    assert summary['phase_totals_ns']['slice_generation'] == 10
+    assert summary['phase_totals_ns']['per_tile_prediction'] == 25
+    assert summary['unattributed_ns'] == 5
+
+
+def test_parse_jsonl_event_stream_round_trips(tmp_path):
+    bench = _load_benchmark()
+    path = tmp_path / 'events.jsonl'
+    path.write_text(
+        '{"name": "pipeline", "duration_ns": 10}\n{"name": "fetch", "duration_ns": 20}\n'
+    )
+
+    events = bench.read_event_stream(path)
+
+    assert events == [
+        {'name': 'pipeline', 'duration_ns': 10},
+        {'name': 'fetch', 'duration_ns': 20},
+    ]
+
+
+def test_missing_coremltools_is_skipped_once_at_startup(tmp_path, capsys):
+    bench = _load_benchmark()
+
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    run_calls = []
+
+    def _run_variant(config, device, images):
+        run_calls.append((config, device))
+        if config.endswith('coreml'):
+            raise ModuleNotFoundError("No module named 'coremltools'")
+        return (
+            1.0,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 0,
+                'tile_count': 0,
+                'compute_units_requested': None,
+                'compute_units_actual': None,
+            },
+        )
+
+    with (
+        patch.object(bench, '_run_variant', side_effect=_run_variant),
+        patch('importlib.util.find_spec', return_value=None),
+    ):
+        bench.main(['--images', str(tmp_path)])
+
+    captured = capsys.readouterr()
+    assert run_calls == [
+        ('v3', 'cpu'),
+        ('v3', 'mps'),
+        ('v3-cls', 'cpu'),
+        ('v3-cls', 'mps'),
+    ]
+    assert captured.out.count('coremltools not installed') == 1
+    assert 'ModuleNotFoundError' not in captured.out
+    assert '  coreml ' not in captured.out
+
+
+def test_aggregate_events_collects_compute_units_from_events():
+    """aggregate_events() must propagate compute_units_* fields from the event stream
+    into the summary dict.
+    """
+    bench = _load_benchmark()
+
+    events = [
+        {
+            'name': 'fetch',
+            'duration_ns': 1_000_000,
+            'compute_units_requested': 'cpu_and_ne',
+        },
+        {
+            'name': 'perform_inference',
+            'duration_ns': 5_000_000,
+            'tile_count': 4,
+            'compute_units_actual': 'cpu_and_gpu',
+        },
+    ]
+
+    summary = bench.aggregate_events(events, total_wall_ns=10_000_000)
+
+    assert summary['compute_units_requested'] == 'cpu_and_ne'
+    assert summary['compute_units_actual'] == 'cpu_and_gpu'
+
+
+def test_benchmark_family_renders_null_for_none_compute_units_actual(tmp_path, capsys):
+    """benchmark_family() must print `actual=null` when compute_units_actual is None."""
+    bench = _load_benchmark()
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    def _run_variant_with_none_actual(config, device, images):
+        return (
+            10.0,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 2,
+                'tile_count': 8,
+                'compute_units_requested': 'cpu_and_ne',
+                'compute_units_actual': None,
+            },
+        )
+
+    with patch.object(bench, '_run_variant', side_effect=_run_variant_with_none_actual):
+        bench.benchmark_family('onecls', 'v3', 'v3-coreml', [image, image])
+
+    captured = capsys.readouterr()
+    assert 'actual=null' in captured.out, (
+        f'Expected "actual=null" in benchmark output; got:\n{captured.out}'
+    )
+
+
+def test_benchmark_family_suppresses_known_third_party_noise(tmp_path, capsys):
+    bench = _load_benchmark()
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    def _noisy_run_variant(config, device, images):
+        warnings.warn(
+            "'has_mps' is deprecated, please use 'torch.backends.mps.is_built()'",
+            UserWarning,
+        )
+        warnings.warn(
+            '[coremltools] Torch version X.Y.Z has not been tested with coremltools',
+            UserWarning,
+        )
+        warnings.warn(
+            'SyntaxWarning: invalid escape sequence "\\_"',
+            SyntaxWarning,
+        )
+        print('Loading example.mlpackage for CoreML inference...')
+        return (
+            12.3,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 0,
+                'tile_count': 0,
+                'compute_units_requested': None,
+                'compute_units_actual': None,
+            },
+        )
+
+    with patch.object(bench, '_run_variant', side_effect=_noisy_run_variant):
+        bench.benchmark_family('cls', 'v3-cls', 'v3-cls-coreml', [image])
+
+    captured = capsys.readouterr()
+    assert 'Loading example.mlpackage for CoreML inference...' not in captured.out
+    assert "'has_mps' is deprecated" not in captured.out
+    assert 'has not been tested with coremltools' not in captured.out
+    assert 'invalid escape sequence' not in captured.out
+    assert '=== Family: cls  (v3-cls vs v3-cls-coreml) ===' in captured.out
+    assert 'Images: 1 (first is warm-up, excluded from timing)' in captured.out

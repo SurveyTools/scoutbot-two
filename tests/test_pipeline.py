@@ -121,6 +121,10 @@ def _fake_sahi_result(predictions):
     return mock_result
 
 
+def _empty_sahi_result():
+    return _fake_sahi_result([])
+
+
 class TestPipelineUnit:
     """Unit tests for scoutbot.pipeline() using mocked SAHI — no model or network."""
 
@@ -207,3 +211,88 @@ class TestPipelineUnit:
             scoutbot.pipeline(str(fake_img), config=None)
 
         mock_fetch.assert_called_once_with(config='v3')
+
+    def test_pipeline_emits_observability_event_and_forwards_observer(self, tmp_path):
+        import scoutbot
+        from scoutbot._observability import list_observer
+
+        fake_img = tmp_path / 'observed.jpg'
+        fake_img.write_bytes(b'fake')
+        fake_result = _fake_sahi_result([(0.5, 'animal', [1.0, 2.0, 3.0, 4.0])])
+        observer_events = []
+        observer = list_observer(observer_events)
+
+        mock_model = MagicMock()
+        mock_model.model_path = '/fake/model.pt'
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
+            patch(
+                'scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model
+            ) as MockModel,
+            patch('sahi.predict.get_sliced_prediction', return_value=fake_result),
+        ):
+            scoutbot.pipeline(str(fake_img), config='v3', observer=observer)
+
+        mock_fetch.assert_called_once_with(config='v3', observer=observer)
+        MockModel.assert_called_once_with(
+            model_path='/fake/model.pt',
+            confidence_threshold=0.45,
+            device='cuda:0',
+            observer=observer,
+        )
+
+        pipeline_events = [
+            event for event in observer_events if event['name'] == 'pipeline'
+        ]
+        assert pipeline_events, 'pipeline() must emit an observability event'
+        event = pipeline_events[0]
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
+            assert key in event
+        assert event['filepath'] == str(fake_img)
+        assert event['config'] == 'v3'
+
+    def test_pipeline_emits_observer_events(self, tmp_path):
+        import scoutbot
+
+        fake_img = tmp_path / 'observer.jpg'
+        fake_img.write_bytes(b'fake')
+        events = []
+
+        class Collector:
+            def emit(self, event):
+                events.append(event)
+
+        with (
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch(
+                'sahi.predict.get_sliced_prediction', return_value=_empty_sahi_result()
+            ),
+        ):
+            scoutbot.pipeline(
+                str(fake_img),
+                config='v3',
+                observer=Collector(),
+                batched_detection_model=object(),
+            )
+
+        assert events
+        event = events[0]
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
+            assert key in event

@@ -7,14 +7,14 @@ Lightweight tracking for deferred work. Status values are ``planned``,
 Current priorities
 ------------------
 
-1. **Performance observability and benchmark hardening** -- the Core ML timings are still too
-   close across machines, so the next step is to instrument the pipeline and separate real model
-   cost from preprocessing and dispatch overhead.
-2. **Release and distribution** -- define the release/tagging checklist, resolve the Python 3.13
+1. **Release and distribution** -- define the release/tagging checklist, resolve the Python 3.13
    ceiling, and plan package distribution carefully. PyPI publishing is likely deferred until the
    old project namespace and ownership are clarified.
-3. **Quality and compatibility** -- finish the quality workflow hardening, add dependency-currency
+2. **Quality and compatibility** -- finish the quality workflow hardening, add dependency-currency
    policy, and expand platform coverage beyond the current macOS-focused Core ML work.
+3. **Core ML / performance investigations** -- now that the runtime hooks and structured benchmark
+   are in place, use them to explain the remaining M1 / M4 gap and decide what further diagnostics
+   are worth keeping.
 
 Release and distribution
 ------------------------
@@ -84,25 +84,25 @@ track upstream.
 Benchmark hardening
 -------------------
 
-**Status:** planned
+**Status:** done
 
-Two output cleanliness issues need to be fixed in ``benchmarks/benchmark_coreml.py``.
+``benchmarks/benchmark_coreml.py`` now emits structured phase timings, a JSON summary option,
+clean skip handling when a variant cannot run, and benchmark-side suppression for the known
+third-party warning / log noise described below.
 
 Missing ``coremltools`` is not clean
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When ``coremltools`` is not installed, each family block prints an inline
-``SKIPPED: ModuleNotFoundError: No module named 'coremltools'`` row mixed into
-the results table. The benchmark should detect the missing module once at
-startup, print a single clear message such as ``coreml variant skipped:
-coremltools not installed -- run: uv sync --extra coreml``, and omit the Core ML
-column from the results table entirely.
+When ``coremltools`` is not installed, the benchmark now detects the missing
+module once at startup, prints a single clear message such as ``coreml variant
+skipped: coremltools not installed -- run: uv sync --extra coreml``, and omits
+the Core ML column from the results table entirely.
 
 Third-party noise in output
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Several noisy lines appear during benchmark runs regardless of ``coremltools``
-installation:
+The benchmark now suppresses the known noisy lines that appeared during runs
+regardless of ``coremltools`` installation:
 
 * **SAHI deprecation warning** -- ``sahi/utils/torch_utils.py:80: UserWarning:
   'has_mps' is deprecated, please use 'torch.backends.mps.is_built()'`` appears
@@ -195,26 +195,38 @@ Remaining uncovered lines (all intentional or deferred):
 Core ML / performance investigations
 ------------------------------------
 
-**Status:** planned
+**Status:** in-progress
 
 **Reference:** ``docs/coreml.rst`` (benchmark caveats)
 
-* Break out slicing, per-tile prediction, post-processing, and Core ML dispatch
-  overhead in the benchmark
-* Investigate parallel or batched tile inference for the Core ML path
-* Confirm ANE engagement via Activity Monitor / ``coremltools`` compute-unit API
-* M4 follow-up benchmark once pipeline overhead is reduced
+The structured benchmark makes the remaining work explicit:
+
+* break out slicing, per-tile prediction, post-processing, and Core ML dispatch overhead in the
+  benchmark summaries
+* investigate parallel or batched tile inference for the Core ML path
+* run the M4 follow-up benchmark once the pipeline overhead is better understood
+
+Core ML compute-unit metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** done
+
+The benchmark now emits ``compute_units_requested`` and ``compute_units_actual`` in the
+phase-total summary for Core ML variants. When the runtime does not expose the actual value,
+the benchmark renders ``actual=null`` (not ``actual=unknown``) so the absence is explicit.
+Non-Core ML variants omit the compute-unit suffix entirely. See :doc:`performance` for output
+format details and :doc:`coreml` for field semantics.
 
 Performance observability spec
 ------------------------------
 
-**Status:** planned
+**Status:** done
 
-The next performance investigation should specify structured benchmark observability before making
-hardware-specific throughput claims. The spec should define phase timings for image discovery,
-decode/load, slicing, per-tile model invocation count, per-tile model wall time, post-processing,
-serialization, Core ML compute-unit selection, direct ``coremltools`` prediction timing, and
-concurrent or batched tile inference experiments.
+**Reference:** ``docs/superpowers/specs/2026-07-02-performance-observability-spec.md``
+
+The structured observability model is now implemented in the runtime and benchmark. The spec
+remains the canonical description of the event shape and the diagnostics the benchmark should
+surface when Core ML work continues.
 
 Model registry / model integration
 ----------------------------------
@@ -227,6 +239,29 @@ Future model integration work should provide a registry mechanism for model upda
 integrations. Until that is mature, model configs remain internal implementation details in
 ``scoutbot/loc/__init__.py`` and new model work should include artifact provenance, integrity
 verification, config schema tests, CLI choice tests, and output compatibility checks.
+
+Model registry evolution / model-family lineage
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+The current registry plan should be treated as the first offline-first implementation step, not the
+final registry contract. The longer-term design work belongs in the sibling ``pipeline-design``
+project, where ``stage-3-ai-detection.md`` and ``schema-family.md`` already frame
+``model_registry.json`` as survey-level infrastructure and leave the survey-level versus run-level
+boundary open for refinement.
+
+Future registry work should define how the registry represents:
+
+* model families and canonical family identifiers
+* parent/child relationships between base models and fine-tuned variants
+* versioned aliases for the same family across training or export iterations
+* compatibility metadata for Stage 3 consumers and pipeline integrations
+* the split between survey-level registry facts and per-run provenance in detection outputs
+
+The current ScoutBot registry plan should continue to focus on offline fetch, local provenance, and
+CLI plumbing. The richer family/lineage contract should be designed as a follow-on spec so future
+model integrations can grow without reworking the registry format from scratch.
 
 Community contribution docs
 ---------------------------

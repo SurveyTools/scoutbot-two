@@ -1,0 +1,71 @@
+"""Tests for benchmark CLI observability behavior."""
+
+from unittest.mock import patch
+
+
+def test_benchmark_family_renders_null_for_none_compute_units_requested(tmp_path, capsys):
+    """When both fields are None (PT variant), no compute-unit suffix must appear in
+    the output.  When req is None the suffix is omitted entirely.
+    """
+    import benchmark_coreml
+
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    def _run_variant(config, device, images):
+        return (
+            8.0,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 1,
+                'tile_count': 4,
+                # Both fields None — simulates a PT run (no Core ML compute-unit metadata).
+                'compute_units_requested': None,
+                'compute_units_actual': None,
+            },
+        )
+
+    with patch.object(benchmark_coreml, '_run_variant', side_effect=_run_variant):
+        benchmark_coreml.benchmark_family('onecls', 'v3', 'v3-coreml', [image, image])
+
+    captured = capsys.readouterr()
+    assert 'requested=' not in captured.out, (
+        f'Expected no "requested=" suffix in benchmark output for PT variant; got:\n{captured.out}'
+    )
+
+
+def test_missing_coremltools_is_reported_once(tmp_path, capsys):
+    import benchmark_coreml
+
+    image = tmp_path / 'image.jpg'
+    image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
+
+    def _run_variant(config, device, images):
+        return (
+            1.0,
+            {str(image): []},
+            {
+                'phase_totals_ns': {},
+                'phase_counts': {},
+                'unattributed_ns': 0,
+                'model_invocations': 0,
+                'tile_count': 0,
+                'compute_units_requested': None,
+                'compute_units_actual': None,
+            },
+        )
+
+    with (
+        patch.object(benchmark_coreml, '_run_variant', side_effect=_run_variant),
+        patch('importlib.util.find_spec', return_value=None),
+    ):
+        benchmark_coreml.main(['--family', 'onecls', '--images', str(tmp_path)])
+
+    captured = capsys.readouterr()
+    # main() prints 'coreml variant skipped: coremltools not installed' (lowercase)
+    # before calling benchmark_family(); the coreml row never reaches the results table.
+    assert 'coremltools not installed' in captured.out
+    assert 'Traceback' not in captured.out
