@@ -9,8 +9,7 @@ YOLOv8-based machine learning pipeline for detecting and localising wildlife in 
 
 Scoutbot-2026 is a continuation of the work started in the original
 [WildMeOrg/scoutbot](https://github.com/WildMeOrg/scoutbot) repository. Scoutbot was originally
-developed for the [Scout](https://github.com/WildMeOrg/scout) project by the Wild Me team, now
-part of Conservation X Labs, and was funded by the Paul G. Allen Family Foundation.
+developed for the [Scout](https://github.com/WildMeOrg/scout) project by the Wild Me team of Conservation X Labs, and was originally funded by the Paul G. Allen Family Foundation.
 
 ## Quick Start
 
