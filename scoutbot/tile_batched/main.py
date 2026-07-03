@@ -22,21 +22,17 @@ def _coreml_input_size(model_path) -> int:
 
 
 def _resolve_compute_units_actual(model_path) -> 'str | None':
-    """Probe the compute-unit target compiled into a Core ML model.
+    """Probe the actual compute units used by a loaded Core ML model.
 
-    Reads ``compute_unit`` from the loaded ``MLModel``. This reflects the
-    target specified at export time, not an empirically measured hardware path.
-    Returns ``None`` on any failure.
+    coremltools does not expose which physical hardware (ANE, GPU, or CPU)
+    executed a given prediction — ``MLModel.compute_unit`` returns the loading
+    parameter, not a runtime measurement.  This function therefore always
+    returns ``None`` so the benchmark prints ``actual=null`` rather than
+    echoing the requested value.  The function signature and call site are
+    retained so a future coremltools release that adds a real runtime query
+    can be dropped in here without touching callers.
     """
-    try:
-        import coremltools as ct
-
-        compute_unit = ct.models.MLModel(str(model_path)).compute_unit
-        if compute_unit is None:
-            return None
-        return compute_unit.name.lower()
-    except Exception:
-        return None
+    return None
 
 
 class Yolov8DetectionModel(_Base):

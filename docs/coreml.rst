@@ -106,18 +106,19 @@ Each inference event can carry two compute-unit fields:
    for; it is always known for Core ML variants and ``None`` for plain PyTorch variants.
 
 ``compute_units_actual``
-   The compute units the Core ML runtime actually used for a given prediction. This value is
-   read back from the runtime after inference. When the runtime does not expose this
-   information (or the information is unavailable for a given invocation), the field is
-   ``None``, and the benchmark renders it as ``null`` rather than ``unknown``.
+   The physical hardware that executed inference, as reported by the Core ML runtime.
+   Currently always ``null``: coremltools does not expose a public API to query which
+   hardware unit (ANE, GPU, or CPU) ran a given prediction — ``MLModel.compute_unit``
+   returns the loading parameter, not a runtime measurement. The field and the call site
+   are retained so a future coremltools release that adds a real runtime query can be
+   wired in without touching callers. For now the benchmark renders it as ``actual=null``.
 
-   Note that ``compute_units_actual`` reflects the compute-unit target compiled into the model
-   (e.g. ``all``), not a direct measurement of which hardware (ANE, GPU, or CPU) executed the
-   inference. For ANE engagement confirmation, use Activity Monitor's Neural Engine column.
+   To confirm ANE engagement in practice, watch Activity Monitor's Neural Engine column
+   while the benchmark runs: non-zero Neural Engine % indicates ANE utilisation.
 
-The distinction matters when diagnosing ANE engagement: ``requested=cpu_and_ne`` with
-``actual=null`` means the runtime accepted the model but did not report which hardware unit
-ran it, whereas ``actual=cpu_and_gpu`` means the ANE was not used despite the hint.
+The distinction matters when diagnosing performance: ``requested=all actual=null`` is the
+expected output on current Apple Silicon — it means Core ML selected the best available
+hardware but the runtime did not report which unit won.
 
 The benchmark aggregates these fields across all timed inference events. If every event
 reports the same value the summary collapses to a single scalar; if values differ across
