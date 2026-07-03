@@ -19,7 +19,7 @@ or similar tools directly.
 Python support
 --------------
 
-ScoutBot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
+Scoutbot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
 ``>=3.10,<3.13``.
 
 Local setup
@@ -108,6 +108,9 @@ Install docs dependencies and build Sphinx:
 
    uv sync --extra docs
    uv run sphinx-build -M html docs docs/build
+
+GitHub Pages is the canonical hosted docs site. Route readers to rendered HTML and keep local
+Sphinx builds as a maintainer path.
 
 Documentation pass
 ------------------

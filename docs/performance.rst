@@ -2,7 +2,7 @@ Performance
 ===========
 
 This page covers benchmark interpretation, known bottlenecks, and planned observability work for
-ScoutBot performance investigations.
+Scoutbot performance investigations.
 
 Core ML benchmark
 -----------------

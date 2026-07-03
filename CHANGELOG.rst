@@ -15,6 +15,8 @@ Unreleased
 * Applied Ruff formatting and lint fixes as part of the quality-tool migration.
 * Removed the stale CodeQL workflow and documented the replacement quality gates:
   ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
+* Published rendered docs to GitHub Pages and retired Read the Docs so the README routes
+  readers to HTML instead of raw ``.rst`` sources.
 * Raised declared Python support to ``>=3.10,<3.13``.
 * Reorganized documentation around reader roles, with separate installation, usage,
   configuration, model, performance, development, security, roadmap, API, and CLI pages.

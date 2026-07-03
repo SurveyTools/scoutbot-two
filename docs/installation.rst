@@ -1,18 +1,18 @@
 Installation
 ============
 
-ScoutBot supports direct local runs, contributor development, Windows CUDA workstations, and
+Scoutbot supports direct local runs, contributor development, Windows CUDA workstations, and
 Apple Silicon Core ML runs.
 
 Python support
 --------------
 
-ScoutBot currently supports Python 3.10, 3.11, and 3.12.
+Scoutbot currently supports Python 3.10, 3.11, and 3.12.
 
 Direct local install
 --------------------
 
-Use this when you want to run ScoutBot directly from a clone:
+Use this when you want to run Scoutbot directly from a clone:
 
 .. code-block:: bash
 
@@ -78,7 +78,7 @@ Windows with NVIDIA GPU
 -----------------------
 
 The default install may pull in a CPU-only PyTorch build on Windows. For NVIDIA GPU use, replace
-that build with the CUDA wheel after installing ScoutBot:
+that build with the CUDA wheel after installing Scoutbot:
 
 .. code-block:: powershell
 
@@ -117,4 +117,3 @@ For low-VRAM GPUs, reduce the tile batch size:
 
    $env:DETECTOR_BATCH_SIZE = "16"
    uv run scoutbot batch @imgs --output results.json
-

@@ -1,9 +1,16 @@
-# Wild Me ScoutBot
+# Scoutbot
 
 [![Tests](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/testing.yml/badge.svg?branch=main)](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/testing.yml)
 [![Quality](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/quality.yml/badge.svg?branch=main)](https://github.com/SurveyTools/scoutbot-2026/actions/workflows/quality.yml)
 
 YOLOv8-based machine learning pipeline for detecting and localising wildlife in aerial survey imagery.
+
+## Acknowledgement
+
+Scoutbot-2026 is a continuation of the work started in the original
+[WildMeOrg/scoutbot](https://github.com/WildMeOrg/scoutbot) repository. Scoutbot was originally
+developed for the [Scout](https://github.com/WildMeOrg/scout) project by the Wild Me team, now
+part of Conservation X Labs, and was funded by the Paul G. Allen Family Foundation.
 
 ## Quick Start
 
@@ -16,17 +23,17 @@ uv run scoutbot fetch --config v3
 uv run scoutbot pipeline /path/to/image.jpg --config v3 --device mps
 ```
 
-ScoutBot downloads models on first use and caches them in `~/.cache/scoutbot/`.
+Scoutbot downloads models on first use and caches them in `~/.cache/scoutbot/`.
 
 ## Where to Go Next
 
 | I want to... | Start here |
 |---|---|
-| Run ScoutBot directly on images | [Installation](docs/installation.rst), [Usage](docs/usage.rst), [Configuration](docs/configuration.rst) |
-| Integrate ScoutBot into a larger pipeline | [Usage](docs/usage.rst), [API reference](docs/api.rst), [CLI reference](docs/cli.rst) |
-| Understand outputs and analysis limits | [Usage](docs/usage.rst), [Configuration](docs/configuration.rst), [Performance](docs/performance.rst) |
-| Contribute code or prepare releases | [Development](docs/development.rst), [Roadmap](docs/roadmap.rst), [Changelog](CHANGELOG.rst) |
-| Add models or investigate performance | [Models](docs/models.rst), [Core ML](docs/coreml.rst), [Performance](docs/performance.rst), [Roadmap](docs/roadmap.rst) |
+| Run Scoutbot directly on images | [Scoutbot docs](https://surveytools.github.io/scoutbot-2026/), [Installation](https://surveytools.github.io/scoutbot-2026/installation.html), [Usage](https://surveytools.github.io/scoutbot-2026/usage.html), [Configuration](https://surveytools.github.io/scoutbot-2026/configuration.html) |
+| Integrate Scoutbot into a larger pipeline | [Usage](https://surveytools.github.io/scoutbot-2026/usage.html), [API reference](https://surveytools.github.io/scoutbot-2026/api.html), [CLI reference](https://surveytools.github.io/scoutbot-2026/cli.html) |
+| Understand outputs and analysis limits | [Usage](https://surveytools.github.io/scoutbot-2026/usage.html), [Configuration](https://surveytools.github.io/scoutbot-2026/configuration.html), [Performance](https://surveytools.github.io/scoutbot-2026/performance.html) |
+| Contribute code or prepare releases | [Development](https://surveytools.github.io/scoutbot-2026/development.html), [Roadmap](https://surveytools.github.io/scoutbot-2026/roadmap.html), [Changelog](https://surveytools.github.io/scoutbot-2026/changelog.html) |
+| Add models or investigate performance | [Models](https://surveytools.github.io/scoutbot-2026/models.html), [Core ML](https://surveytools.github.io/scoutbot-2026/coreml.html), [Performance](https://surveytools.github.io/scoutbot-2026/performance.html), [Roadmap](https://surveytools.github.io/scoutbot-2026/roadmap.html) |
 
 ## Core ML on Apple Silicon
 
@@ -38,9 +45,11 @@ uv run scoutbot pipeline image.jpg --config v3-coreml
 ```
 
 The `.mlpackage` bundle is exported on first use and cached at `~/.cache/scoutbot/`.
-See [Core ML](docs/coreml.rst) and [Performance](docs/performance.rst) for backend details and benchmark caveats.
+See [Core ML](https://surveytools.github.io/scoutbot-2026/coreml.html) and [Performance](https://surveytools.github.io/scoutbot-2026/performance.html) for backend details and benchmark caveats.
 
 ## Documentation
+
+Read the rendered Scoutbot docs at https://surveytools.github.io/scoutbot-2026/.
 
 Build the Sphinx docs locally:
 
@@ -63,4 +72,4 @@ uv run ruff check .
 uv run mypy scoutbot
 ```
 
-See [Development](docs/development.rst) for the full contributor workflow.
+See [Development](https://surveytools.github.io/scoutbot-2026/development.html) for the full contributor workflow.

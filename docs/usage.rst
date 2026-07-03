@@ -1,7 +1,7 @@
 Usage
 =====
 
-ScoutBot can be run from the command line or imported as a Python package. Commands accept the
+Scoutbot can be run from the command line or imported as a Python package. Commands accept the
 same model configs documented in :doc:`configuration`.
 
 Single image
@@ -137,4 +137,3 @@ returned. Reviewers should pay special attention to:
 * detections close to the confidence threshold
 * duplicate or merged boxes near tile boundaries
 * class-label uncertainty when using multi-class configs
-

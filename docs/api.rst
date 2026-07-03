@@ -1,7 +1,7 @@
-ScoutBot API
+Scoutbot API
 ============
 
-ScoutBot is the machine learning interface for the Wild Me Scout project.  This page specifies
+Scoutbot is the machine learning interface for the Scout project.  This page specifies
 the Python API to interact with all of the algorithms and machine learning models that have been
 pretrained for inference in a production environment.
 
