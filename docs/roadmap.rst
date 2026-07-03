@@ -53,11 +53,19 @@ Release-note hygiene should include a short pre-tag check that the changelog ent
 Python interpreter readiness
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The public release path should treat Python 3.13 as the supported next target and document a
-separate readiness assessment for Python 3.14. That assessment should note what would need to
-change in the test matrix, dependency constraints, and packaging metadata before 3.14 support is
-promoted from awareness to active support. 3.14 does not need to be supported now, but it should be
-explicitly tracked so the next bump is deliberate rather than reactive.
+The public release path should treat Python 3.13 as the supported target now. Python 3.14 remains
+awareness-only until a later readiness review says otherwise.
+
+Python 3.14 readiness checklist:
+
+* expand the CI/test matrix to include 3.14
+* update packaging metadata once the interpreter bump is real
+* confirm dependency compatibility for the packages most likely to lag first:
+  ``torch``, ``ultralytics``, ``sahi``, and ``coremltools``
+* rerun the dependency-stub / type-check pass after the matrix and metadata are ready
+
+3.14 does not need to be supported now, but it should be explicitly tracked so the next bump is
+deliberate rather than reactive.
 
 Compatibility and platform support
 -----------------------------------
