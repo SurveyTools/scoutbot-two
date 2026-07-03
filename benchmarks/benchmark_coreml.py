@@ -189,6 +189,11 @@ def _run_variant(config, device, images):
     mean_ms = sum(timings) / len(timings) if timings else float('nan')
     total_wall_ns = sum(int(round(ms * 1_000_000)) for ms in timings)
     summary = aggregate_events(timed_events, total_wall_ns=total_wall_ns)
+    # fetch() (which carries compute_units_requested) fires before the timing loop
+    # and is never in timed_events; pull it from the full event stream.
+    if summary['compute_units_requested'] is None:
+        _init_summary = aggregate_events(events, total_wall_ns=0)
+        summary['compute_units_requested'] = _init_summary['compute_units_requested']
     summary['warmup_images'] = 1 if len(images) > 0 else 0
     summary['timed_images'] = max(len(images) - 1, 0)
     summary['warmup_wall_ns'] = warmup_ns

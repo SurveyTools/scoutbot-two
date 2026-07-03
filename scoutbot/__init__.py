@@ -180,7 +180,9 @@ def pipeline(
                 'config': config,
                 'filepath': filepath,
                 'backend': 'coreml'
-                if str(getattr(batched_detection_model, 'model_path', '')).endswith('.mlpackage')
+                if str(getattr(batched_detection_model, 'model_path', '')).endswith(
+                    '.mlpackage'
+                )
                 else 'pt',
                 'device': backend_device,
                 'detections': len(detects),
@@ -200,7 +202,11 @@ def pipeline(
                 'duration_ns': ended_ns - started_ns,
                 'config': config,
                 'filepath': filepath,
-                'backend': 'coreml' if str(getattr(batched_detection_model, 'model_path', '')).endswith('.mlpackage') else 'pt',
+                'backend': 'coreml'
+                if str(getattr(batched_detection_model, 'model_path', '')).endswith(
+                    '.mlpackage'
+                )
+                else 'pt',
                 'device': backend_device,
                 'error_type': type(exc).__name__,
             },

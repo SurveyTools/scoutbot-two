@@ -5,12 +5,7 @@ from unittest.mock import patch
 
 def test_benchmark_family_renders_null_for_none_compute_units_requested(tmp_path, capsys):
     """When both fields are None (PT variant), no compute-unit suffix must appear in
-    the output.
-
-    Per the plan spec: when req is None the suffix is empty — nothing is printed.
-    Fails today because the rendering code uses `req or "unknown"` which maps
-    None → "unknown" and still emits a `requested=` suffix. Task 3 must change this
-    so that the suffix is omitted entirely when req is None.
+    the output.  When req is None the suffix is omitted entirely.
     """
     import benchmark_coreml
 
@@ -27,7 +22,7 @@ def test_benchmark_family_renders_null_for_none_compute_units_requested(tmp_path
                 'unattributed_ns': 0,
                 'model_invocations': 1,
                 'tile_count': 4,
-                # Both fields None — simulates a PT run before Task 2 emits them.
+                # Both fields None — simulates a PT run (no Core ML compute-unit metadata).
                 'compute_units_requested': None,
                 'compute_units_actual': None,
             },
@@ -37,9 +32,6 @@ def test_benchmark_family_renders_null_for_none_compute_units_requested(tmp_path
         benchmark_coreml.benchmark_family('onecls', 'v3', 'v3-coreml', [image, image])
 
     captured = capsys.readouterr()
-    # Fails today: the code prints `requested=unknown` (req is None → "unknown"),
-    # so `requested=` appears in the output. Task 3 must eliminate the suffix entirely
-    # when req is None, making this assertion pass.
     assert 'requested=' not in captured.out, (
         f'Expected no "requested=" suffix in benchmark output for PT variant; got:\n{captured.out}'
     )

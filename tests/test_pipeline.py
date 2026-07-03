@@ -227,7 +227,9 @@ class TestPipelineUnit:
 
         with (
             patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
-            patch('scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model) as MockModel,
+            patch(
+                'scoutbot.tile_batched.Yolov8DetectionModel', return_value=mock_model
+            ) as MockModel,
             patch('sahi.predict.get_sliced_prediction', return_value=fake_result),
         ):
             scoutbot.pipeline(str(fake_img), config='v3', observer=observer)
@@ -240,10 +242,20 @@ class TestPipelineUnit:
             observer=observer,
         )
 
-        pipeline_events = [event for event in observer_events if event['name'] == 'pipeline']
+        pipeline_events = [
+            event for event in observer_events if event['name'] == 'pipeline'
+        ]
         assert pipeline_events, 'pipeline() must emit an observability event'
         event = pipeline_events[0]
-        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
             assert key in event
         assert event['filepath'] == str(fake_img)
         assert event['config'] == 'v3'
@@ -261,7 +273,9 @@ class TestPipelineUnit:
 
         with (
             patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
-            patch('sahi.predict.get_sliced_prediction', return_value=_empty_sahi_result()),
+            patch(
+                'sahi.predict.get_sliced_prediction', return_value=_empty_sahi_result()
+            ),
         ):
             scoutbot.pipeline(
                 str(fake_img),

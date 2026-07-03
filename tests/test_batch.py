@@ -80,7 +80,9 @@ class TestBatch:
             ),
             patch('scoutbot.pipeline', return_value=(0.5, [])) as mock_pipeline,
         ):
-            scoutbot.batch([sample_image], config='v3', show_progress=False, observer=observer)
+            scoutbot.batch(
+                [sample_image], config='v3', show_progress=False, observer=observer
+            )
 
         mock_fetch.assert_called_once_with(config='v3', observer=observer)
         mock_pipeline.assert_called_once()
@@ -89,7 +91,15 @@ class TestBatch:
         batch_events = [event for event in observer_events if event['name'] == 'batch']
         assert batch_events, 'batch() must emit an observability event'
         event = batch_events[0]
-        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
             assert key in event
 
 
@@ -261,10 +271,20 @@ class TestBatchResumable:
         mock_fetch.assert_called_once_with(config='v3', observer=observer)
         assert mock_pipeline.call_args.kwargs['observer'] == observer
 
-        events = [event for event in observer_events if event['name'] == 'batch_resumable']
+        events = [
+            event for event in observer_events if event['name'] == 'batch_resumable'
+        ]
         assert events, 'batch_resumable() must emit an observability event'
         event = events[0]
-        for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'config', 'backend', 'device'):
+        for key in (
+            'name',
+            'started_ns',
+            'ended_ns',
+            'duration_ns',
+            'config',
+            'backend',
+            'device',
+        ):
             assert key in event
 
 
@@ -543,7 +563,9 @@ class TestBatchUnit:
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', side_effect=_fake_pipeline),
         ):
-            scoutbot.batch(fake_imgs, config='v3', show_progress=False, observer=Collector())
+            scoutbot.batch(
+                fake_imgs, config='v3', show_progress=False, observer=Collector()
+            )
 
         names = [event['name'] for event in events]
         assert 'batch' in names
@@ -768,7 +790,6 @@ class TestExampleSlow:
 
     def test_example_runs_without_error(self):
         import scoutbot
-        from unittest.mock import MagicMock, patch
 
         fake_response = MagicMock()
         fake_response.iter_content.return_value = [b'fake-image-bytes']

@@ -111,6 +111,10 @@ Each inference event can carry two compute-unit fields:
    information (or the information is unavailable for a given invocation), the field is
    ``None``, and the benchmark renders it as ``null`` rather than ``unknown``.
 
+   Note that ``compute_units_actual`` reflects the compute-unit target compiled into the model
+   (e.g. ``all``), not a direct measurement of which hardware (ANE, GPU, or CPU) executed the
+   inference. For ANE engagement confirmation, use Activity Monitor's Neural Engine column.
+
 The distinction matters when diagnosing ANE engagement: ``requested=cpu_and_ne`` with
 ``actual=null`` means the runtime accepted the model but did not report which hardware unit
 ran it, whereas ``actual=cpu_and_gpu`` means the ANE was not used despite the hint.

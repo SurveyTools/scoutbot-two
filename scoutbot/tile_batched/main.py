@@ -22,12 +22,11 @@ def _coreml_input_size(model_path) -> int:
 
 
 def _resolve_compute_units_actual(model_path) -> 'str | None':
-    """Probe the runtime compute unit assigned to a loaded Core ML model.
+    """Probe the compute-unit target compiled into a Core ML model.
 
-    Loads the compiled bundle, reads the ``compute_unit`` attribute on the
-    ``MLModel``, and maps the ``ComputeUnit`` enum to a canonical lowercase
-    string (e.g. ``'all'``, ``'cpu_and_ne'``).  Returns ``None`` if the
-    runtime cannot determine the actual target or if any error occurs.
+    Reads ``compute_unit`` from the loaded ``MLModel``. This reflects the
+    target specified at export time, not an empirically measured hardware path.
+    Returns ``None`` on any failure.
     """
     try:
         import coremltools as ct
@@ -78,7 +77,9 @@ class Yolov8DetectionModel(_Base):
                 # requirement). Ultralytics' predict() otherwise defaults to imgsz=640
                 # and Core ML rejects the mismatch, so read the real size off the model.
                 self._coreml_imgsz = _coreml_input_size(self.model_path)
-                self._compute_units_actual = _resolve_compute_units_actual(self.model_path)
+                self._compute_units_actual = _resolve_compute_units_actual(
+                    self.model_path
+                )
                 self.set_model(YOLO(self.model_path, task='detect'))
                 return
 

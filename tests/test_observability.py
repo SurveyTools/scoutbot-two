@@ -26,7 +26,16 @@ def test_span_emits_required_timing_keys():
 
     assert len(events) == 1
     event = events[0]
-    for key in ('name', 'started_ns', 'ended_ns', 'duration_ns', 'status', 'config', 'backend', 'device'):
+    for key in (
+        'name',
+        'started_ns',
+        'ended_ns',
+        'duration_ns',
+        'status',
+        'config',
+        'backend',
+        'device',
+    ):
         assert key in event
     assert event['name'] == 'pipeline'
     assert event['status'] == 'ok'

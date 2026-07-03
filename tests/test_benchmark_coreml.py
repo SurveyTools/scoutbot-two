@@ -162,8 +162,7 @@ def test_missing_coremltools_is_skipped_once_at_startup(tmp_path, capsys):
 
 def test_aggregate_events_collects_compute_units_from_events():
     """aggregate_events() must propagate compute_units_* fields from the event stream
-    into the summary dict.  Passes today (the aggregation logic already handles the
-    fields); documents the contract so Task 2's emitted events are verified end-to-end.
+    into the summary dict.
     """
     bench = _load_benchmark()
 
@@ -188,12 +187,7 @@ def test_aggregate_events_collects_compute_units_from_events():
 
 
 def test_benchmark_family_renders_null_for_none_compute_units_actual(tmp_path, capsys):
-    """benchmark_family() must print `actual=null` (not `actual=unknown`) when
-    compute_units_actual is None.
-
-    Fails today because the code uses `actual or "unknown"` which maps None → "unknown".
-    Task 3 must change the rendering to use "null" for explicitly-absent values.
-    """
+    """benchmark_family() must print `actual=null` when compute_units_actual is None."""
     bench = _load_benchmark()
     image = tmp_path / 'image.jpg'
     image.write_bytes(bytes([0xFF, 0xD8, 0xFF, 0xE0]) + b'\x00' * 64)
@@ -208,7 +202,6 @@ def test_benchmark_family_renders_null_for_none_compute_units_actual(tmp_path, c
                 'unattributed_ns': 0,
                 'model_invocations': 2,
                 'tile_count': 8,
-                # requested is set; actual is None (no hardware probe yet in Task 2).
                 'compute_units_requested': 'cpu_and_ne',
                 'compute_units_actual': None,
             },
@@ -218,7 +211,6 @@ def test_benchmark_family_renders_null_for_none_compute_units_actual(tmp_path, c
         bench.benchmark_family('onecls', 'v3', 'v3-coreml', [image, image])
 
     captured = capsys.readouterr()
-    # Fails today: prints `actual=unknown` instead of `actual=null`.
     assert 'actual=null' in captured.out, (
         f'Expected "actual=null" in benchmark output; got:\n{captured.out}'
     )
