@@ -5,6 +5,8 @@ Changelog
 Unreleased
 ----------
 
+* Added private runtime observability hooks and a structured Core ML benchmark summary so
+  performance investigations can separate phase timing from serial SAHI overhead.
 * Added Core ML documentation for ``v3-coreml`` and ``v3-cls-coreml`` configs, export behavior,
   parity caveats, and Apple Silicon benchmark interpretation.
 * Fixed Core ML and YOLO loading correctness issues: macOS-only ``.mlpackage`` loading is now

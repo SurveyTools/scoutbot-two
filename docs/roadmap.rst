@@ -7,14 +7,14 @@ Lightweight tracking for deferred work. Status values are ``planned``,
 Current priorities
 ------------------
 
-1. **Performance observability and benchmark hardening** -- the Core ML timings are still too
-   close across machines, so the next step is to instrument the pipeline and separate real model
-   cost from preprocessing and dispatch overhead.
-2. **Release and distribution** -- define the release/tagging checklist, resolve the Python 3.13
+1. **Release and distribution** -- define the release/tagging checklist, resolve the Python 3.13
    ceiling, and plan package distribution carefully. PyPI publishing is likely deferred until the
    old project namespace and ownership are clarified.
-3. **Quality and compatibility** -- finish the quality workflow hardening, add dependency-currency
+2. **Quality and compatibility** -- finish the quality workflow hardening, add dependency-currency
    policy, and expand platform coverage beyond the current macOS-focused Core ML work.
+3. **Core ML / performance investigations** -- now that the runtime hooks and structured benchmark
+   are in place, use them to explain the remaining M1 / M4 gap and decide what further diagnostics
+   are worth keeping.
 
 Release and distribution
 ------------------------
@@ -84,9 +84,10 @@ track upstream.
 Benchmark hardening
 -------------------
 
-**Status:** planned
+**Status:** done
 
-Two output cleanliness issues need to be fixed in ``benchmarks/benchmark_coreml.py``.
+``benchmarks/benchmark_coreml.py`` now emits structured phase timings, a JSON summary option, and
+clean skip handling when a variant cannot run.
 
 Missing ``coremltools`` is not clean
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -195,26 +196,28 @@ Remaining uncovered lines (all intentional or deferred):
 Core ML / performance investigations
 ------------------------------------
 
-**Status:** planned
+**Status:** in-progress
 
 **Reference:** ``docs/coreml.rst`` (benchmark caveats)
 
-* Break out slicing, per-tile prediction, post-processing, and Core ML dispatch
-  overhead in the benchmark
-* Investigate parallel or batched tile inference for the Core ML path
-* Confirm ANE engagement via Activity Monitor / ``coremltools`` compute-unit API
-* M4 follow-up benchmark once pipeline overhead is reduced
+The structured benchmark makes the remaining work explicit:
+
+* break out slicing, per-tile prediction, post-processing, and Core ML dispatch overhead in the
+  benchmark summaries
+* investigate parallel or batched tile inference for the Core ML path
+* confirm ANE engagement via Activity Monitor / ``coremltools`` compute-unit API
+* run the M4 follow-up benchmark once the pipeline overhead is better understood
 
 Performance observability spec
 ------------------------------
 
-**Status:** planned
+**Status:** done
 
-The next performance investigation should specify structured benchmark observability before making
-hardware-specific throughput claims. The spec should define phase timings for image discovery,
-decode/load, slicing, per-tile model invocation count, per-tile model wall time, post-processing,
-serialization, Core ML compute-unit selection, direct ``coremltools`` prediction timing, and
-concurrent or batched tile inference experiments.
+**Reference:** ``docs/superpowers/specs/2026-07-02-performance-observability-spec.md``
+
+The structured observability model is now implemented in the runtime and benchmark. The spec
+remains the canonical description of the event shape and the diagnostics the benchmark should
+surface when Core ML work continues.
 
 Model registry / model integration
 ----------------------------------

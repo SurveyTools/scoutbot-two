@@ -84,13 +84,30 @@ That subclass is Core ML-aware, with all special handling contained in it — no
 Everything downstream (``result.boxes.data``, SAHI's class-agnostic NMS, the
 ``{l, c, x, y, w, h}`` pixel-dict output) is identical to the ``.pt`` path.
 
+Runtime observability
+~~~~~~~~~~~~~~~~~~~~~
+
+Scoutbot now exposes opt-in runtime hooks for the Core ML path. The public entry points accept an
+optional ``observer=`` argument, and the private observability layer emits structured timing and
+state events for model fetch, export, load, batch execution, and per-image pipeline runs.
+
+Those events carry the cache-hit / export state that explains whether the bundle was reused or
+rebuilt, and the benchmark summary can surface Core ML compute-unit metadata when the runtime can
+provide it. The same model can also carry direct ``coremltools`` prediction timing for the Core ML
+path when that diagnostic is enabled. The current implementation is intentionally lightweight: no
+observer means no extra work.
+
+When investigating the M1 / M4 gap, use the structured benchmark summary in :doc:`performance`
+to separate the serial SAHI tile overhead from the Core ML-specific work.
+
 Performance and benchmarks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Core ML benchmark numbers, interpretation caveats, and planned diagnostics live in
-:doc:`performance`. The short version: Core ML is currently fastest in full-pipeline wall-clock
-tests, but the M1 and M4 results are closer than expected because the benchmark measures the
-full serial SAHI/Ultralytics/Core ML tile path rather than raw Apple Silicon capacity.
+:doc:`performance`. The short version: the benchmark now reports phase-level timings and an
+optional JSON summary, which makes the M1 / M4 comparison more useful than the old single wall-
+clock number. The benchmark still measures the full serial SAHI/Ultralytics/Core ML tile path
+rather than raw Apple Silicon capacity.
 
 Parity and caveats
 ~~~~~~~~~~~~~~~~~~~

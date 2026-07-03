@@ -272,7 +272,7 @@ git commit -m "feat: add structured Core ML benchmark observability"
 
 **Goal:** Make the docs explain the new measurement model, the new runtime hooks, and the revised roadmap status.
 
-- [ ] **Step 1: Rewrite the performance page around phase timings and JSONL observability**
+- [x] **Step 1: Rewrite the performance page around phase timings and JSONL observability**
 
 Update `docs/performance.rst` so it explains:
 
@@ -284,7 +284,7 @@ Update `docs/performance.rst` so it explains:
 
 Preserve the existing benchmark invocation examples, but update the interpretation text so it matches the new collector.
 
-- [ ] **Step 2: Add Core ML runtime diagnostics and compute-unit wording**
+- [x] **Step 2: Add Core ML runtime diagnostics and compute-unit wording**
 
 Update `docs/coreml.rst` so it names the new runtime facts:
 
@@ -295,15 +295,15 @@ Update `docs/coreml.rst` so it names the new runtime facts:
 
 Keep the existing Core ML export and parity guidance, but make sure the new hook model is linked from the page.
 
-- [ ] **Step 3: Mark the roadmap item as implemented and link the spec**
+- [x] **Step 3: Mark the roadmap item as implemented and link the spec**
 
 Update `docs/roadmap.rst` so the `Performance observability spec` entry points at the new spec and reflects the implementation status. Also update the `Benchmark hardening` and `Core ML / performance investigations` wording so it no longer reads like the work is still hypothetical.
 
-- [ ] **Step 4: Add a changelog note for the user-visible measurement changes**
+- [x] **Step 4: Add a changelog note for the user-visible measurement changes**
 
 Update `CHANGELOG.rst` with a short `Unreleased` bullet that says the benchmark now reports phase-level Core ML observability and the runtime gained opt-in structured hooks.
 
-- [ ] **Step 5: Verify the docs build cleanly**
+- [x] **Step 5: Verify the docs build cleanly**
 
 Run:
 
