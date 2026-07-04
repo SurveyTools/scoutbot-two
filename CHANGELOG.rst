@@ -5,6 +5,9 @@ Changelog
 Unreleased
 ----------
 
+* Added a ``windows-smoke`` CI job to ``.github/workflows/testing.yml`` that runs the fast/offline
+  test suite on Python 3.13 under Windows. This provides basic cross-platform coverage for non-Core ML
+  code without claiming full Windows parity; Core ML configs remain macOS-only.
 * Moved ``visualise.py`` from the repo root to ``tools/visualise.py`` and included it
   in all quality gates (ruff, mypy, bandit). Rewrote the script: replaced
   ``cv2.imshow`` (incompatible with the headless OpenCV build) with ``webbrowser``

@@ -204,6 +204,12 @@ Open a GitHub issue and include:
 - Actual vs expected behaviour
 - Any relevant log output
 
+**Windows and cross-platform issues:** The project has a Windows smoke CI job that runs the
+fast/offline test suite on Python 3.13, but this does not constitute full platform parity. Windows
+issues are welcome — please include the exact command you ran, your Python version, and details
+about your operating system and runner (WSL, native Windows, etc.) to help isolate platform-specific
+problems.
+
 ---
 
 ## Proposing features

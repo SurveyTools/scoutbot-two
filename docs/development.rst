@@ -119,6 +119,8 @@ CI workflows
 ``.github/workflows/testing.yml``
    Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, 3.12, and 3.13, installs
    with ``uv sync --extra test``, and runs ``uv run pytest -m "not slow"`` with coverage.
+   A ``windows-smoke`` job also runs the fast/offline suite on Windows with Python 3.13 only, providing
+   smoke coverage for non-Core ML code without claiming full Windows parity.
 
 ``.github/workflows/quality.yml``
    Runs on pull requests and pushes to ``main``. It installs with ``uv sync --extra test`` and

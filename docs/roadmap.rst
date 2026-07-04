@@ -86,9 +86,12 @@ an explicit compatibility policy and versioning note before making further outpu
 Windows / cross-platform CI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The base PyTorch pipeline should work beyond macOS, but the repository has no stated support level
-or CI coverage for Windows. Add a lightweight cross-platform smoke test path so non-Core ML code
-stays honest on other operating systems.
+**Status:** in-progress (smoke coverage added)
+
+A ``windows-smoke`` CI job now runs the fast/offline test suite on Python 3.13 under Windows,
+providing basic non-Core ML coverage without claiming full platform parity. Core ML configs
+(``v3-coreml``, ``v3-cls-coreml``) remain macOS-only. Further cross-platform testing may expand
+to additional Python versions and runners as needed.
 
 GPU / CUDA guidance
 ~~~~~~~~~~~~~~~~~~~
