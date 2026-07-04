@@ -557,7 +557,9 @@ class TestFetchComputeUnitsEmission:
 class TestExportCoremlBranches:
     """Unit tests for export_coreml() branches not covered by TestExportCoreml."""
 
-    def test_early_return_when_target_exists_and_no_force(self, tmp_path, ultralytics_stub):
+    def test_early_return_when_target_exists_and_no_force(
+        self, tmp_path, ultralytics_stub
+    ):
         from scoutbot import loc
 
         cfg = loc.CONFIGS['v3-coreml']

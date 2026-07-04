@@ -298,9 +298,7 @@ class TestLoadModelStoresComputeUnitsActual:
 class TestPerformInferenceComputeUnitsActual:
     """Tests that perform_inference() emits compute_units_actual in its event."""
 
-    def test_perform_inference_coreml_emits_compute_units_actual(
-        self, ultralytics_stub
-    ):
+    def test_perform_inference_coreml_emits_compute_units_actual(self, ultralytics_stub):
         """perform_inference() for a CoreML model must include compute_units_actual
         in the emitted observability event.
         """

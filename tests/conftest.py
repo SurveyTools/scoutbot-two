@@ -3,11 +3,11 @@
 
 import logging
 import sys
-from types import ModuleType
 from pathlib import Path
+from types import ModuleType
+from unittest.mock import MagicMock
 
 import pytest
-from unittest.mock import MagicMock
 
 
 @pytest.fixture(autouse=True, scope='session')
