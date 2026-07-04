@@ -62,7 +62,7 @@ Repository = "https://github.com/SurveyTools/scoutbot-2026"
 scoutbot = "scoutbot.scoutbot:cli"
 
 [tool.setuptools]
-packages = ["scoutbot", "scoutbot.loc", "scoutbot.tile_batched"]
+packages = ["scoutbot", "scoutbot.loc", "scoutbot.tile_batched", "scoutbot.registry"]
 include-package-data = true
 
 [tool.pytest.ini_options]
