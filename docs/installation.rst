@@ -1,8 +1,8 @@
 Installation
 ============
 
-Scoutbot supports direct local runs, contributor development, Windows CUDA workstations, and
-Apple Silicon Core ML runs.
+Scoutbot supports direct local runs, contributor development, and Apple Silicon Core ML runs,
+with best-effort GPU support for Windows NVIDIA systems.
 
 Python support
 --------------
@@ -77,6 +77,9 @@ The ``.mlpackage`` bundle is exported on first use from the source ``.pt`` model
 Windows with NVIDIA GPU
 -----------------------
 
+CUDA GPU support is best-effort for NVIDIA systems on Windows. It is not CI-tested and is not
+required to run the package — CPU-only installs work on any Windows machine without a GPU.
+
 The default install may pull in a CPU-only PyTorch build on Windows. For NVIDIA GPU use, replace
 that build with the CUDA wheel after installing Scoutbot:
 
@@ -101,7 +104,10 @@ Verify the GPU is detected before running:
 
 .. code-block:: powershell
 
-   uv run python -c "import torch; print(torch.cuda.is_available(), torch.__version__)"
+   uv run python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
+
+``True`` means PyTorch found an NVIDIA GPU and a compatible CUDA driver. ``False`` is expected on
+CPU-only machines and is not an error — the package runs normally without a GPU.
 
 PowerShell does not expand glob patterns for external commands, so pass files with
 ``Get-ChildItem``:
@@ -111,7 +117,7 @@ PowerShell does not expand glob patterns for external commands, so pass files wi
    $imgs = (Get-ChildItem "C:\path\to\images" -Filter "*.JPG").FullName
    uv run scoutbot batch @imgs --output results.json
 
-For low-VRAM GPUs, reduce the tile batch size:
+If you have a GPU and encounter out-of-memory errors, reduce the tile batch size:
 
 .. code-block:: powershell
 

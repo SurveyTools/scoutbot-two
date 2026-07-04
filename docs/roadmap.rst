@@ -96,9 +96,12 @@ to additional Python versions and runners as needed.
 GPU / CUDA guidance
 ~~~~~~~~~~~~~~~~~~~
 
-``--device`` is documented, but there is no explicit support statement or validation path for CUDA
-workflows. Add guidance that states what is supported, what is best-effort, and how to verify GPU
-execution when a CUDA environment is available.
+**Status:** done
+
+CUDA support is documented as best-effort for NVIDIA systems. Users can verify GPU detection
+with the verification command in :doc:`installation` (Windows NVIDIA section). CUDA is not
+required and not CI-tested; users on CPU-only machines will see ``torch.cuda.is_available()``
+return ``False``, which is expected and not an error.
 
 Dependency and maintenance policy
 ---------------------------------

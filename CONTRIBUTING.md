@@ -210,6 +210,13 @@ issues are welcome — please include the exact command you ran, your Python ver
 about your operating system and runner (WSL, native Windows, etc.) to help isolate platform-specific
 problems.
 
+**GPU and CUDA issues:** GPU support is best-effort for NVIDIA systems on Windows and is not
+CI-tested. Before reporting GPU issues, consult the verification steps in [installation docs
+(Windows with NVIDIA GPU)](https://surveytools.github.io/scoutbot-2026/installation.html#windows-with-nvidia-gpu)
+and the contributor guidance in [development docs (GPU and CUDA)](https://surveytools.github.io/scoutbot-2026/development.html#gpu-and-cuda).
+If you have confirmed the GPU is correctly detected and the issue persists, please include your
+PyTorch and CUDA versions, GPU model, driver version, and the error output.
+
 ---
 
 ## Proposing features

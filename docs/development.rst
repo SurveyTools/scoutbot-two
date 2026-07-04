@@ -128,6 +128,15 @@ CI workflows
    locked-graph dependency audit (``uv audit --locked``), and a Bandit source-code security
    scan (``scoutbot/``, ``benchmarks/``, ``tools/``).
 
+GPU and CUDA
+~~~~~~~~~~~~
+
+CUDA is not required in CI and is not tested there. For local contributors with NVIDIA hardware,
+CUDA support is best-effort: the package runs correctly on CPU without any GPU present. If you
+are testing on a GPU-enabled Windows machine, run the verification command in
+:doc:`installation` (Windows NVIDIA section) to confirm PyTorch detects the GPU before filing
+bug reports related to GPU behavior.
+
 Documentation builds
 --------------------
 

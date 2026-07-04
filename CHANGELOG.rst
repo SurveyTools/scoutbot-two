@@ -5,6 +5,10 @@ Changelog
 Unreleased
 ----------
 
+* Added CUDA support clarification for NVIDIA systems: best-effort Windows support (not CI-tested),
+  installation guide with GPU detection verification command (``torch.cuda.is_available()``), and
+  development guidance for contributors testing on GPU hardware. CUDA is not required and the
+  package runs normally on CPU-only machines.
 * Added a ``windows-smoke`` CI job to ``.github/workflows/testing.yml`` that runs the fast/offline
   test suite on Python 3.13 under Windows. This provides basic cross-platform coverage for non-Core ML
   code without claiming full Windows parity; Core ML configs remain macOS-only.
