@@ -227,6 +227,26 @@ integrations. Until that is mature, model configs remain internal implementation
 ``scoutbot.model_store`` and new model work should include artifact provenance, integrity
 verification, config schema tests, CLI choice tests, and output compatibility checks.
 
+Model-store / ``loc`` staged cleanup
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+The current `scoutbot.loc` module is now a compatibility wrapper around
+``scoutbot.model_store``. That wrapper should be treated as temporary technical debt, not a new
+home for model policy.
+
+The staged cleanup should:
+
+* move remaining internal imports to ``scoutbot.model_store`` instead of ``scoutbot.loc``
+* update tests and docs that still describe ``scoutbot.loc`` as the owner of the catalog
+* keep the wrapper in place until the registry and model-store refactors no longer depend on it
+* retire the wrapper once the remaining call sites are migrated and no public compatibility need
+  remains
+
+This cleanup should stay coupled to the broader registry/model-store work so the eventual
+deprecation does not break the offline-first model path or the existing test surface prematurely.
+
 Model registry evolution / model-family lineage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
