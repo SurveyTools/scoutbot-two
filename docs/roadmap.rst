@@ -238,6 +238,24 @@ project, where ``stage-3-ai-detection.md`` and ``schema-family.md`` already fram
 ``model_registry.json`` as survey-level infrastructure and leave the survey-level versus run-level
 boundary open for refinement.
 
+Survey-level registry contract (v3+)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The future survey-level contract should define the canonical registry shape for the whole survey,
+not just the local model cache. That contract should live in ``pipeline-design`` and should cover:
+
+* canonical model-family identifiers that stay stable across exports and retraining runs
+* parent/child lineage between base models and fine-tuned derivatives
+* versioned aliases so the same family can be referenced by release, training, or export variant
+* compatibility metadata for Stage 3 consumers and downstream pipeline integrations
+* the split between survey-level registry facts and per-run provenance captured in detection
+  outputs
+
+ScoutBot should continue to own the offline-first local registry, fetch plumbing, and CLI
+resolution. The survey-level artifact schema, validation rules, and stage-boundary semantics belong
+in ``pipeline-design`` so future model families can evolve without forcing another schema rewrite
+in this repository.
+
 Future registry work should define how the registry represents:
 
 * model families and canonical family identifiers
