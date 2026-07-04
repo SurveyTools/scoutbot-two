@@ -452,9 +452,10 @@ class TestLocFetchUnit:
         md5_response.raise_for_status = MagicMock()
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             result = loc.fetch(None)
 
@@ -524,9 +525,10 @@ class TestFetchComputeUnitsEmission:
         observer = list_observer(events)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             loc.fetch('v3', observer=observer)
 

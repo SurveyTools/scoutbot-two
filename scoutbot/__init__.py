@@ -50,6 +50,52 @@ version = VERSION
 __version__ = VERSION
 
 
+def _resolve_model(config=None, model_name=None, **overrides):
+    """
+    Resolve a registry entry and build the effective run config.
+
+    Returns:
+        tuple: (model_path: str, effective_run_config: dict, provenance: dict)
+
+    Raises:
+        RuntimeError: if the model is not in the registry.
+    """
+    from pathlib import Path as _Path
+    from scoutbot import registry as _registry
+
+    if model_name is None:
+        if config is None:
+            config = 'v3'
+        model_name = f'scoutbot-{config}'
+
+    entry = _registry.lookup(model_name)
+    if entry is None:
+        hint = (
+            f'uv run scoutbot fetch --config {config}'
+            if config
+            else (
+                'uv run scoutbot register --name scoutbot-v3 '
+                '--path /path/to/model.pt --arch yolov8'
+            )
+        )
+        raise RuntimeError(
+            f"Model '{model_name}' not found in registry. Run: {hint}"
+        )
+
+    effective = dict(entry.default_run_config)
+    effective.update({k: v for k, v in overrides.items() if v is not None})
+
+    provenance = {
+        'name': entry.name,
+        'file': _Path(entry.path).name,
+        'md5': entry.md5,
+        'framework': entry.framework,
+        'run_config': dict(effective),
+    }
+
+    return entry.path, effective, provenance
+
+
 def fetch(config=None, observer=None):
     """
     Fetch the YOLOv8 model file from CDN if it does not exist locally.
@@ -217,6 +263,7 @@ def pipeline(
 def batch(
     filepaths,
     config=None,
+    model_name=None,
     backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
     loc_thresh=0.45,
     slice_height=512,
@@ -260,10 +307,15 @@ def batch(
 
     started_ns = perf_counter_ns()
     observer_kwargs = {'observer': observer} if observer is not None else {}
-    yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
+
+    model_path, effective_run_config, _ = _resolve_model(
+        config=config,
+        model_name=model_name,
+        confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
+    )
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
-        model_path=yolov8_model_path,
+        model_path=model_path,
         confidence_threshold=loc_thresh,
         device=backend_device,
         **observer_kwargs,
@@ -321,7 +373,7 @@ def batch(
                 'duration_ns': ended_ns - started_ns,
                 'config': config,
                 'backend': 'coreml'
-                if str(yolov8_model_path).endswith('.mlpackage')
+                if str(model_path).endswith('.mlpackage')
                 else 'pt',
                 'device': backend_device,
                 'file_count': len(filepaths),
@@ -343,7 +395,7 @@ def batch(
                     'duration_ns': ended_ns - started_ns,
                     'config': config,
                     'backend': 'coreml'
-                    if str(yolov8_model_path).endswith('.mlpackage')
+                    if str(model_path).endswith('.mlpackage')
                     else 'pt',
                     'device': backend_device,
                     'file_count': len(filepaths),
@@ -356,6 +408,7 @@ def batch_resumable(
     filepaths,
     output_path,
     config=None,
+    model_name=None,
     backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
     loc_thresh=0.45,
     slice_height=512,
@@ -456,10 +509,18 @@ def batch_resumable(
 
     log.info(f'Resuming: {len(processed)} done, {len(remaining)} remaining')
 
-    yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
+    model_path, effective_run_config, model_provenance = _resolve_model(
+        config=config,
+        model_name=model_name,
+        confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
+        slice_height=slice_height if slice_height != 512 else None,
+        slice_width=slice_width if slice_width != 512 else None,
+        overlap_height_ratio=overlap_height_ratio if overlap_height_ratio != 0.25 else None,
+        overlap_width_ratio=overlap_width_ratio if overlap_width_ratio != 0.25 else None,
+    )
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
-        model_path=yolov8_model_path,
+        model_path=model_path,
         confidence_threshold=loc_thresh,
         device=backend_device,
         **observer_kwargs,
@@ -501,6 +562,7 @@ def batch_resumable(
                     .isoformat()
                     .replace('+00:00', 'Z'),
                     'config': config,
+                    'model': model_provenance,
                 }
 
                 f.write(json.dumps(record) + '\n')
@@ -546,7 +608,7 @@ def batch_resumable(
             'duration_ns': ended_ns - started_ns,
             'config': config,
             'backend': 'coreml'
-            if str(yolov8_model_path).endswith('.mlpackage')
+            if str(model_path).endswith('.mlpackage')
             else 'pt',
             'device': backend_device,
             'output_path': str(output_path),

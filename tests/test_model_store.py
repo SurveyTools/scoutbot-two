@@ -106,7 +106,10 @@ def test_fetch_registers_model_after_download(isolated_registry):
             return mock_md5_response
         return mock_model_response
 
-    with patch('requests.get', side_effect=mock_get):
+    with (
+        patch('requests.get', side_effect=mock_get),
+        patch('scoutbot.model_store.CACHE_DIR', isolated_registry),
+    ):
         model_store.fetch(config='v3')
 
     entry = registry.lookup('scoutbot-v3')
