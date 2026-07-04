@@ -13,8 +13,14 @@ class TestLocConfig:
 
     def test_configs_exist(self):
         """Test that v3, v3-cls, v3-coreml, and v3-cls-coreml configs exist."""
+        from importlib import import_module
+
         from scoutbot import loc
 
+        model_store = import_module('scoutbot.model_store')
+
+        assert loc.CONFIGS is model_store.CONFIGS
+        assert loc.DEFAULT_CONFIG == model_store.DEFAULT_CONFIG
         assert 'v3' in loc.CONFIGS
         assert 'v3-cls' in loc.CONFIGS
         assert 'v3-coreml' in loc.CONFIGS
