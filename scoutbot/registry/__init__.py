@@ -1,5 +1,6 @@
 # scoutbot/registry/__init__.py
 from __future__ import annotations
+
 import json
 import os
 from datetime import datetime, timezone
@@ -13,6 +14,7 @@ SCHEMA_ID = 'rw:local-model-cache:1.0'
 
 def _registry_path() -> Path:
     from scoutbot.registry.paths import get_registry_path
+
     return get_registry_path()
 
 

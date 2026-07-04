@@ -5,6 +5,15 @@ Changelog
 Unreleased
 ----------
 
+* Added a local model registry backed by ``~/.rebel-workflow/model-registry.json``.
+  ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
+  from the registry and skip the network. New CLI commands: ``scoutbot register``
+  registers any local ``.pt`` file; ``scoutbot models`` lists all registry entries;
+  ``scoutbot models info NAME`` prints a model's full entry as JSON. All inference
+  commands (``pipeline``, ``batch``, ``batch-resumable``) now accept a ``--model NAME``
+  flag as an alternative to ``--config``; the two flags are mutually exclusive.
+  JSONL output from ``batch-resumable`` gains a ``model`` block recording the
+  registry name, MD5, framework, and SAHI run config used for each image.
 * Added CUDA support clarification for NVIDIA systems: best-effort Windows support (not CI-tested),
   installation guide with GPU detection verification command (``torch.cuda.is_available()``), and
   development guidance for contributors testing on GPU hardware. CUDA is not required and the

@@ -206,35 +206,36 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
                 f.write(chunk)
                 bar.update(len(chunk))
 
-    assert _md5(local_path) == remote_md5, (
-        f'MD5 mismatch after download: {cfg["name"]}'
-    )
+    assert _md5(local_path) == remote_md5, f'MD5 mismatch after download: {cfg["name"]}'
 
     from datetime import datetime, timezone
+
     from scoutbot.registry.schema import ModelEntry, RegistrySource
 
-    _registry.register(ModelEntry(
-        name=registry_name,
-        path=str(local_path),
-        md5=remote_md5,
-        framework='yolov8',
-        registered=datetime.now(timezone.utc).isoformat(),
-        source=RegistrySource(
-            type='fetched',
-            url=cfg['url'],
-            fetched_at=datetime.now(timezone.utc).isoformat(),
-        ),
-        default_run_config={
-            'slice_height':               cfg['slice_height'],
-            'slice_width':                cfg['slice_width'],
-            'overlap_height_ratio':       cfg['overlap_height_ratio'],
-            'overlap_width_ratio':        cfg['overlap_width_ratio'],
-            'perform_standard_pred':      cfg['perform_standard_pred'],
-            'postprocess_class_agnostic': cfg['postprocess_class_agnostic'],
-            'confidence_threshold':       cfg['thresh'],
-        },
-        description=f'ScoutBot {config} model (KAZA)',
-    ))
+    _registry.register(
+        ModelEntry(
+            name=registry_name,
+            path=str(local_path),
+            md5=remote_md5,
+            framework='yolov8',
+            registered=datetime.now(timezone.utc).isoformat(),
+            source=RegistrySource(
+                type='fetched',
+                url=str(cfg['url']),
+                fetched_at=datetime.now(timezone.utc).isoformat(),
+            ),
+            default_run_config={
+                'slice_height': cfg['slice_height'],
+                'slice_width': cfg['slice_width'],
+                'overlap_height_ratio': cfg['overlap_height_ratio'],
+                'overlap_width_ratio': cfg['overlap_width_ratio'],
+                'perform_standard_pred': cfg['perform_standard_pred'],
+                'postprocess_class_agnostic': cfg['postprocess_class_agnostic'],
+                'confidence_threshold': cfg['thresh'],
+            },
+            description=f'ScoutBot {config} model (KAZA)',
+        )
+    )
     log.info(f'Registered: {registry_name}')
 
     log.info(f'Saved: {local_path}')

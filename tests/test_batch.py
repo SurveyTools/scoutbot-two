@@ -521,7 +521,9 @@ class TestBatchUnit:
         open(fake_img, 'wb').close()
 
         with (
-            patch('scoutbot._resolve_model', return_value=('/fake/model.pt', {}, {})) as mock_resolve,
+            patch(
+                'scoutbot._resolve_model', return_value=('/fake/model.pt', {}, {})
+            ) as mock_resolve,
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.0, [])),
             patch('scoutbot.loc.DEFAULT_CONFIG', 'v3'),

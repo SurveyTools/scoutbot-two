@@ -114,7 +114,10 @@ def pipeline(
     }
     """
     ctx = click.get_current_context()
-    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+    if (
+        model is not None
+        and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT
+    ):
         raise click.UsageError('--model and --config are mutually exclusive.')
 
     loc_thresh_float = loc_thresh / 100.0
@@ -198,7 +201,10 @@ def batch(
     }
     """
     ctx = click.get_current_context()
-    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+    if (
+        model is not None
+        and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT
+    ):
         raise click.UsageError('--model and --config are mutually exclusive.')
 
     loc_thresh_float = loc_thresh / 100.0
@@ -286,7 +292,10 @@ def batch_resumable(
     {"filepath": "/path/to/img2.jpg", "wic": 0.12, "detections": [], ...}
     """
     ctx = click.get_current_context()
-    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+    if (
+        model is not None
+        and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT
+    ):
         raise click.UsageError('--model and --config are mutually exclusive.')
 
     loc_thresh_float = loc_thresh / 100.0
@@ -392,19 +401,28 @@ def get_classes(config, output):
 
 
 @click.command('register')
-@click.option('--name',         required=True,  help='Registry name for this model')
-@click.option('--path',         required=True,  help='Absolute path to model file on disk')
-@click.option('--arch',         required=True,  help='Framework/architecture (e.g. yolov8, herdnet, owl)')
-@click.option('--description',  default='',     help='Human-readable description')
-@click.option('--threshold',    default=0.45,   type=float, help='Default confidence threshold')
-@click.option('--slice-height', default=512,    type=int,   help='SAHI slice height in pixels')
-@click.option('--slice-width',  default=512,    type=int,   help='SAHI slice width in pixels')
-@click.option('--overlap',      default=0.25,   type=float, help='SAHI overlap ratio (both axes)')
-def register_model(name, path, arch, description, threshold, slice_height, slice_width, overlap):
+@click.option('--name', required=True, help='Registry name for this model')
+@click.option('--path', required=True, help='Absolute path to model file on disk')
+@click.option(
+    '--arch', required=True, help='Framework/architecture (e.g. yolov8, herdnet, owl)'
+)
+@click.option('--description', default='', help='Human-readable description')
+@click.option(
+    '--threshold', default=0.45, type=float, help='Default confidence threshold'
+)
+@click.option('--slice-height', default=512, type=int, help='SAHI slice height in pixels')
+@click.option('--slice-width', default=512, type=int, help='SAHI slice width in pixels')
+@click.option(
+    '--overlap', default=0.25, type=float, help='SAHI overlap ratio (both axes)'
+)
+def register_model(
+    name, path, arch, description, threshold, slice_height, slice_width, overlap
+):
     """Register a local model file in the Rebel Workflow model registry."""
     import sys
     from datetime import datetime, timezone
     from pathlib import Path as _Path
+
     from scoutbot import model_store
     from scoutbot import registry as _registry
     from scoutbot.registry.schema import ModelEntry, RegistrySource
@@ -426,10 +444,10 @@ def register_model(name, path, arch, description, threshold, slice_height, slice
         source=RegistrySource(type='local', original_path=str(model_path)),
         default_run_config={
             'confidence_threshold': threshold,
-            'slice_height':         slice_height,
-            'slice_width':          slice_width,
+            'slice_height': slice_height,
+            'slice_width': slice_width,
             'overlap_height_ratio': overlap,
-            'overlap_width_ratio':  overlap,
+            'overlap_width_ratio': overlap,
         },
         description=description,
     )

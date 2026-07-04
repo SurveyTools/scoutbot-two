@@ -61,6 +61,7 @@ def _resolve_model(config=None, model_name=None, **overrides):
         RuntimeError: if the model is not in the registry.
     """
     from pathlib import Path as _Path
+
     from scoutbot import registry as _registry
 
     if model_name is None:
@@ -78,9 +79,7 @@ def _resolve_model(config=None, model_name=None, **overrides):
                 '--path /path/to/model.pt --arch yolov8'
             )
         )
-        raise RuntimeError(
-            f"Model '{model_name}' not found in registry. Run: {hint}"
-        )
+        raise RuntimeError(f"Model '{model_name}' not found in registry. Run: {hint}")
 
     effective = dict(entry.default_run_config)
     effective.update({k: v for k, v in overrides.items() if v is not None})
@@ -376,9 +375,7 @@ def batch(
                 'ended_ns': ended_ns,
                 'duration_ns': ended_ns - started_ns,
                 'config': config,
-                'backend': 'coreml'
-                if str(model_path).endswith('.mlpackage')
-                else 'pt',
+                'backend': 'coreml' if str(model_path).endswith('.mlpackage') else 'pt',
                 'device': backend_device,
                 'file_count': len(filepaths),
                 'processed': len(wic_list),
@@ -519,7 +516,9 @@ def batch_resumable(
         confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
         slice_height=slice_height if slice_height != 512 else None,
         slice_width=slice_width if slice_width != 512 else None,
-        overlap_height_ratio=overlap_height_ratio if overlap_height_ratio != 0.25 else None,
+        overlap_height_ratio=overlap_height_ratio
+        if overlap_height_ratio != 0.25
+        else None,
         overlap_width_ratio=overlap_width_ratio if overlap_width_ratio != 0.25 else None,
     )
 
@@ -611,9 +610,7 @@ def batch_resumable(
             'ended_ns': ended_ns,
             'duration_ns': ended_ns - started_ns,
             'config': config,
-            'backend': 'coreml'
-            if str(model_path).endswith('.mlpackage')
-            else 'pt',
+            'backend': 'coreml' if str(model_path).endswith('.mlpackage') else 'pt',
             'device': backend_device,
             'output_path': str(output_path),
             'file_count': len(filepaths),

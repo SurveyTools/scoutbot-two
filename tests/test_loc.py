@@ -326,7 +326,9 @@ class TestLocFetchUnit:
         md5_response.raise_for_status = MagicMock()
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
@@ -354,7 +356,9 @@ class TestLocFetchUnit:
                 events.append(event)
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
@@ -429,7 +433,9 @@ class TestLocFetchUnit:
             return download_response
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', side_effect=_get),
         ):
@@ -452,7 +458,9 @@ class TestLocFetchUnit:
         md5_response.raise_for_status = MagicMock()
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
@@ -525,7 +533,9 @@ class TestFetchComputeUnitsEmission:
         observer = list_observer(events)
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
@@ -554,7 +564,9 @@ class TestFetchComputeUnitsEmission:
         observer = list_observer(events)
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),

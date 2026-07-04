@@ -28,10 +28,9 @@ def test_loc_reexports_model_store_api():
 
 # --- registry-integrated fetch tests ---
 
-import os
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 
 @pytest.fixture
@@ -43,8 +42,8 @@ def isolated_registry(tmp_path, monkeypatch):
 
 def test_fetch_uses_registry_when_model_cached(isolated_registry):
     """fetch() does not hit the network if the model is in the registry with matching MD5."""
+    from scoutbot import model_store, registry
     from scoutbot.registry.schema import ModelEntry, RegistrySource
-    from scoutbot import registry, model_store
 
     # Create a fake model file
     model_file = isolated_registry / 'models' / 'yolov8-onecls.kaza.pt'
@@ -52,15 +51,17 @@ def test_fetch_uses_registry_when_model_cached(isolated_registry):
     model_file.write_bytes(b'fake model content')
     md5 = model_store._md5(model_file)
 
-    registry.register(ModelEntry(
-        name='scoutbot-v3',
-        path=str(model_file),
-        md5=md5,
-        framework='yolov8',
-        registered='2026-05-09T00:00:00Z',
-        source=RegistrySource(type='fetched', url='https://example.com/m.pt'),
-        default_run_config={},
-    ))
+    registry.register(
+        ModelEntry(
+            name='scoutbot-v3',
+            path=str(model_file),
+            md5=md5,
+            framework='yolov8',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='fetched', url='https://example.com/m.pt'),
+            default_run_config={},
+        )
+    )
 
     with patch('requests.get') as mock_get:
         result = model_store.fetch(config='v3')
@@ -71,8 +72,9 @@ def test_fetch_uses_registry_when_model_cached(isolated_registry):
 
 def test_fetch_fails_clearly_when_not_registered_and_no_network(isolated_registry):
     """fetch() raises a clear error if model not in registry and network unavailable."""
-    from scoutbot import model_store
     import requests
+
+    from scoutbot import model_store
 
     with patch('requests.get', side_effect=requests.ConnectionError('no network')):
         with pytest.raises(Exception):
@@ -81,11 +83,12 @@ def test_fetch_fails_clearly_when_not_registered_and_no_network(isolated_registr
 
 def test_fetch_registers_model_after_download(isolated_registry):
     """After a successful download, fetch() writes a ModelEntry to the registry."""
-    from scoutbot import registry, model_store
+    from scoutbot import model_store, registry
 
     fake_content = b'fake model data'
 
     import hashlib
+
     h = hashlib.md5(usedforsecurity=False)
     h.update(fake_content)
     expected_md5 = h.hexdigest()

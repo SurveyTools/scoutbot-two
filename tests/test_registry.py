@@ -1,6 +1,6 @@
 # tests/test_registry.py
-import os
 import importlib
+import os
 from pathlib import Path
 
 
@@ -9,8 +9,11 @@ def test_get_registry_path_default():
     # Ensure env var is not set
     os.environ.pop('RW_REGISTRY_PATH', None)
     import scoutbot.registry.paths as p
+
     importlib.reload(p)
-    assert p.get_registry_path() == Path.home() / '.rebel-workflow' / 'model-registry.json'
+    assert (
+        p.get_registry_path() == Path.home() / '.rebel-workflow' / 'model-registry.json'
+    )
 
 
 def test_get_registry_path_from_env(tmp_path):
@@ -18,6 +21,7 @@ def test_get_registry_path_from_env(tmp_path):
     custom = str(tmp_path / 'custom-registry.json')
     os.environ['RW_REGISTRY_PATH'] = custom
     import scoutbot.registry.paths as p
+
     importlib.reload(p)
     assert p.get_registry_path() == Path(custom)
     os.environ.pop('RW_REGISTRY_PATH')
@@ -26,6 +30,7 @@ def test_get_registry_path_from_env(tmp_path):
 def test_get_models_dir_default():
     os.environ.pop('RW_MODELS_DIR', None)
     import scoutbot.registry.paths as p
+
     importlib.reload(p)
     assert p.get_models_dir() == Path.home() / '.rebel-workflow' / 'models'
 
@@ -33,6 +38,7 @@ def test_get_models_dir_default():
 def test_get_models_dir_from_env(tmp_path):
     os.environ['RW_MODELS_DIR'] = str(tmp_path / 'models')
     import scoutbot.registry.paths as p
+
     importlib.reload(p)
     assert p.get_models_dir() == tmp_path / 'models'
     os.environ.pop('RW_MODELS_DIR')
@@ -52,8 +58,9 @@ def test_registry_source_to_dict_omits_nones():
 
 
 def test_registry_source_round_trip():
-    src = RegistrySource(type='fetched', url='https://example.com/m.pt',
-                         fetched_at='2026-05-09T00:00:00Z')
+    src = RegistrySource(
+        type='fetched', url='https://example.com/m.pt', fetched_at='2026-05-09T00:00:00Z'
+    )
     d = src.to_dict()
     src2 = RegistrySource.from_dict(d)
     assert src2.type == 'fetched'
@@ -103,6 +110,7 @@ def test_model_entry_round_trip():
 # All I/O tests use tmp_path and set RW_REGISTRY_PATH to isolate from real registry.
 
 import json
+
 import pytest
 
 
@@ -115,8 +123,11 @@ def registry_path(tmp_path, monkeypatch):
 
 def _make_entry(name='test-model', framework='yolov8'):
     return ModelEntry(
-        name=name, path=f'/tmp/{name}.pt', md5=f'md5-{name}',
-        framework=framework, registered='2026-05-09T00:00:00Z',
+        name=name,
+        path=f'/tmp/{name}.pt',
+        md5=f'md5-{name}',
+        framework=framework,
+        registered='2026-05-09T00:00:00Z',
         source=RegistrySource(type='manual'),
         default_run_config={'confidence_threshold': 0.45},
     )
@@ -124,11 +135,13 @@ def _make_entry(name='test-model', framework='yolov8'):
 
 def test_lookup_returns_none_when_registry_absent(registry_path):
     from scoutbot import registry
+
     assert registry.lookup('anything') is None
 
 
 def test_register_and_lookup(registry_path):
     from scoutbot import registry
+
     entry = _make_entry('alpha')
     registry.register(entry)
     result = registry.lookup('alpha')
@@ -139,9 +152,13 @@ def test_register_and_lookup(registry_path):
 
 def test_register_overwrites_existing(registry_path):
     from scoutbot import registry
+
     registry.register(_make_entry('m'))
     updated = ModelEntry(
-        name='m', path='/new.pt', md5='new-md5', framework='yolov8',
+        name='m',
+        path='/new.pt',
+        md5='new-md5',
+        framework='yolov8',
         registered='2026-05-09T01:00:00Z',
         source=RegistrySource(type='manual'),
         default_run_config={},
@@ -154,11 +171,13 @@ def test_register_overwrites_existing(registry_path):
 
 def test_list_models_empty(registry_path):
     from scoutbot import registry
+
     assert registry.list_models() == []
 
 
 def test_list_models_returns_all(registry_path):
     from scoutbot import registry
+
     for name in ('a', 'b', 'c'):
         registry.register(_make_entry(name))
     models = registry.list_models()
@@ -168,6 +187,7 @@ def test_list_models_returns_all(registry_path):
 
 def test_registry_file_is_valid_schema(registry_path):
     from scoutbot import registry
+
     registry.register(_make_entry('x'))
     with open(registry_path) as f:
         data = json.load(f)
@@ -179,6 +199,7 @@ def test_registry_file_is_valid_schema(registry_path):
 def test_registry_write_is_atomic(registry_path):
     """No .tmp file left behind after a write."""
     from scoutbot import registry
+
     registry.register(_make_entry('x'))
     tmp = registry_path.with_suffix('.tmp')
     assert not tmp.exists()
@@ -186,6 +207,7 @@ def test_registry_write_is_atomic(registry_path):
 
 def test_load_returns_raw_dict(registry_path):
     from scoutbot import registry
+
     registry.register(_make_entry('z'))
     raw = registry.load()
     assert isinstance(raw, dict)

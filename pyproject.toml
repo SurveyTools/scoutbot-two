@@ -112,5 +112,8 @@ skips = ["B101"]
 # ScoutBot does not use torch.jit.script — remove this entry once torch ships a fix.
 ignore-until-fixed = ["GHSA-rrmf-rvhw-rf47"]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["E402"]
+
 [tool.ruff.format]
 quote-style = "single"

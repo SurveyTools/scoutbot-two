@@ -300,9 +300,7 @@ class TestPipelineUnit:
 
 # --- _resolve_model tests ---
 
-import os
 import pytest
-from unittest.mock import patch
 
 
 @pytest.fixture
@@ -312,25 +310,32 @@ def registry_with_model(tmp_path, monkeypatch):
     model_file.write_bytes(b'fake')
     from scoutbot import registry
     from scoutbot.registry.schema import ModelEntry, RegistrySource
-    registry.register(ModelEntry(
-        name='scoutbot-v3',
-        path=str(model_file),
-        md5='abc',
-        framework='yolov8',
-        registered='2026-05-09T00:00:00Z',
-        source=RegistrySource(type='manual'),
-        default_run_config={
-            'slice_height': 512, 'slice_width': 512,
-            'overlap_height_ratio': 0.25, 'overlap_width_ratio': 0.25,
-            'perform_standard_pred': False, 'postprocess_class_agnostic': True,
-            'confidence_threshold': 0.45,
-        },
-    ))
+
+    registry.register(
+        ModelEntry(
+            name='scoutbot-v3',
+            path=str(model_file),
+            md5='abc',
+            framework='yolov8',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='manual'),
+            default_run_config={
+                'slice_height': 512,
+                'slice_width': 512,
+                'overlap_height_ratio': 0.25,
+                'overlap_width_ratio': 0.25,
+                'perform_standard_pred': False,
+                'postprocess_class_agnostic': True,
+                'confidence_threshold': 0.45,
+            },
+        )
+    )
     return str(model_file)
 
 
 def test_resolve_model_by_config(registry_with_model):
     from scoutbot import _resolve_model
+
     path, run_cfg, prov = _resolve_model(config='v3')
     assert path == registry_with_model
     assert run_cfg['confidence_threshold'] == 0.45
@@ -341,12 +346,14 @@ def test_resolve_model_by_config(registry_with_model):
 
 def test_resolve_model_by_name(registry_with_model):
     from scoutbot import _resolve_model
+
     path, run_cfg, prov = _resolve_model(model_name='scoutbot-v3')
     assert prov['name'] == 'scoutbot-v3'
 
 
 def test_resolve_model_override_threshold(registry_with_model):
     from scoutbot import _resolve_model
+
     _, run_cfg, prov = _resolve_model(config='v3', confidence_threshold=0.70)
     assert run_cfg['confidence_threshold'] == 0.70
     assert prov['run_config']['confidence_threshold'] == 0.70
@@ -355,6 +362,7 @@ def test_resolve_model_override_threshold(registry_with_model):
 def test_resolve_model_raises_when_not_registered(tmp_path, monkeypatch):
     monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'empty.json'))
     from scoutbot import _resolve_model
+
     with pytest.raises(RuntimeError, match='not found in registry'):
         _resolve_model(config='v3')
 
@@ -362,6 +370,7 @@ def test_resolve_model_raises_when_not_registered(tmp_path, monkeypatch):
 def test_batch_resumable_output_includes_model_provenance(tmp_path, registry_with_model):
     """Each JSONL record must include a 'model' provenance block."""
     import json
+
     import scoutbot
 
     output_file = tmp_path / 'results.jsonl'
@@ -369,7 +378,14 @@ def test_batch_resumable_output_includes_model_provenance(tmp_path, registry_wit
     fake_img.write_bytes(b'fake')
 
     with (
-        patch.object(scoutbot, 'pipeline', return_value=(0.9, [{'l': 'elephant', 'c': 0.9, 'x': 0, 'y': 0, 'w': 10, 'h': 10}])),
+        patch.object(
+            scoutbot,
+            'pipeline',
+            return_value=(
+                0.9,
+                [{'l': 'elephant', 'c': 0.9, 'x': 0, 'y': 0, 'w': 10, 'h': 10}],
+            ),
+        ),
         patch('scoutbot.tile_batched.Yolov8DetectionModel'),
     ):
         summary = scoutbot.batch_resumable(
