@@ -4,20 +4,16 @@ Thank you for your interest in contributing. This guide covers everything you ne
 development environment running, follow the project's coding and testing standards, and submit
 changes.
 
-> **Boilerplate — replace before public launch:** The sections marked *[boilerplate]* are
-> standard open-source scaffolding. Fill them in with project-specific decisions before the
-> repository goes public.
-
 ---
 
-## Ways to contribute *[boilerplate]*
+## Ways to contribute
 
 - Report a bug by opening a GitHub issue
 - Propose a feature or improvement in a GitHub issue before implementing it
 - Fix a bug or implement an approved feature via a pull request
 - Improve documentation or tests
 
-## Before you start *[boilerplate]*
+## Before you start
 
 - Check the open issues and pull requests to avoid duplicating work in progress.
 - For non-trivial changes, open an issue first to discuss the approach before writing code.
@@ -62,7 +58,7 @@ uv run pytest -m "not slow"
 uv run pytest -m "slow"
 
 # Single test or pattern
-uv run pytest tests/test_loc.py::TestLoc::test_configs -v
+uv run pytest tests/test_loc.py::TestLocConfig::test_configs_exist -v
 uv run pytest -k "test_pipeline" -v
 
 # With coverage
@@ -180,11 +176,11 @@ uv audit --locked --preview-features audit-command
 uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/
 ```
 
-All five must pass. CI enforces the same checks.
+All six must pass. CI enforces the same checks.
 
 ---
 
-## Submitting a pull request *[boilerplate]*
+## Submitting a pull request
 
 1. Fork the repository and create a branch from `main`.
 2. Write tests for any new behaviour before writing the implementation.
@@ -198,7 +194,7 @@ Branch naming convention: `<type>/<short-description>` — for example,
 
 ---
 
-## Reporting bugs *[boilerplate]*
+## Reporting bugs
 
 Open a GitHub issue and include:
 
@@ -210,7 +206,7 @@ Open a GitHub issue and include:
 
 ---
 
-## Proposing features *[boilerplate]*
+## Proposing features
 
 Open a GitHub issue describing the feature, the problem it solves, and any constraints or
 tradeoffs you are aware of. Discuss the approach before starting an implementation — this
@@ -218,7 +214,7 @@ avoids building something that conflicts with the roadmap or that requires signi
 
 ---
 
-## Code of conduct *[boilerplate]*
+## Code of conduct
 
 This project follows the [Contributor Covenant](https://www.contributor-covenant.org/) code of
 conduct. Be respectful, constructive, and focused on the work. Maintainers reserve the right to
@@ -226,7 +222,7 @@ remove contributions or participants that violate these standards.
 
 ---
 
-## License *[boilerplate]*
+## License
 
 Scoutbot is released under the [Apache-2.0 License](LICENSE). By submitting a pull request you
 confirm that you have the right to license your contribution under the same terms.
