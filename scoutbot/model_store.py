@@ -104,13 +104,15 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     Raises:
         AssertionError: If the model cannot be fetched or MD5 verification fails.
     """
+    from scoutbot import loc as _loc
+
     if config is None:
-        config = DEFAULT_CONFIG
+        config = _loc.DEFAULT_CONFIG
 
     started_ns = perf_counter_ns()
-    cfg = CONFIGS[config]
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    local_path = CACHE_DIR / str(cfg['name'])
+    cfg = _loc.CONFIGS[config]
+    _loc.CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    local_path = _loc.CACHE_DIR / str(cfg['name'])
 
     # Core ML bundles are local-only directory packages: no remote URL to fetch and
     # no single file to hash. If absent, export one on demand from the source .pt.
@@ -119,9 +121,9 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
         if not local_path.exists():
             log.info(f'Core ML model missing, exporting: {cfg["name"]}')
             if observer is None:
-                export_coreml(config)
+                _loc.export_coreml(config)
             else:
-                export_coreml(config, observer=observer)
+                _loc.export_coreml(config, observer=observer)
         assert local_path.exists(), f'Core ML export failed: {local_path}'
         log.debug(f'Using local Core ML model: {local_path}')
         ended_ns = perf_counter_ns()
@@ -147,7 +149,7 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     response.raise_for_status()
     remote_md5 = response.text.strip().split()[0]
 
-    if local_path.exists() and _md5(local_path) == remote_md5:
+    if local_path.exists() and _loc._md5(local_path) == remote_md5:
         log.debug(f'Model up to date: {local_path}')
         ended_ns = perf_counter_ns()
         emit(
@@ -179,7 +181,9 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
                 f.write(chunk)
                 bar.update(len(chunk))
 
-    assert _md5(local_path) == remote_md5, f'MD5 mismatch after download: {cfg["name"]}'
+    assert _loc._md5(local_path) == remote_md5, (
+        f'MD5 mismatch after download: {cfg["name"]}'
+    )
     log.info(f'Saved: {local_path}')
     ended_ns = perf_counter_ns()
     emit(
@@ -216,11 +220,13 @@ def export_coreml(config, force: bool = False, observer=None) -> str:
     Returns:
         str: local ``.mlpackage`` path.
     """
-    cfg = CONFIGS[config]
+    from scoutbot import loc as _loc
+
+    cfg = _loc.CONFIGS[config]
     assert cfg.get('backend') == 'coreml', f'{config} is not a Core ML config'
 
     started_ns = perf_counter_ns()
-    target = CACHE_DIR / str(cfg['name'])
+    target = _loc.CACHE_DIR / str(cfg['name'])
     if target.exists() and not force:
         log.debug(f'Core ML model already present: {target}')
         ended_ns = perf_counter_ns()
@@ -247,9 +253,9 @@ def export_coreml(config, force: bool = False, observer=None) -> str:
     from ultralytics import YOLO
 
     if observer is None:
-        pt_path = fetch(cfg['source'])
+        pt_path = _loc.fetch(cfg['source'])
     else:
-        pt_path = fetch(cfg['source'], observer=observer)
+        pt_path = _loc.fetch(cfg['source'], observer=observer)
     imgsz = cfg.get('slice_width', 640)
     log.info(f'Exporting {cfg["name"]} from {Path(pt_path).name} (imgsz={imgsz})...')
 

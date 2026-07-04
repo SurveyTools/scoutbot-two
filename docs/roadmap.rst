@@ -124,8 +124,8 @@ To remove ``dill`` properly:
 2. Load each model with ``dill`` available (current environment is fine).
 3. Re-export using ``model.save()`` or extract and re-save the state dict with plain
    ``torch.save``, targeting a Ultralytics version that serializes without ``dill``.
-4. Verify MD5s, update ``scoutbot/loc/__init__.py`` ``CONFIGS`` with the new hashes and
-   URLs, and re-upload the artifacts to Azure.
+4. Verify MD5s, update ``scoutbot/model_store.py`` ``CONFIGS`` with the new hashes and URLs,
+   and re-upload the artifacts to Azure.
 5. Remove ``dill`` from ``[project.dependencies]`` and this roadmap entry.
 
 Dependency currency policy
@@ -224,7 +224,7 @@ Model registry / model integration
 
 Future model integration work should provide a registry mechanism for model updates and new model
 integrations. Until that is mature, model configs remain internal implementation details in
-``scoutbot/loc/__init__.py`` and new model work should include artifact provenance, integrity
+``scoutbot.model_store`` and new model work should include artifact provenance, integrity
 verification, config schema tests, CLI choice tests, and output compatibility checks.
 
 Model registry evolution / model-family lineage

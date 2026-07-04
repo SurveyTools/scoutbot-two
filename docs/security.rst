@@ -7,7 +7,7 @@ posture, CI scanning rationale, and local data/privacy assumptions.
 Model download policy
 ---------------------
 
-Hosted model artifacts are fetched from the URLs configured in ``scoutbot.loc.CONFIGS``. Current
+Hosted model artifacts are fetched from the URLs configured in ``scoutbot.model_store.CONFIGS``. Current
 PyTorch-backed models are hosted on Azure Blob Storage:
 
 * ``v3`` uses ``yolov8-onecls.kaza.pt``

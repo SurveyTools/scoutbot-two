@@ -82,5 +82,6 @@ Model provenance and future integrations
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The current models were trained on KAZA aerial survey data. New model integration is planned but
-not yet a mature public extension API. Future registry work is tracked in
+not yet a mature public extension API. The current model catalog lives in
+``scoutbot.model_store``. Future registry work is tracked in
 ``docs/superpowers/plans/2026-05-09-scoutbot-registry.md`` and in :doc:`roadmap`.
