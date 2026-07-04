@@ -246,8 +246,8 @@ class TestLocFetchUnit:
         bundle.mkdir()
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
-            patch('scoutbot.loc.export_coreml') as mock_export,
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.export_coreml') as mock_export,
         ):
             result = loc.fetch('v3-coreml')
 
@@ -264,14 +264,14 @@ class TestLocFetchUnit:
             bundle.mkdir(exist_ok=True)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch(
-                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+                'scoutbot.model_store.export_coreml', side_effect=_create_bundle
             ) as mock_export,
         ):
             result = loc.fetch('v3-coreml')
 
-        mock_export.assert_called_once_with('v3-coreml')
+        mock_export.assert_called_once_with('v3-coreml', observer=None)
         assert result == str(bundle)
 
     def test_fetch_coreml_forwards_observer_and_emits_event(self, tmp_path):
@@ -289,9 +289,9 @@ class TestLocFetchUnit:
         observer = list_observer(observer_events)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch(
-                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+                'scoutbot.model_store.export_coreml', side_effect=_create_bundle
             ) as mock_export,
         ):
             result = loc.fetch('v3-coreml', observer=observer)
@@ -326,9 +326,10 @@ class TestLocFetchUnit:
         md5_response.raise_for_status = MagicMock()
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             result = loc.fetch('v3')
 
@@ -353,9 +354,10 @@ class TestLocFetchUnit:
                 events.append(event)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             result = loc.fetch('v3', observer=Collector())
 
@@ -388,8 +390,8 @@ class TestLocFetchUnit:
                 events.append(event)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
-            patch('scoutbot.loc.export_coreml') as mock_export,
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.export_coreml') as mock_export,
         ):
             result = loc.fetch('v3-coreml', observer=Collector())
 
@@ -427,7 +429,8 @@ class TestLocFetchUnit:
             return download_response
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', side_effect=_get),
         ):
             result = loc.fetch('v3')
@@ -495,7 +498,7 @@ class TestFetchComputeUnitsEmission:
         events = []
         observer = list_observer(events)
 
-        with patch.object(loc, 'CACHE_DIR', tmp_path):
+        with patch('scoutbot.model_store.CACHE_DIR', tmp_path):
             loc.fetch('v3-coreml', observer=observer)
 
         fetch_event = next(e for e in events if e['name'] == 'fetch')
@@ -549,9 +552,10 @@ class TestFetchComputeUnitsEmission:
         observer = list_observer(events)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             loc.fetch('v3-cls', observer=observer)
 

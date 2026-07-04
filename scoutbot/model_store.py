@@ -95,6 +95,10 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     """
     Fetch the YOLOv8 model file, downloading only if absent or hash-mismatched.
 
+    Checks the local model registry first; skips all network I/O when a valid
+    cached entry is found. Registers the model after a successful download so
+    subsequent calls resolve offline.
+
     Args:
         config (str or None): ``'v3'`` or ``'v3-cls'``. Defaults to ``'v3'``.
 
@@ -104,15 +108,14 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     Raises:
         AssertionError: If the model cannot be fetched or MD5 verification fails.
     """
-    from scoutbot import loc as _loc
-
     if config is None:
-        config = _loc.DEFAULT_CONFIG
+        config = DEFAULT_CONFIG
 
     started_ns = perf_counter_ns()
-    cfg = _loc.CONFIGS[config]
-    _loc.CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    local_path = _loc.CACHE_DIR / str(cfg['name'])
+    cfg = CONFIGS[config]
+    registry_name = f'scoutbot-{config}'
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    local_path = CACHE_DIR / str(cfg['name'])
 
     # Core ML bundles are local-only directory packages: no remote URL to fetch and
     # no single file to hash. If absent, export one on demand from the source .pt.
@@ -120,10 +123,7 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
         cache_hit = local_path.exists()
         if not local_path.exists():
             log.info(f'Core ML model missing, exporting: {cfg["name"]}')
-            if observer is None:
-                _loc.export_coreml(config)
-            else:
-                _loc.export_coreml(config, observer=observer)
+            export_coreml(config, observer=observer)
         assert local_path.exists(), f'Core ML export failed: {local_path}'
         log.debug(f'Using local Core ML model: {local_path}')
         ended_ns = perf_counter_ns()
@@ -145,11 +145,36 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
         )
         return str(local_path)
 
+    from scoutbot import registry as _registry
+
+    entry = _registry.lookup(registry_name)
+    if entry is not None:
+        cached_path = Path(entry.path)
+        if cached_path.exists() and _md5(cached_path) == entry.md5:
+            log.debug(f'Model found in registry: {registry_name}')
+            ended_ns = perf_counter_ns()
+            emit(
+                observer,
+                {
+                    'name': 'fetch',
+                    'status': 'ok',
+                    'started_ns': started_ns,
+                    'ended_ns': ended_ns,
+                    'duration_ns': ended_ns - started_ns,
+                    'config': config,
+                    'backend': 'pt',
+                    'device': 'cpu',
+                    'cache_hit': True,
+                    'model_path': str(cached_path),
+                },
+            )
+            return str(cached_path)
+
     response = requests.get(str(cfg['md5_url']), timeout=30)
     response.raise_for_status()
     remote_md5 = response.text.strip().split()[0]
 
-    if local_path.exists() and _loc._md5(local_path) == remote_md5:
+    if local_path.exists() and _md5(local_path) == remote_md5:
         log.debug(f'Model up to date: {local_path}')
         ended_ns = perf_counter_ns()
         emit(
@@ -181,9 +206,37 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
                 f.write(chunk)
                 bar.update(len(chunk))
 
-    assert _loc._md5(local_path) == remote_md5, (
+    assert _md5(local_path) == remote_md5, (
         f'MD5 mismatch after download: {cfg["name"]}'
     )
+
+    from datetime import datetime, timezone
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+
+    _registry.register(ModelEntry(
+        name=registry_name,
+        path=str(local_path),
+        md5=remote_md5,
+        framework='yolov8',
+        registered=datetime.now(timezone.utc).isoformat(),
+        source=RegistrySource(
+            type='fetched',
+            url=cfg['url'],
+            fetched_at=datetime.now(timezone.utc).isoformat(),
+        ),
+        default_run_config={
+            'slice_height':               cfg['slice_height'],
+            'slice_width':                cfg['slice_width'],
+            'overlap_height_ratio':       cfg['overlap_height_ratio'],
+            'overlap_width_ratio':        cfg['overlap_width_ratio'],
+            'perform_standard_pred':      cfg['perform_standard_pred'],
+            'postprocess_class_agnostic': cfg['postprocess_class_agnostic'],
+            'confidence_threshold':       cfg['thresh'],
+        },
+        description=f'ScoutBot {config} model (KAZA)',
+    ))
+    log.info(f'Registered: {registry_name}')
+
     log.info(f'Saved: {local_path}')
     ended_ns = perf_counter_ns()
     emit(
