@@ -340,3 +340,53 @@ class TestCLIExecutionBodies:
 
         assert result.exit_code == 0
         mock_example.assert_called_once()
+
+
+# --- register command tests ---
+
+import os
+import pytest
+from pathlib import Path
+
+
+@pytest.fixture
+def isolated_registry_cli(tmp_path, monkeypatch):
+    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    return tmp_path
+
+
+def test_register_adds_model_to_registry(isolated_registry_cli, tmp_path):
+    from scoutbot.scoutbot import cli
+    from scoutbot import registry
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake model')
+
+    runner = CliRunner()
+    result = runner.invoke(cli, [
+        'register',
+        '--name', 'my-model',
+        '--path', str(model_file),
+        '--arch', 'yolov8',
+        '--description', 'Test model',
+        '--threshold', '0.60',
+    ])
+
+    assert result.exit_code == 0, result.output
+    entry = registry.lookup('my-model')
+    assert entry is not None
+    assert entry.framework == 'yolov8'
+    assert entry.description == 'Test model'
+    assert entry.default_run_config['confidence_threshold'] == 0.60
+    assert entry.source.type == 'local'
+
+
+def test_register_fails_if_path_missing(isolated_registry_cli):
+    from scoutbot.scoutbot import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, [
+        'register',
+        '--name', 'x', '--path', '/does/not/exist.pt', '--arch', 'yolov8',
+    ])
+    assert result.exit_code != 0
