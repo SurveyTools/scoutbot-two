@@ -15,6 +15,10 @@ authors = [
 ]
 dependencies = [
     "click",
+    # Required to load KAZA .pt model files serialized with an older Ultralytics
+    # version that embedded dill pickle references. Remove once models are re-exported
+    # without dill serialization; see docs/roadmap.rst "Model re-export / dill removal".
+    "dill>=0.4.0",
     "numpy",
     # sahi and ultralytics both depend on opencv-python (GUI build); this overrides
     # them with the headless build so CI and server environments without a display work.

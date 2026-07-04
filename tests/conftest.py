@@ -2,9 +2,12 @@
 """Shared pytest fixtures for ScoutBot tests."""
 
 import logging
+import sys
+from types import ModuleType
 from pathlib import Path
 
 import pytest
+from unittest.mock import MagicMock
 
 
 @pytest.fixture(autouse=True, scope='session')
@@ -32,3 +35,16 @@ def temp_output(tmp_path):
 def temp_json_output(tmp_path):
     """Provide a temporary JSON output file path."""
     return tmp_path / 'output.json'
+
+
+@pytest.fixture
+def ultralytics_stub(monkeypatch):
+    """Keep tests from importing the real ultralytics package.
+
+    The suite patches ``ultralytics.YOLO`` in multiple places. Importing the real
+    package pulls in optional platform-specific dependencies that are not needed for
+    these unit tests, so replace it with a minimal stub module.
+    """
+    module = ModuleType('ultralytics')
+    module.YOLO = MagicMock(name='YOLO')
+    monkeypatch.setitem(sys.modules, 'ultralytics', module)

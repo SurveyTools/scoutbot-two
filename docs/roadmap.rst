@@ -108,6 +108,26 @@ Dependency and maintenance policy
 
 **Status:** planned
 
+Model re-export / dill removal
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+The KAZA ``.pt`` model files were serialized with an older Ultralytics version that embedded
+``dill`` pickle references. Loading them at runtime requires ``dill`` as a dependency even though
+the inference code itself has no need for it. ``dill>=0.4.0`` has been re-added to
+``[project.dependencies]`` as a temporary shim.
+
+To remove ``dill`` properly:
+
+1. Download the current KAZA ``.pt`` files from Azure Blob Storage.
+2. Load each model with ``dill`` available (current environment is fine).
+3. Re-export using ``model.save()`` or extract and re-save the state dict with plain
+   ``torch.save``, targeting a Ultralytics version that serializes without ``dill``.
+4. Verify MD5s, update ``scoutbot/loc/__init__.py`` ``CONFIGS`` with the new hashes and
+   URLs, and re-upload the artifacts to Azure.
+5. Remove ``dill`` from ``[project.dependencies]`` and this roadmap entry.
+
 Dependency currency policy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

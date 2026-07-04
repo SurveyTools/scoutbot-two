@@ -21,7 +21,7 @@ class TestLoadModelPlatformGuard:
             with pytest.raises(RuntimeError, match='macOS'):
                 Yolov8DetectionModel.load_model(instance)
 
-    def test_mlpackage_allowed_on_darwin(self):
+    def test_mlpackage_allowed_on_darwin(self, ultralytics_stub):
         """Loading a .mlpackage on macOS must not raise a platform error."""
         from scoutbot.tile_batched.main import Yolov8DetectionModel
 
@@ -39,7 +39,7 @@ class TestLoadModelPlatformGuard:
 class TestLoadModelPtTaskDetect:
     """Verify PT load_model passes task='detect' to prevent cls misidentification."""
 
-    def test_pt_load_model_passes_task_detect(self):
+    def test_pt_load_model_passes_task_detect(self, ultralytics_stub):
         """PT load_model must call YOLO(path, task='detect') to prevent boxes=None."""
         from scoutbot.tile_batched.main import Yolov8DetectionModel
 
@@ -271,7 +271,7 @@ class TestPerformInferenceNdarrayInput:
 class TestLoadModelStoresComputeUnitsActual:
     """Tests that load_model() calls _resolve_compute_units_actual and stores the result."""
 
-    def test_load_model_stores_compute_units_actual_for_mlpackage(self):
+    def test_load_model_stores_compute_units_actual_for_mlpackage(self, ultralytics_stub):
         """load_model() for a .mlpackage must call _resolve_compute_units_actual and
         store the result in self._compute_units_actual.
         """
@@ -298,7 +298,9 @@ class TestLoadModelStoresComputeUnitsActual:
 class TestPerformInferenceComputeUnitsActual:
     """Tests that perform_inference() emits compute_units_actual in its event."""
 
-    def test_perform_inference_coreml_emits_compute_units_actual(self):
+    def test_perform_inference_coreml_emits_compute_units_actual(
+        self, ultralytics_stub
+    ):
         """perform_inference() for a CoreML model must include compute_units_actual
         in the emitted observability event.
         """
