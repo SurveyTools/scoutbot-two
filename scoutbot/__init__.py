@@ -117,6 +117,7 @@ def fetch(config=None, observer=None):
 def pipeline(
     filepath,
     config=None,
+    model_name=None,
     batched_detection_model=None,
     backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
     loc_thresh=0.45,
@@ -170,7 +171,10 @@ def pipeline(
     started_ns = perf_counter_ns()
     observer_kwargs = {'observer': observer} if observer is not None else {}
     if batched_detection_model is None:
-        yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
+        if model_name is not None:
+            yolov8_model_path, _, _ = _resolve_model(model_name=model_name)
+        else:
+            yolov8_model_path = loc.fetch(config=config, **observer_kwargs)
 
         batched_detection_model = tile_batched.Yolov8DetectionModel(
             model_path=yolov8_model_path,

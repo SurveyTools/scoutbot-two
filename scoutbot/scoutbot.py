@@ -54,6 +54,12 @@ v3_options = [
         default=45,
         type=click.IntRange(0, 100, clamp=True),
     ),
+    click.option(
+        '--model',
+        help='Model name from registry (mutually exclusive with --config)',
+        default=None,
+        type=str,
+    ),
 ]
 
 
@@ -82,6 +88,7 @@ def pipeline(
     output,
     device,
     loc_thresh,
+    model,
 ):
     """
     Run the ScoutBot pipeline on an input image filepath.
@@ -106,19 +113,32 @@ def pipeline(
         }
     }
     """
+    ctx = click.get_current_context()
+    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+        raise click.UsageError('--model and --config are mutually exclusive.')
+
     loc_thresh_float = loc_thresh / 100.0
+    if model is None:
+        run_cfg = loc.CONFIGS[config]
+    else:
+        _, run_cfg, _ = scoutbot._resolve_model(
+            config=None,
+            model_name=model,
+            confidence_threshold=loc_thresh_float,
+        )
 
     wic_, detects = scoutbot.pipeline(
         filepath,
-        config=config,
+        config=config if model is None else None,
+        model_name=model,
         backend_device=device,
         loc_thresh=loc_thresh_float,
-        slice_height=loc.CONFIGS[config]['slice_height'],
-        slice_width=loc.CONFIGS[config]['slice_width'],
-        overlap_height_ratio=loc.CONFIGS[config]['overlap_height_ratio'],
-        overlap_width_ratio=loc.CONFIGS[config]['overlap_width_ratio'],
-        perform_standard_pred=loc.CONFIGS[config]['perform_standard_pred'],
-        postprocess_class_agnostic=loc.CONFIGS[config]['postprocess_class_agnostic'],
+        slice_height=run_cfg['slice_height'],
+        slice_width=run_cfg['slice_width'],
+        overlap_height_ratio=run_cfg['overlap_height_ratio'],
+        overlap_width_ratio=run_cfg['overlap_width_ratio'],
+        perform_standard_pred=run_cfg['perform_standard_pred'],
+        postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
     )
 
     data = {
@@ -156,6 +176,7 @@ def batch(
     output,
     device,
     loc_thresh,
+    model,
     no_progress,
 ):
     """
@@ -176,21 +197,34 @@ def batch(
         ...
     }
     """
+    ctx = click.get_current_context()
+    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+        raise click.UsageError('--model and --config are mutually exclusive.')
+
     loc_thresh_float = loc_thresh / 100.0
+    if model is None:
+        run_cfg = loc.CONFIGS[config]
+    else:
+        _, run_cfg, _ = scoutbot._resolve_model(
+            config=None,
+            model_name=model,
+            confidence_threshold=loc_thresh_float,
+        )
 
     log.debug(f'Running batch on {len(filepaths)} files...')
 
     wic_list, detects_list = scoutbot.batch(
         filepaths,
-        config=config,
+        config=config if model is None else None,
+        model_name=model,
         backend_device=device,
         loc_thresh=loc_thresh_float,
-        slice_height=loc.CONFIGS[config]['slice_height'],
-        slice_width=loc.CONFIGS[config]['slice_width'],
-        overlap_height_ratio=loc.CONFIGS[config]['overlap_height_ratio'],
-        overlap_width_ratio=loc.CONFIGS[config]['overlap_width_ratio'],
-        perform_standard_pred=loc.CONFIGS[config]['perform_standard_pred'],
-        postprocess_class_agnostic=loc.CONFIGS[config]['postprocess_class_agnostic'],
+        slice_height=run_cfg['slice_height'],
+        slice_width=run_cfg['slice_width'],
+        overlap_height_ratio=run_cfg['overlap_height_ratio'],
+        overlap_width_ratio=run_cfg['overlap_width_ratio'],
+        perform_standard_pred=run_cfg['perform_standard_pred'],
+        postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
         show_progress=not no_progress,
     )
     results = zip(filepaths, wic_list, detects_list)
@@ -236,6 +270,7 @@ def batch_resumable(
     config,
     device,
     loc_thresh,
+    model,
     no_progress,
 ):
     """
@@ -250,7 +285,19 @@ def batch_resumable(
     {"filepath": "/path/to/img1.jpg", "wic": 0.85, "detections": [...], ...}
     {"filepath": "/path/to/img2.jpg", "wic": 0.12, "detections": [], ...}
     """
+    ctx = click.get_current_context()
+    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+        raise click.UsageError('--model and --config are mutually exclusive.')
+
     loc_thresh_float = loc_thresh / 100.0
+    if model is None:
+        run_cfg = loc.CONFIGS[config]
+    else:
+        _, run_cfg, _ = scoutbot._resolve_model(
+            config=None,
+            model_name=model,
+            confidence_threshold=loc_thresh_float,
+        )
 
     log.debug(f'Running resumable batch on {len(filepaths)} files...')
     log.debug(f'Output file: {output}')
@@ -258,15 +305,16 @@ def batch_resumable(
     summary = scoutbot.batch_resumable(
         filepaths=list(filepaths),
         output_path=output,
-        config=config,
+        config=config if model is None else None,
+        model_name=model,
         backend_device=device,
         loc_thresh=loc_thresh_float,
-        slice_height=loc.CONFIGS[config]['slice_height'],
-        slice_width=loc.CONFIGS[config]['slice_width'],
-        overlap_height_ratio=loc.CONFIGS[config]['overlap_height_ratio'],
-        overlap_width_ratio=loc.CONFIGS[config]['overlap_width_ratio'],
-        perform_standard_pred=loc.CONFIGS[config]['perform_standard_pred'],
-        postprocess_class_agnostic=loc.CONFIGS[config]['postprocess_class_agnostic'],
+        slice_height=run_cfg['slice_height'],
+        slice_width=run_cfg['slice_width'],
+        overlap_height_ratio=run_cfg['overlap_height_ratio'],
+        overlap_width_ratio=run_cfg['overlap_width_ratio'],
+        perform_standard_pred=run_cfg['perform_standard_pred'],
+        postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
         show_progress=not no_progress,
     )
 

@@ -455,3 +455,90 @@ def test_models_info_unknown_exits_nonzero(isolated_registry_cli):
     runner = CliRunner()
     result = runner.invoke(cli, ['models', 'info', 'nonexistent'])
     assert result.exit_code != 0
+
+
+# --- --model flag tests ---
+
+
+def test_pipeline_accepts_model_flag(isolated_registry_cli, tmp_path):
+    """--model flag routes pipeline through the registry entry."""
+    from unittest.mock import patch
+
+    import scoutbot
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake')
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'fake image')
+
+    registry.register(ModelEntry(
+        name='my-custom',
+        path=str(model_file),
+        md5='abc',
+        framework='yolov8',
+        registered='2026-05-09T00:00:00Z',
+        source=RegistrySource(type='manual'),
+        default_run_config={
+            'slice_height': 512, 'slice_width': 512,
+            'overlap_height_ratio': 0.25, 'overlap_width_ratio': 0.25,
+            'perform_standard_pred': False, 'postprocess_class_agnostic': True,
+            'confidence_threshold': 0.45,
+        },
+    ))
+
+    runner = CliRunner()
+    with patch.object(scoutbot, 'pipeline', return_value=(0.0, [])):
+        result = runner.invoke(cli, ['pipeline', str(img_file), '--model', 'my-custom'])
+    assert result.exit_code == 0, result.output
+
+
+def test_pipeline_model_and_config_are_exclusive(isolated_registry_cli, tmp_path):
+    from scoutbot.scoutbot import cli
+
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'x')
+    runner = CliRunner()
+    result = runner.invoke(cli, ['pipeline', str(img_file), '--model', 'x', '--config', 'v3'])
+    assert result.exit_code != 0
+    assert 'mutually exclusive' in result.output.lower()
+
+
+def test_batch_accepts_model_flag(isolated_registry_cli, tmp_path):
+    """--model flag routes batch command through the registry entry."""
+    from unittest.mock import patch
+
+    import scoutbot
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake')
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'fake image')
+
+    registry.register(ModelEntry(
+        name='my-custom',
+        path=str(model_file),
+        md5='abc',
+        framework='yolov8',
+        registered='2026-05-09T00:00:00Z',
+        source=RegistrySource(type='manual'),
+        default_run_config={
+            'slice_height': 512, 'slice_width': 512,
+            'overlap_height_ratio': 0.25, 'overlap_width_ratio': 0.25,
+            'perform_standard_pred': False, 'postprocess_class_agnostic': True,
+            'confidence_threshold': 0.45,
+        },
+    ))
+
+    runner = CliRunner()
+    with (
+        patch.object(scoutbot, 'pipeline', return_value=(0.0, [])),
+        patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+    ):
+        result = runner.invoke(cli, ['batch', str(img_file), '--model', 'my-custom'])
+    assert result.exit_code == 0, result.output
