@@ -53,7 +53,11 @@ def _draw_label(img, text: str, x: int, y: int, box_h: int) -> None:
 
 
 def _open_for_display(path: Path) -> None:
-    pass  # wired up in Task 3
+    import webbrowser
+
+    # Hands a file:// URI to the OS default handler. On macOS this is typically
+    # Preview; on Linux it delegates to xdg-open. Headless environments may no-op.
+    webbrowser.open(path.as_uri())
 
 
 def load_detections(json_path: Path, image_key: str | None = None) -> dict:

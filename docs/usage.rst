@@ -137,3 +137,27 @@ returned. Reviewers should pay special attention to:
 * detections close to the confidence threshold
 * duplicate or merged boxes near tile boundaries
 * class-label uncertainty when using multi-class configs
+
+Visualisation
+-------------
+
+A standalone visualisation tool is provided in ``tools/visualise.py``. It renders
+bounding boxes and confidence scores from ScoutBot JSON output onto the source image.
+By default it hands the result to the OS default handler for the file URI (Preview on
+macOS, ``xdg-open`` on Linux); use ``--output`` with ``--no-display`` to save without
+opening anything.
+
+.. code-block:: bash
+
+   uv run python tools/visualise.py IMAGE.jpg DETECTIONS.json
+   uv run python tools/visualise.py IMAGE.jpg DETECTIONS.json --threshold 0.5
+   uv run python tools/visualise.py IMAGE.jpg DETECTIONS.json --output annotated.jpg --no-display
+
+When the JSON file contains multiple image entries (e.g. from ``scoutbot batch``
+output), specify which image to display with ``--image-key``:
+
+.. code-block:: bash
+
+   uv run python tools/visualise.py IMAGE.jpg batch_results.json --image-key /path/to/image.jpg
+
+Pass ``--help`` for the full option list.

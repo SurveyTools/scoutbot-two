@@ -5,8 +5,14 @@ Changelog
 Unreleased
 ----------
 
+* Moved ``visualise.py`` from the repo root to ``tools/visualise.py`` and included it
+  in all quality gates (ruff, mypy, bandit). Rewrote the script: replaced
+  ``cv2.imshow`` (incompatible with the headless OpenCV build) with ``webbrowser``
+  for display; added ``--no-display`` and ``--image-key`` flags; fixed label rendering
+  near the top edge of the image; removed the ``numpy`` dependency; added per-class
+  box colours; added a test suite in ``tests/test_visualise.py``.
 * Added Bandit source-code security scanning to the quality workflow (``bandit -c pyproject.toml
-  -r scoutbot/ benchmarks/``). B101 (assert-used) is skipped; ``tests/`` is excluded. Fixed
+  -r scoutbot/ benchmarks/ tools/``). B101 (assert-used) is skipped; ``tests/`` is excluded. Fixed
   ``hashlib.md5()`` → ``hashlib.md5(usedforsecurity=False)`` to reflect its use as a file
   integrity check rather than a cryptographic hash.
 * Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.

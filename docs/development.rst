@@ -83,11 +83,11 @@ Ruff handles formatting, linting, and import ordering:
    uv run ruff format --check .
    uv run ruff check .
 
-Scoped mypy checks library code:
+Scoped mypy checks library code and tools:
 
 .. code-block:: bash
 
-   uv run mypy scoutbot
+   uv run mypy scoutbot tools/visualise.py
 
 Dependency vulnerability scanning audits the locked project graph:
 
@@ -95,12 +95,13 @@ Dependency vulnerability scanning audits the locked project graph:
 
    uv audit --locked --preview-features audit-command
 
-Source-code security scanning checks the ``scoutbot/`` and ``benchmarks/`` trees for common
-Python security mistakes (``tests/`` is excluded — pytest assertions are expected there):
+Source-code security scanning checks the ``scoutbot/``, ``benchmarks/``, and ``tools/``
+trees for common Python security mistakes (``tests/`` is excluded — pytest assertions are
+expected there):
 
 .. code-block:: bash
 
-   uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/
+   uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/ tools/
 
 ``uv audit`` and Bandit cover different surfaces: ``uv audit`` checks installed packages
 against the vulnerability database; Bandit checks your source code for insecure patterns.
@@ -121,8 +122,9 @@ CI workflows
 
 ``.github/workflows/quality.yml``
    Runs on pull requests and pushes to ``main``. It installs with ``uv sync --extra test`` and
-   runs Ruff format check, Ruff lint, ``uv run mypy scoutbot``, a locked-graph dependency
-   audit (``uv audit --locked``), and a Bandit source-code security scan.
+   runs Ruff format check, Ruff lint, ``uv run mypy scoutbot tools/visualise.py``, a
+   locked-graph dependency audit (``uv audit --locked``), and a Bandit source-code security
+   scan (``scoutbot/``, ``benchmarks/``, ``tools/``).
 
 Documentation builds
 --------------------

@@ -106,10 +106,10 @@ the code does; well-named identifiers already do that.
 
 ## Type checking
 
-Scoped mypy runs against the `scoutbot/` package:
+Scoped mypy runs against the `scoutbot/` package and tools:
 
 ```bash
-uv run mypy scoutbot
+uv run mypy scoutbot tools/visualise.py
 ```
 
 ---
@@ -171,9 +171,9 @@ Run these before opening a pull request:
 uv run pytest -m "not slow"
 uv run ruff format --check .
 uv run ruff check .
-uv run mypy scoutbot
+uv run mypy scoutbot tools/visualise.py
 uv audit --locked --preview-features audit-command
-uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/
+uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/ tools/
 ```
 
 All six must pass. CI enforces the same checks.

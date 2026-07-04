@@ -45,6 +45,11 @@ class TestLoadDetections:
         with pytest.raises(ValueError, match='2 images'):
             visualise.load_detections(p)
 
+    def test_image_key_not_found_raises(self, tmp_path):
+        p = _write_json(tmp_path, {'/a.jpg': SAMPLE_RESULT})
+        with pytest.raises(ValueError, match='not found'):
+            visualise.load_detections(p, image_key='/missing.jpg')
+
 
 class TestDrawLabel:
     def test_label_above_when_room(self):
@@ -102,3 +107,67 @@ class TestVisualizeDetections:
                 img_path, json_path, output_path=out_path, display=False
             )
         mock_open.assert_not_called()
+
+
+class TestCLI:
+    def test_missing_image_exits_1(self, tmp_path):
+        json_path = _write_json(tmp_path, {})
+        with patch('sys.argv', ['visualise.py', '/nonexistent.jpg', str(json_path)]):
+            with pytest.raises(SystemExit) as exc:
+                visualise.main()
+        assert exc.value.code == 1
+
+    def test_missing_json_exits_1(self, tmp_path):
+        img_path = _write_image(tmp_path)
+        with patch('sys.argv', ['visualise.py', str(img_path), '/nonexistent.json']):
+            with pytest.raises(SystemExit) as exc:
+                visualise.main()
+        assert exc.value.code == 1
+
+    def test_no_display_without_output_exits_1(self, tmp_path):
+        img_path = _write_image(tmp_path)
+        json_path = _write_json(tmp_path, {str(img_path): SAMPLE_RESULT})
+        with patch(
+            'sys.argv', ['visualise.py', str(img_path), str(json_path), '--no-display']
+        ):
+            with pytest.raises(SystemExit) as exc:
+                visualise.main()
+        assert exc.value.code == 1
+
+    def test_image_key_flag_selects_entry(self, tmp_path):
+        img_path = _write_image(tmp_path)
+        other = {'wic': 0.1, 'loc': []}
+        json_path = _write_json(
+            tmp_path,
+            {
+                str(img_path): SAMPLE_RESULT,
+                '/other.jpg': other,
+            },
+        )
+        out_path = tmp_path / 'out.jpg'
+        with patch.object(visualise, '_open_for_display'):
+            with patch(
+                'sys.argv',
+                [
+                    'visualise.py',
+                    str(img_path),
+                    str(json_path),
+                    '--image-key',
+                    str(img_path),
+                    '--output',
+                    str(out_path),
+                    '--no-display',
+                ],
+            ):
+                visualise.main()
+        assert out_path.exists()
+
+    def test_display_without_output_uses_temp_file(self, tmp_path):
+        img_path = _write_image(tmp_path)
+        json_path = _write_json(tmp_path, {str(img_path): SAMPLE_RESULT})
+        with patch.object(visualise, '_open_for_display') as mock_open:
+            with patch('sys.argv', ['visualise.py', str(img_path), str(json_path)]):
+                visualise.main()
+        mock_open.assert_called_once()
+        called_path = mock_open.call_args[0][0]
+        assert called_path.suffix == '.jpg'
