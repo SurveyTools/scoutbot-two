@@ -30,7 +30,7 @@ jobs:
         run: uv run ruff check .
 
       - name: Mypy
-        run: uv run mypy scoutbot
+        run: uv run mypy scoutbot tools/visualise.py
 
       - name: Dependency audit
         run: uv audit --locked --preview-features audit-command

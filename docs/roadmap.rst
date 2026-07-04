@@ -10,9 +10,13 @@ Current priorities
 1. **Release and distribution** -- define the release/tagging checklist, make the repository
    public, then support Python 3.13 and document what would be needed for Python 3.14 readiness
    before revisiting package distribution.
-2. **Quality and compatibility** -- finish the quality workflow hardening, add dependency-currency
-   policy, and expand platform coverage beyond the current macOS-focused Core ML work.
-3. **Core ML / performance investigations** -- use the latest M4 benchmark JSON, the upcoming M1
+2. **Developer tooling cleanup** -- finish the `visualise.py` relocation and rewrite into
+   `tools/`, keep the docs and quality gates aligned with the new tool location, and retire the
+   root-level utility.
+3. **Quality and compatibility** -- keep the quality workflow aligned with `pyproject.toml`, add
+   dependency-currency policy, and expand platform coverage beyond the current macOS-focused Core
+   ML work.
+4. **Core ML / performance investigations** -- use the latest M4 benchmark JSON, the upcoming M1
    JSON, and broader observability work to explain the remaining gap and decide what additional
    instrumentation is worth keeping.
 

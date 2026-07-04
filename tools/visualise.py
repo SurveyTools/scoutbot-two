@@ -1,160 +1,177 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
-Standalone visualization script for ScoutBot detection results.
+Standalone visualisation tool for ScoutBot detection results.
 
 Usage:
-    python visualise.py IMAGE.jpg IMAGE.json [--threshold THRESHOLD]
+    uv run python tools/visualise.py IMAGE.jpg DETECTIONS.json [OPTIONS]
 
-Displays the image with bounding boxes and confidence scores for each detection.
+Renders bounding boxes and confidence scores onto the source image.
+Supports single-image and multi-image JSON output from the ScoutBot CLI.
 """
 
 import argparse
+import atexit
 import json
 import sys
+import tempfile
+import zlib
 from pathlib import Path
 
 import cv2
-import numpy as np
+
+# Fixed BGR palette for per-class box colours. zlib.crc32 gives a stable hash
+# across runs (unlike hash(), which is salted per-process since Python 3.3).
+_PALETTE = [
+    (255, 100, 0),
+    (0, 200, 60),
+    (0, 60, 255),
+    (0, 200, 255),
+    (200, 0, 200),
+    (0, 200, 200),
+]
 
 
-def load_detections(json_path):
-    """Load detections from ScoutBot JSON output file."""
-    with open(json_path, 'r') as f:
-        data = json.load(f)
+def _box_color(label: str) -> tuple[int, int, int]:
+    return _PALETTE[zlib.crc32(label.encode()) % len(_PALETTE)]
 
-    # JSON structure: {image_path: {wic: float, loc: [detections]}}
-    # Get the first (and typically only) image entry
+
+def _draw_label(img, text: str, x: int, y: int, box_h: int) -> None:
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    scale, thickness = 0.5, 1
+    (tw, th), baseline = cv2.getTextSize(text, font, scale, thickness)
+    pad = 4
+
+    if y < th + baseline + pad:
+        bg_y1, bg_y2 = y + box_h, y + box_h + th + baseline + pad
+        text_y = y + box_h + th + 2
+    else:
+        bg_y1, bg_y2 = y - th - baseline - pad, y
+        text_y = y - baseline - 2
+
+    cv2.rectangle(img, (x, bg_y1), (x + tw + pad, bg_y2), (255, 255, 255), -1)
+    cv2.putText(img, text, (x + 2, text_y), font, scale, (0, 0, 0), thickness)
+
+
+def _open_for_display(path: Path) -> None:
+    pass  # wired up in Task 3
+
+
+def load_detections(json_path: Path, image_key: str | None = None) -> dict:
+    data = json.loads(json_path.read_text())
     if not data:
         raise ValueError(f'Empty JSON file: {json_path}')
 
-    image_key = list(data.keys())[0]
-    return data[image_key]
+    if len(data) > 1 and image_key is None:
+        keys = '\n  '.join(data)
+        raise ValueError(
+            f'JSON contains {len(data)} images. Specify one with --image-key:\n  {keys}'
+        )
+
+    if image_key is not None:
+        if image_key not in data:
+            available = ', '.join(repr(k) for k in data)
+            raise ValueError(f'Image key {image_key!r} not found. Available: {available}')
+        return data[image_key]
+
+    return next(iter(data.values()))
 
 
-def visualize_detections(image_path, json_path, threshold=0.0, output_path=None):
-    """
-    Visualize bounding boxes on an image with confidence scores.
-
-    Args:
-        image_path: Path to the input image
-        json_path: Path to the ScoutBot JSON output
-        threshold: Minimum confidence threshold to display (default: 0.0)
-        output_path: Optional path to save the output image
-    """
-    # Load image
+def visualize_detections(
+    image_path: Path,
+    json_path: Path,
+    threshold: float = 0.0,
+    output_path: Path | None = None,
+    display: bool = True,
+    image_key: str | None = None,
+) -> None:
     img = cv2.imread(str(image_path))
     if img is None:
         raise ValueError(f'Could not load image: {image_path}')
 
-    # Load detections
-    result = load_detections(json_path)
+    result = load_detections(json_path, image_key=image_key)
     detections = result.get('loc', [])
     wic_score = result.get('wic', 0.0)
 
     print(f'Image: {image_path}')
-    print(f'Whole Image Confidence: {wic_score:.4f}')
-    print(f'Total detections: {len(detections)}')
+    print(f'WIC score: {wic_score:.4f}')
 
-    # Filter by threshold
-    filtered_detections = [d for d in detections if d['c'] >= threshold]
-    print(f'Detections above threshold ({threshold}): {len(filtered_detections)}')
-
-    # Draw bounding boxes
-    for detect in filtered_detections:
-        label = detect['l']
-        conf = detect['c']
-
-        # Calculate box coordinates
-        x = int(np.around(detect['x']))
-        y = int(np.around(detect['y']))
-        w = int(np.around(detect['w']))
-        h = int(np.around(detect['h']))
-
-        point1 = (x, y)
-        point2 = (x + w, y + h)
-
-        # Draw rectangle (BGR color: blue)
-        color = (255, 0, 0)
-        thickness = 2
-        cv2.rectangle(img, point1, point2, color, thickness)
-
-        # Add label with confidence score
-        text = f'{label}: {conf:.3f}'
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.5
-        font_thickness = 1
-
-        # Get text size for background rectangle
-        (text_width, text_height), baseline = cv2.getTextSize(
-            text, font, font_scale, font_thickness
-        )
-
-        # Draw background rectangle for text (white with some transparency)
-        text_bg_point1 = (x, y - text_height - baseline - 4)
-        text_bg_point2 = (x + text_width + 4, y)
-        cv2.rectangle(img, text_bg_point1, text_bg_point2, (255, 255, 255), -1)
-
-        # Draw text
-        text_position = (x + 2, y - baseline - 2)
-        cv2.putText(img, text, text_position, font, font_scale, (0, 0, 0), font_thickness)
-
-    # Save output if requested
-    if output_path:
-        cv2.imwrite(str(output_path), img)
-        print(f'Saved output to: {output_path}')
-
-    # Display image
-    # Create window and display
-    window_name = f'ScoutBot Detections - {Path(image_path).name}'
-    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-    cv2.imshow(window_name, img)
-
-    print('\nPress any key to close the window...')
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-def main():
-    parser = argparse.ArgumentParser(
-        description='Visualize ScoutBot detection results with bounding boxes and confidence scores.'
+    visible = [d for d in detections if d['c'] >= threshold]
+    print(
+        f'Detections: {len(visible)} above threshold {threshold} (total {len(detections)})'
     )
-    parser.add_argument('image', type=str, help='Path to the input image file')
-    parser.add_argument('json', type=str, help='Path to the ScoutBot JSON output file')
+
+    for det in visible:
+        label, conf = det['l'], det['c']
+        x, y, w, h = round(det['x']), round(det['y']), round(det['w']), round(det['h'])
+        cv2.rectangle(img, (x, y), (x + w, y + h), _box_color(label), 2)
+        _draw_label(img, f'{label}: {conf:.3f}', x, y, h)
+
+    if output_path is not None:
+        cv2.imwrite(str(output_path), img)
+        print(f'Saved: {output_path}')
+        if display:
+            _open_for_display(output_path)
+    elif display:
+        # atexit covers normal exit and unhandled exceptions but not SIGKILL or
+        # interpreter crashes — temp files can survive those. Acceptable for a
+        # developer utility; the OS reclaims /tmp on reboot regardless.
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as f:
+            tmp = Path(f.name)
+        atexit.register(tmp.unlink, missing_ok=True)
+        cv2.imwrite(str(tmp), img)
+        _open_for_display(tmp)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='Render ScoutBot detections as bounding boxes on the source image.'
+    )
+    parser.add_argument('image', help='Source image file')
+    parser.add_argument('json', help='ScoutBot JSON output file')
     parser.add_argument(
         '-t',
         '--threshold',
         type=float,
         default=0.0,
-        help='Minimum confidence threshold to display (default: 0.0)',
+        help='Minimum confidence to display (default: 0.0)',
+    )
+    parser.add_argument('-o', '--output', help='Save annotated image to this path')
+    parser.add_argument(
+        '-k',
+        '--image-key',
+        help='Image key to use when JSON contains multiple images',
     )
     parser.add_argument(
-        '-o',
-        '--output',
-        type=str,
-        default=None,
-        help='Optional path to save the output image',
+        '--no-display',
+        action='store_true',
+        help='Save output without opening a viewer (requires --output)',
     )
 
     args = parser.parse_args()
 
-    # Validate inputs
     image_path = Path(args.image)
     json_path = Path(args.json)
 
     if not image_path.exists():
-        print(f'Error: Image file not found: {image_path}', file=sys.stderr)
+        print(f'Error: image not found: {image_path}', file=sys.stderr)
         sys.exit(1)
-
     if not json_path.exists():
-        print(f'Error: JSON file not found: {json_path}', file=sys.stderr)
+        print(f'Error: JSON not found: {json_path}', file=sys.stderr)
+        sys.exit(1)
+    if args.no_display and args.output is None:
+        print('Error: --no-display requires --output', file=sys.stderr)
         sys.exit(1)
 
-    output_path = Path(args.output) if args.output else None
-
-    # Run visualization
     try:
-        visualize_detections(image_path, json_path, args.threshold, output_path)
-    except Exception as e:
+        visualize_detections(
+            image_path,
+            json_path,
+            threshold=args.threshold,
+            output_path=Path(args.output) if args.output else None,
+            display=not args.no_display,
+            image_key=args.image_key,
+        )
+    except (ValueError, OSError) as e:
         print(f'Error: {e}', file=sys.stderr)
         sys.exit(1)
 
