@@ -80,7 +80,7 @@ CONFIGS[None] = CONFIGS[DEFAULT_CONFIG]  # type: ignore[index]
 
 
 def _md5(filepath: Path) -> str:
-    h = hashlib.md5()
+    h = hashlib.md5(usedforsecurity=False)
     with open(filepath, 'rb') as f:
         for chunk in iter(lambda: f.read(8192), b''):
             h.update(chunk)

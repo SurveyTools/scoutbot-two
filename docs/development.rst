@@ -19,19 +19,26 @@ or similar tools directly.
 Python support
 --------------
 
-Scoutbot currently supports Python 3.10, 3.11, and 3.12. The package metadata declares
-``>=3.10,<3.13``.
+Scoutbot currently supports Python 3.10, 3.11, 3.12, and 3.13. The package metadata declares
+``>=3.10,<3.14``.
 
 Local setup
 -----------
 
-Install development and test dependencies with the ``test`` extra:
+For a full maintainer environment (tests, docs, and Core ML on macOS):
+
+.. code-block:: bash
+
+   uv sync --extra all
+
+For the test/quality tools only (the CI-equivalent path):
 
 .. code-block:: bash
 
    uv sync --extra test
 
-This installs pytest, pytest-cov, pytest-random-order, Ruff, and mypy.
+``--extra test`` installs pytest, pytest-cov, pytest-random-order, Ruff, mypy, and Bandit.
+``--extra all`` is a shorthand for ``test`` + ``docs`` + ``coreml`` combined.
 
 Testing
 -------
@@ -76,11 +83,29 @@ Ruff handles formatting, linting, and import ordering:
    uv run ruff format --check .
    uv run ruff check .
 
-Scoped mypy checks library code:
+Scoped mypy checks library code and tools:
 
 .. code-block:: bash
 
-   uv run mypy scoutbot
+   uv run mypy scoutbot tools/visualise.py
+
+Dependency vulnerability scanning audits the locked project graph:
+
+.. code-block:: bash
+
+   uv audit --locked --preview-features audit-command
+
+Source-code security scanning checks the ``scoutbot/``, ``benchmarks/``, and ``tools/``
+trees for common Python security mistakes (``tests/`` is excluded — pytest assertions are
+expected there):
+
+.. code-block:: bash
+
+   uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/ tools/
+
+``uv audit`` and Bandit cover different surfaces: ``uv audit`` checks installed packages
+against the vulnerability database; Bandit checks your source code for insecure patterns.
+Both run in CI and both should pass locally before opening a pull request.
 
 Run all configured pre-commit hooks:
 
@@ -92,12 +117,25 @@ CI workflows
 ------------
 
 ``.github/workflows/testing.yml``
-   Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, and 3.12, installs
+   Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, 3.12, and 3.13, installs
    with ``uv sync --extra test``, and runs ``uv run pytest -m "not slow"`` with coverage.
+   A ``windows-smoke`` job also runs the fast/offline suite on Windows with Python 3.13 only, providing
+   smoke coverage for non-Core ML code without claiming full Windows parity.
 
 ``.github/workflows/quality.yml``
    Runs on pull requests and pushes to ``main``. It installs with ``uv sync --extra test`` and
-   runs Ruff format check, Ruff lint, and ``uv run mypy scoutbot``.
+   runs Ruff format check, Ruff lint, ``uv run mypy scoutbot tools/visualise.py``, a
+   locked-graph dependency audit (``uv audit --locked``), and a Bandit source-code security
+   scan (``scoutbot/``, ``benchmarks/``, ``tools/``).
+
+GPU and CUDA
+~~~~~~~~~~~~
+
+CUDA is not required in CI and is not tested there. For local contributors with NVIDIA hardware,
+CUDA support is best-effort: the package runs correctly on CPU without any GPU present. If you
+are testing on a GPU-enabled Windows machine, run the verification command in
+:doc:`installation` (Windows NVIDIA section) to confirm PyTorch detects the GPU before filing
+bug reports related to GPU behavior.
 
 Documentation builds
 --------------------

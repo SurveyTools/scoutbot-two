@@ -5,40 +5,44 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "scoutbot"
 version = "0.2.0"
-description = "The computer vision for Wild Me's Scout project"
+description = "The computer vision for Wild Me's Scout project ... and beyond"
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
-license = {text = "MIT"}
+requires-python = ">=3.10,<3.14"
+license = {text = "Apache-2.0"}
 authors = [
-    {name = "Wild Me", email = "dev@wildme.org"}
+    {name = "Rebel Workflow Team"},
+    {name = "Wild Me"}
 ]
 dependencies = [
     "click",
+    # Required to load KAZA .pt model files serialized with an older Ultralytics
+    # version that embedded dill pickle references. Remove once models are re-exported
+    # without dill serialization; see docs/roadmap.rst "Model re-export / dill removal".
     "dill>=0.4.0",
     "numpy",
+    # sahi and ultralytics both depend on opencv-python (GUI build); this overrides
+    # them with the headless build so CI and server environments without a display work.
     "opencv-python-headless>=4.7.0",
     "requests",
     "rich",
     "sahi==0.11.36",
-    "scikit-image>=0.21.0",
     "tqdm",
     "ultralytics==8.2.103",
 ]
 
 [project.optional-dependencies]
+all = [
+    "scoutbot[test]",
+    "scoutbot[docs]",
+    "scoutbot[coreml]",
+]
 test = [
     "pytest",
     "pytest-cov",
     "pytest-random-order",
     "ruff",
     "mypy",
-]
-all = [
-    "pytest",
-    "pytest-cov",
-    "pytest-random-order",
-    "ruff",
-    "mypy",
+    "bandit",
 ]
 docs = [
     "Sphinx>=5,<6",
@@ -65,14 +69,14 @@ include-package-data = true
 minversion = "5.4"
 addopts = "-v --durations-min=1.0 --color=yes -ra"
 testpaths = ["tests"]
-pythonpath = ["benchmarks", "tests"]
+pythonpath = ["benchmarks", "tests", "tools"]
 filterwarnings = ["default"]
 markers = [
     "slow: marks tests that download models or run real inference (deselect with '-m \"not slow\"')",
 ]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.13"
 warn_unused_configs = true
 ignore_missing_imports = true
 
@@ -95,6 +99,18 @@ ignore = [
     "E301",  # expected 1 blank line
     "E501",  # line too long (handled by formatter)
 ]
+
+[tool.bandit]
+# tests/ is excluded: pytest assertions (B101) are expected and not a security concern.
+# B101 (assert_used) is skipped globally: the production asserts are internal invariants,
+# not security gates; converting them to explicit raises is tracked as a code quality item.
+exclude_dirs = ["tests"]
+skips = ["B101"]
+
+[tool.uv.audit]
+# torch.jit.script memory-corruption CVE; no upstream fix available.
+# ScoutBot does not use torch.jit.script — remove this entry once torch ships a fix.
+ignore-until-fixed = ["GHSA-rrmf-rvhw-rf47"]
 
 [tool.ruff.format]
 quote-style = "single"

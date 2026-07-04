@@ -140,7 +140,7 @@ class TestLocFetch:
 class TestExportCoreml:
     """Unit tests for export_coreml (no network, no model load needed)."""
 
-    def test_export_uses_shutil_move_not_rename(self, tmp_path):
+    def test_export_uses_shutil_move_not_rename(self, tmp_path, ultralytics_stub):
         """export_coreml must call shutil.move (not Path.rename) to handle cross-device moves."""
         from scoutbot import loc
 
@@ -557,7 +557,9 @@ class TestFetchComputeUnitsEmission:
 class TestExportCoremlBranches:
     """Unit tests for export_coreml() branches not covered by TestExportCoreml."""
 
-    def test_early_return_when_target_exists_and_no_force(self, tmp_path):
+    def test_early_return_when_target_exists_and_no_force(
+        self, tmp_path, ultralytics_stub
+    ):
         from scoutbot import loc
 
         cfg = loc.CONFIGS['v3-coreml']
@@ -573,7 +575,9 @@ class TestExportCoremlBranches:
         MockYOLO.assert_not_called()
         assert result == str(target)
 
-    def test_rmtree_called_when_target_exists_and_exported_differs(self, tmp_path):
+    def test_rmtree_called_when_target_exists_and_exported_differs(
+        self, tmp_path, ultralytics_stub
+    ):
         from scoutbot import loc
 
         cfg = loc.CONFIGS['v3-coreml']

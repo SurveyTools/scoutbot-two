@@ -5,6 +5,27 @@ Changelog
 Unreleased
 ----------
 
+* Added CUDA support clarification for NVIDIA systems: best-effort Windows support (not CI-tested),
+  installation guide with GPU detection verification command (``torch.cuda.is_available()``), and
+  development guidance for contributors testing on GPU hardware. CUDA is not required and the
+  package runs normally on CPU-only machines.
+* Added a ``windows-smoke`` CI job to ``.github/workflows/testing.yml`` that runs the fast/offline
+  test suite on Python 3.13 under Windows. This provides basic cross-platform coverage for non-Core ML
+  code without claiming full Windows parity; Core ML configs remain macOS-only.
+* Moved ``visualise.py`` from the repo root to ``tools/visualise.py`` and included it
+  in all quality gates (ruff, mypy, bandit). Rewrote the script: replaced
+  ``cv2.imshow`` (incompatible with the headless OpenCV build) with ``webbrowser``
+  for display; added ``--no-display`` and ``--image-key`` flags; fixed label rendering
+  near the top edge of the image; removed the ``numpy`` dependency; added per-class
+  box colours; added a test suite in ``tests/test_visualise.py``.
+* Added Bandit source-code security scanning to the quality workflow (``bandit -c pyproject.toml
+  -r scoutbot/ benchmarks/ tools/``). B101 (assert-used) is skipped; ``tests/`` is excluded. Fixed
+  ``hashlib.md5()`` → ``hashlib.md5(usedforsecurity=False)`` to reflect its use as a file
+  integrity check rather than a cryptographic hash.
+* Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.
+  Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215. Added
+  ``ignore-until-fixed`` in ``[tool.uv.audit]`` for GHSA-rrmf-rvhw-rf47 (``torch`` CVE,
+  no upstream fix available).
 * The Core ML benchmark phase-total output now shows ``requested=<val> actual=<val>`` for
   Core ML variants (or ``actual=null`` when the runtime does not expose the actual compute
   unit). Non-Core ML variants (``pt-cpu``, ``pt-mps``) omit the suffix entirely instead of
@@ -23,7 +44,8 @@ Unreleased
   ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
 * Published rendered docs to GitHub Pages and retired Read the Docs so the README routes
   readers to HTML instead of raw ``.rst`` sources.
-* Raised declared Python support to ``>=3.10,<3.13``.
+* Raised declared Python support to ``>=3.10,<3.14`` and added Python 3.13 to the supported
+  target matrix.
 * Reorganized documentation around reader roles, with separate installation, usage,
   configuration, model, performance, development, security, roadmap, API, and CLI pages.
 * Raised fast-suite test coverage from 58% to 92%+ by adding unit tests with mocked

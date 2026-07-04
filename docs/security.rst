@@ -32,10 +32,19 @@ locally from verified source ``.pt`` models and cached in ``~/.cache/scoutbot/``
 Dependency and scanning posture
 -------------------------------
 
-Dependencies and tool configuration are managed through ``pyproject.toml``. The current quality
-workflow runs Ruff and scoped mypy. Additional security/dependency scanning is planned rather than
-enabled today; :doc:`roadmap` tracks ``pip-audit`` and Bandit-style scanning for a future quality
-workflow expansion.
+Dependencies and tool configuration are managed through ``pyproject.toml``. The quality workflow
+runs two complementary security checks:
+
+``uv audit --locked``
+   Checks all installed packages in the locked dependency graph against the OSV vulnerability
+   database. Catches known CVEs in third-party dependencies. Waivers (e.g. CVEs with no
+   available fix) are recorded in ``[tool.uv.audit]`` in ``pyproject.toml`` with an explanation.
+
+``bandit -c pyproject.toml -r scoutbot/ benchmarks/``
+   Scans the project's own source code for common Python security mistakes (insecure hash
+   usage, dangerous deserialisation, shell injection, etc.). ``tests/`` is excluded because
+   pytest assertions are not a security concern there. B101 (``assert_used``) is skipped
+   globally — production asserts are internal invariants, not security gates.
 
 CodeQL removal rationale
 ------------------------
@@ -55,5 +64,6 @@ CI posture
 ----------
 
 ``testing.yml`` runs fast/offline tests across supported Python versions. ``quality.yml`` runs
-Ruff formatting/linting and scoped mypy. Slow tests that download models or run real inference are
-kept out of the default CI test path.
+Ruff formatting/linting, scoped mypy, ``uv audit --locked``, and a Bandit source-code security
+scan. Slow tests that download models or run real inference are kept out of the default CI test
+path.
