@@ -390,3 +390,68 @@ def test_register_fails_if_path_missing(isolated_registry_cli):
         '--name', 'x', '--path', '/does/not/exist.pt', '--arch', 'yolov8',
     ])
     assert result.exit_code != 0
+
+
+# --- models command tests ---
+
+
+def test_models_list_empty(isolated_registry_cli):
+    from scoutbot.scoutbot import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models'])
+    assert result.exit_code == 0
+    assert 'No models' in result.output
+
+
+def test_models_list_shows_registered(isolated_registry_cli, tmp_path):
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'm.pt'
+    model_file.write_bytes(b'x')
+    registry.register(ModelEntry(
+        name='test-yolo', path=str(model_file), md5='abc123',
+        framework='yolov8', registered='2026-05-09T00:00:00Z',
+        source=RegistrySource(type='manual'), default_run_config={},
+    ))
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models'])
+    assert result.exit_code == 0
+    assert 'test-yolo' in result.output
+    assert 'yolov8' in result.output
+
+
+def test_models_info_prints_json(isolated_registry_cli, tmp_path):
+    import json
+
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'm.pt'
+    model_file.write_bytes(b'x')
+    registry.register(ModelEntry(
+        name='info-model', path=str(model_file), md5='deadbeef',
+        framework='herdnet', registered='2026-05-09T00:00:00Z',
+        source=RegistrySource(type='manual', note='test'),
+        default_run_config={'patch_size': 256},
+    ))
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models', 'info', 'info-model'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data['name'] == 'info-model'
+    assert data['framework'] == 'herdnet'
+    assert data['default_run_config'] == {'patch_size': 256}
+
+
+def test_models_info_unknown_exits_nonzero(isolated_registry_cli):
+    from scoutbot.scoutbot import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models', 'info', 'nonexistent'])
+    assert result.exit_code != 0

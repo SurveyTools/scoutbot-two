@@ -389,6 +389,42 @@ def register_model(name, path, arch, description, threshold, slice_height, slice
     print(f'Registered {name!r} ({arch}) — {model_path.name}')
 
 
+@click.group('models', invoke_without_command=True)
+@click.pass_context
+def models_group(ctx):
+    """List and inspect registered models. Defaults to listing all models."""
+    if ctx.invoked_subcommand is None:
+        from pathlib import Path as _Path
+
+        from scoutbot import registry as _registry
+
+        entries = _registry.list_models()
+        if not entries:
+            print('No models registered. Run: uv run scoutbot fetch --config v3')
+            return
+        col = '{:<25} {:<12} {:<35} {:<10} {}'
+        print(col.format('NAME', 'FRAMEWORK', 'FILE', 'MD5', 'REGISTERED'))
+        print('-' * 90)
+        for e in entries:
+            fname = _Path(e.path).name
+            print(col.format(e.name, e.framework, fname, e.md5[:8], e.registered[:10]))
+
+
+@models_group.command('info')
+@click.argument('name')
+def models_info(name):
+    """Print the full registry entry for a named model as JSON."""
+    import sys
+
+    from scoutbot import registry as _registry
+
+    entry = _registry.lookup(name)
+    if entry is None:
+        log.error(f'Model not found in registry: {name}')
+        sys.exit(1)
+    print(json.dumps(entry.to_dict(), indent=2))
+
+
 @click.group()
 def cli():
     """
@@ -405,6 +441,7 @@ cli.add_command(export_coreml)
 cli.add_command(example)
 cli.add_command(get_classes)
 cli.add_command(register_model, name='register')
+cli.add_command(models_group, name='models')
 
 
 if __name__ == '__main__':
