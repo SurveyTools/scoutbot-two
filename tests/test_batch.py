@@ -521,17 +521,15 @@ class TestBatchUnit:
         open(fake_img, 'wb').close()
 
         with (
-            patch(
-                'scoutbot._resolve_model', return_value=('/fake/model.pt', {}, {})
-            ) as mock_resolve,
+            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.0, [])),
             patch('scoutbot.loc.DEFAULT_CONFIG', 'v3'),
         ):
             scoutbot.batch([fake_img], config=None, show_progress=False)
 
-        mock_resolve.assert_called_once()
-        assert mock_resolve.call_args.kwargs.get('config') == 'v3'
+        mock_fetch.assert_called_once()
+        assert mock_fetch.call_args.kwargs.get('config') == 'v3'
 
     def test_batch_emits_observer_events(self, tmp_path):
         import scoutbot

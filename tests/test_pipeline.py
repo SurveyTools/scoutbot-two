@@ -368,7 +368,7 @@ def test_resolve_model_raises_when_not_registered(tmp_path, monkeypatch):
 
 
 def test_batch_resumable_output_includes_model_provenance(tmp_path, registry_with_model):
-    """Each JSONL record must include a 'model' provenance block."""
+    """JSONL records include a 'model' provenance block when model_name is used."""
     import json
 
     import scoutbot
@@ -391,7 +391,7 @@ def test_batch_resumable_output_includes_model_provenance(tmp_path, registry_wit
         summary = scoutbot.batch_resumable(
             filepaths=[str(fake_img)],
             output_path=str(output_file),
-            config='v3',
+            model_name='scoutbot-v3',
         )
 
     assert summary['processed'] == 1

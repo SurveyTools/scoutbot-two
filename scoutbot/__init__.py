@@ -311,11 +311,14 @@ def batch(
     started_ns = perf_counter_ns()
     observer_kwargs = {'observer': observer} if observer is not None else {}
 
-    model_path, effective_run_config, _ = _resolve_model(
-        config=config,
-        model_name=model_name,
-        confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
-    )
+    if model_name is not None:
+        model_path, _, _ = _resolve_model(
+            config=config,
+            model_name=model_name,
+            confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
+        )
+    else:
+        model_path = loc.fetch(config=config, **observer_kwargs)
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
         model_path=model_path,
@@ -510,17 +513,23 @@ def batch_resumable(
 
     log.info(f'Resuming: {len(processed)} done, {len(remaining)} remaining')
 
-    model_path, effective_run_config, model_provenance = _resolve_model(
-        config=config,
-        model_name=model_name,
-        confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
-        slice_height=slice_height if slice_height != 512 else None,
-        slice_width=slice_width if slice_width != 512 else None,
-        overlap_height_ratio=overlap_height_ratio
-        if overlap_height_ratio != 0.25
-        else None,
-        overlap_width_ratio=overlap_width_ratio if overlap_width_ratio != 0.25 else None,
-    )
+    if model_name is not None:
+        model_path, _, model_provenance = _resolve_model(
+            config=config,
+            model_name=model_name,
+            confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
+            slice_height=slice_height if slice_height != 512 else None,
+            slice_width=slice_width if slice_width != 512 else None,
+            overlap_height_ratio=overlap_height_ratio
+            if overlap_height_ratio != 0.25
+            else None,
+            overlap_width_ratio=overlap_width_ratio
+            if overlap_width_ratio != 0.25
+            else None,
+        )
+    else:
+        model_path = loc.fetch(config=config, **observer_kwargs)
+        model_provenance = None
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
         model_path=model_path,
@@ -565,8 +574,9 @@ def batch_resumable(
                     .isoformat()
                     .replace('+00:00', 'Z'),
                     'config': config,
-                    'model': model_provenance,
                 }
+                if model_provenance is not None:
+                    record['model'] = model_provenance
 
                 f.write(json.dumps(record) + '\n')
                 f.flush()
