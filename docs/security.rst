@@ -7,21 +7,29 @@ posture, CI scanning rationale, and local data/privacy assumptions.
 Model download policy
 ---------------------
 
-Hosted model artifacts are fetched from the URLs configured in ``scoutbot.model_store.CONFIGS``. Current
-PyTorch-backed models are hosted on Azure Blob Storage:
+Hosted model artifacts are fetched from the sources configured in ``scoutbot.model_store.CONFIGS``.
+PyTorch-backed models are hosted on two providers tried in order:
+
+1. **Azure Blob Storage** (``scoutmodels.blob.core.windows.net``) — primary
+2. **Google Cloud Storage** (``storage.googleapis.com/rebel-pipeline-public-models``) — fallback
 
 * ``v3`` uses ``yolov8-onecls.kaza.pt``
 * ``v3-cls`` uses ``yolov8-cls.kaza.pt``
 
-See :doc:`models` for the model and MD5 sidecar URLs.
+If the primary source is unreachable or resets the connection mid-transfer, Scoutbot automatically
+retries from the fallback with a logged warning. No user action is required. See :doc:`models` for
+the full URL listing per model and provider.
 
 Integrity verification
 ----------------------
 
-Hosted ``.pt`` models use MD5 sidecar verification. Scoutbot downloads the sidecar, compares it
-against any cached model, and downloads/rechecks the model when the cache is absent or mismatched.
-If a downloaded model still does not match the sidecar, Scoutbot raises an error rather than using
-the artifact.
+Both providers carry matching ``.md5`` sidecar files. On each download attempt Scoutbot fetches the
+sidecar from the same source as the model, verifies the local MD5 on completion, and raises an
+error rather than using any artifact that fails verification. A source that passes the MD5 check is
+registered in the local registry; subsequent runs resolve from cache with no network access.
+
+Core ML ``.mlpackage`` bundles are not hosted as separate remote artifacts. They are exported
+locally from verified source ``.pt`` models and cached in ``~/.cache/scoutbot/``.
 
 Core ML artifacts
 -----------------

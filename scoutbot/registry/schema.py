@@ -13,6 +13,7 @@ class RegistrySource:
     original_path: Optional[str] = None
     copied_from: Optional[str] = None
     note: Optional[str] = None
+    provider: Optional[str] = None
 
     def to_dict(self) -> dict:
         return {k: v for k, v in asdict(self).items() if v is not None}

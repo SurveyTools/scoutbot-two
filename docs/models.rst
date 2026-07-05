@@ -35,16 +35,33 @@ Model configs
 Hosted model files
 ~~~~~~~~~~~~~~~~~~
 
-PyTorch-backed configs are hosted on Azure Blob Storage with MD5 sidecar files for integrity
-verification:
+PyTorch-backed configs are hosted on both Azure Blob Storage (primary) and Google Cloud Storage
+(fallback). Scoutbot tries each source in order and uses the first that succeeds. Both hosts carry
+matching ``.md5`` sidecar files for integrity verification.
 
 ``v3`` — single-class detector
-   * Model: https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt
-   * MD5:   https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5
+
+  *Azure (primary)*
+
+  * Model: https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt
+  * MD5:   https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5
+
+  *GCS (fallback)*
+
+  * Model: https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.pt
+  * MD5:   https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.pt.md5
 
 ``v3-cls`` — multi-class species detector
-   * Model: https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt
-   * MD5:   https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5
+
+  *Azure (primary)*
+
+  * Model: https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt
+  * MD5:   https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5
+
+  *GCS (fallback)*
+
+  * Model: https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.pt
+  * MD5:   https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.pt.md5
 
 Core ML configs do not have hosted ``.mlpackage`` artifacts. Scoutbot exports them on demand from
 the verified source ``.pt`` model and stores the resulting bundle in ``~/.cache/scoutbot/``.
@@ -54,11 +71,20 @@ Integrity verification
 
 On each ``fetch()`` call for a hosted ``.pt`` model, Scoutbot:
 
-1. Downloads the ``.md5`` sidecar.
-2. Compares the sidecar's MD5 against the locally cached model file.
-3. If they match, returns the cached path immediately.
-4. If they differ, or the local model is absent, downloads the model and verifies the MD5.
-5. Raises ``AssertionError`` if the downloaded file still does not match the sidecar.
+1. Checks the local model registry; returns immediately if a valid cached entry is found
+   (no network access).
+2. Tries each configured source in order (Azure first, then GCS):
+
+   a. Downloads the ``.md5`` sidecar from that source.
+   b. Compares the sidecar's MD5 against the locally cached model file.
+   c. If they match, returns the cached path immediately (cache hit).
+   d. Otherwise, streams the model file from that source and verifies the local MD5 on
+      completion.
+   e. If the download or verification fails, logs a warning and moves to the next source.
+
+3. Raises ``RuntimeError`` if all sources fail.
+4. Registers the successfully downloaded model in the local registry with the provider name
+   recorded in the provenance block.
 
 Core ML bundles are directory packages, so they do not use remote MD5 sidecars. Their integrity
 depends on exporting from the already-verified source ``.pt`` model.

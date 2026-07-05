@@ -7,18 +7,67 @@ Lightweight tracking for deferred work. Status values are ``planned``,
 Current priorities
 ------------------
 
-1. **Release and distribution** -- define the release/tagging checklist, make the repository
-   public, then support Python 3.13 and document what would be needed for Python 3.14 readiness
-   before revisiting package distribution.
-2. **Developer tooling cleanup** -- finish the `visualise.py` relocation and rewrite into
-   `tools/`, keep the docs and quality gates aligned with the new tool location, and retire the
-   root-level utility.
-3. **Quality and compatibility** -- keep the quality workflow aligned with `pyproject.toml`, add
-   dependency-currency policy, and expand platform coverage beyond the current macOS-focused Core
-   ML work.
-4. **Core ML / performance investigations** -- use the latest M4 benchmark JSON, the upcoming M1
-   JSON, and broader observability work to explain the remaining gap and decide what additional
-   instrumentation is worth keeping.
+1. **Release and contributor readiness**
+
+   * define the release/tagging checklist and release-note hygiene
+   * make the repository public and enable branch protection
+   * keep the hosted docs site healthy on ``main``
+   * publish the contributor-facing docs and workflow needed for external contributors
+
+2. **Raw user onboarding and model resolution**
+
+   * make the first-run fetch-before-inference flow explicit
+   * document the registry-backed ``--model`` path and how it differs from ``--config``
+   * keep ``README.md``, ``docs/usage.rst``, ``docs/installation.rst``, and ``docs/models.rst`` aligned with the supported workflow
+
+3. **Pipeline integration stability**
+
+   * define the output schema compatibility policy for pipeline consumers
+   * keep per-run provenance and model resolution behavior stable
+   * finish the model-store / ``loc`` staged cleanup without breaking compatibility
+   * continue shaping the survey-level registry contract in ``pipeline-design``
+
+4. **Quality, compatibility, and platform coverage**
+
+   * keep the quality workflow aligned with ``pyproject.toml`` and CI
+   * maintain the dependency-currency policy and security scanning posture
+   * support Python 3.13 now and keep 3.14 readiness tracked
+   * expand platform coverage beyond the current macOS-focused Core ML work
+   * finish the Windows and cross-platform smoke coverage
+
+5. **Developer tooling cleanup**
+
+   * finish the ``visualise.py`` relocation and rewrite into ``tools/``
+   * keep the docs and quality gates aligned with the new tool location
+   * retire the root-level utility once the new entry point is the source of truth
+
+6. **Performance and model-ecosystem evolution**
+
+   * compare the latest M4 benchmark JSON against the upcoming M1 JSON and explain the gap
+   * validate the benchmark image set and the useful runtime diagnostics for future backends
+   * keep the benchmark and runtime instrumentation minimal but useful for batching and parallelism
+   * evolve the model-family / alias / lineage contract in ``pipeline-design``
+
+Work triage
+-----------
+
+Use the roadmap to decide whether a topic needs a spec, a plan, or direct implementation:
+
+* **Write a spec** when the work defines a contract, policy, or long-lived behavior.
+  That includes model registry shape, model-family IDs, aliases, parent/child fine-tunes,
+  compatibility metadata, output schema stability, interpreter support policy, and any
+  observability data that future tooling will consume.
+* **Write a plan** when the shape is known but the work is multi-step or crosses files.
+  That includes ``loc`` / ``model_store`` cleanup, docs reorganization, hosted docs workflow,
+  quality workflow changes, Windows / cross-platform CI, ``visualise.py`` relocation, and
+  benchmark or runtime diagnostics work.
+* **Code now** when the decision is already made and the change is local.
+  That includes stale docs updates, small CI YAML fixes, tests for already-specified behavior,
+  and cleanup refactors with no new external contract.
+
+If the question is "what is the contract?", write a spec.
+If the question is "what files change and in what order?", write a plan.
+If neither question matters, just implement the change.
 
 Release and distribution
 ------------------------
@@ -194,22 +243,22 @@ Core ML / performance investigations
 
 **Reference:** ``docs/coreml.rst`` (benchmark caveats)
 
-The next investigation pass should be broader than Core ML alone:
+The next investigation pass should be broader than Core ML alone, but it is now an
+investigation and measurement track rather than a separate observability-spec track:
 
 * compare the latest M4 benchmark JSON against the upcoming M1 JSON and document the actual
   differences instead of relying on memory
 * break out image load/decode, tiling, model fetch/load, per-tile inference, post-processing,
   serialization, and error handling so the benchmark can explain where wall time goes
-* decide which additional observability hooks should be kept for future backends beyond Core ML
 * validate batching and parallelism ideas against explicit measurements, not just aggregate wall
   clock
 * check whether the benchmark image set is representative of real survey imagery, or whether the
   current examples bias the timing story
 * identify the minimum benchmark and runtime diagnostics needed to support future tuning work
 
-The forward-looking observability question is therefore:
+The forward-looking runtime question is therefore:
 
-* what needs to be instrumented now so future model families can be measured consistently?
+* what needs to be measured now so future model families can be compared consistently?
 * which batch, queue, and concurrency metrics are worth retaining if parallel tile processing is
   added later?
 * what image-set metadata is needed so benchmark results can be compared to real survey workloads

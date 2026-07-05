@@ -26,8 +26,18 @@ DEFAULT_CONFIG = os.getenv('LOC_CONFIG', os.getenv('CONFIG', 'v3')).strip().lowe
 CONFIGS = {
     'v3': {
         'name': 'yolov8-onecls.kaza.pt',
-        'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt',
-        'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5',
+        'sources': [
+            {
+                'provider': 'azure',
+                'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt',
+                'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5',
+            },
+            {
+                'provider': 'gcs',
+                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.pt',
+                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.pt.md5',
+            },
+        ],
         'thresh': 0.45,
         'slice_height': 512,
         'slice_width': 512,
@@ -38,8 +48,18 @@ CONFIGS = {
     },
     'v3-cls': {
         'name': 'yolov8-cls.kaza.pt',
-        'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt',
-        'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5',
+        'sources': [
+            {
+                'provider': 'azure',
+                'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt',
+                'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5',
+            },
+            {
+                'provider': 'gcs',
+                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.pt',
+                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.pt.md5',
+            },
+        ],
         'thresh': 0.45,
         'slice_height': 512,
         'slice_width': 512,
@@ -89,6 +109,44 @@ def _md5(filepath: Path) -> str:
         for chunk in iter(lambda: f.read(8192), b''):
             h.update(chunk)
     return h.hexdigest()
+
+
+def _download_from_source(source: dict, local_path: Path) -> tuple[str, bool]:
+    """
+    Attempt to resolve the model from one source entry.
+
+    Fetches the remote MD5, skips the download if the local file already
+    matches, otherwise streams the download and verifies locally.
+
+    Returns:
+        (remote_md5, cache_hit) on success.
+
+    Raises:
+        requests.RequestException: on any network failure.
+        AssertionError: if the downloaded file fails MD5 verification.
+    """
+    md5_resp = requests.get(source['md5_url'], timeout=30)
+    md5_resp.raise_for_status()
+    remote_md5 = md5_resp.text.strip().split()[0]
+
+    if local_path.exists() and _md5(local_path) == remote_md5:
+        return remote_md5, True
+
+    with requests.get(source['url'], stream=True, timeout=120) as r:
+        r.raise_for_status()
+        total = int(r.headers.get('content-length', 0))
+        with (
+            open(local_path, 'wb') as f,
+            tqdm(total=total, unit='B', unit_scale=True, desc=local_path.name) as bar,
+        ):
+            for chunk in r.iter_content(chunk_size=65536):
+                f.write(chunk)
+                bar.update(len(chunk))
+
+    assert _md5(local_path) == remote_md5, (
+        f'MD5 mismatch after download from {source["provider"]}: {local_path.name}'
+    )
+    return remote_md5, False
 
 
 def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
@@ -170,13 +228,33 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
             )
             return str(cached_path)
 
-    response = requests.get(str(cfg['md5_url']), timeout=30)
-    response.raise_for_status()
-    remote_md5 = response.text.strip().split()[0]
+    last_exc: Exception | None = None
+    used_source: dict | None = None
+    remote_md5 = ''
+    cache_hit = False
+    sources: list = cfg['sources']  # type: ignore[assignment]
 
-    if local_path.exists() and _md5(local_path) == remote_md5:
+    for source in sources:
+        try:
+            remote_md5, cache_hit = _download_from_source(source, local_path)
+            used_source = source
+            break
+        except (requests.RequestException, AssertionError) as exc:
+            log.warning(
+                f'Source {source["provider"]} unavailable for {cfg["name"]}: {exc!r}'
+            )
+            last_exc = exc
+            if local_path.exists():
+                local_path.unlink()
+
+    if used_source is None:
+        assert last_exc is not None
+        raise RuntimeError(f'All sources failed for {cfg["name"]}') from last_exc
+
+    ended_ns = perf_counter_ns()
+
+    if cache_hit:
         log.debug(f'Model up to date: {local_path}')
-        ended_ns = perf_counter_ns()
         emit(
             observer,
             {
@@ -190,23 +268,10 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
                 'device': 'cpu',
                 'cache_hit': True,
                 'model_path': str(local_path),
+                'provider': used_source['provider'],
             },
         )
         return str(local_path)
-
-    log.info(f'Downloading {cfg["name"]}...')
-    with requests.get(str(cfg['url']), stream=True, timeout=120) as r:
-        r.raise_for_status()
-        total = int(r.headers.get('content-length', 0))
-        with (
-            open(local_path, 'wb') as f,
-            tqdm(total=total, unit='B', unit_scale=True, desc=cfg['name']) as bar,
-        ):
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-                bar.update(len(chunk))
-
-    assert _md5(local_path) == remote_md5, f'MD5 mismatch after download: {cfg["name"]}'
 
     from datetime import datetime, timezone
 
@@ -221,7 +286,8 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
             registered=datetime.now(timezone.utc).isoformat(),
             source=RegistrySource(
                 type='fetched',
-                url=str(cfg['url']),
+                url=str(used_source['url']),
+                provider=used_source['provider'],
                 fetched_at=datetime.now(timezone.utc).isoformat(),
             ),
             default_run_config={
@@ -237,9 +303,7 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
         )
     )
     log.info(f'Registered: {registry_name}')
-
-    log.info(f'Saved: {local_path}')
-    ended_ns = perf_counter_ns()
+    log.info(f'Saved: {local_path} (from {used_source["provider"]})')
     emit(
         observer,
         {
@@ -253,6 +317,7 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
             'device': 'cpu',
             'cache_hit': False,
             'model_path': str(local_path),
+            'provider': used_source['provider'],
         },
     )
     return str(local_path)

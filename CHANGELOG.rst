@@ -5,6 +5,11 @@ Changelog
 Unreleased
 ----------
 
+* Model downloads now try multiple sources in order (Azure → GCS) and fall back automatically
+  if any source is unreachable or resets the connection mid-transfer. GCS
+  (``storage.googleapis.com/rebel-pipeline-public-models``) is the built-in fallback for all
+  ``.pt`` models. Registry provenance now records which provider delivered the file. Download
+  chunk size increased from 8 KB to 64 KB for better throughput on large model files.
 * Added a local model registry backed by ``~/.rebel-workflow/model-registry.json``.
   ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
   from the registry and skip the network. New CLI commands: ``scoutbot register``
