@@ -5,6 +5,13 @@ Changelog
 Unreleased
 ----------
 
+* Upgraded ``ultralytics`` from ``==8.2.103`` to ``>=8.3,<9`` (currently resolves to 8.4.89).
+  The 8.3+ series removes the ``numpy<2.0`` restriction for standard inference, which was
+  previously forcing a source-built numpy on Python 3.13 / Windows and causing a fatal access
+  violation during test collection. numpy 2.x is now the default for Python 3.13. Core ML export
+  now requires ``coremltools>=9.0`` (the previous pin was unversioned). Two new transitive
+  dependencies are added: ``polars>=0.20.0`` and ``nvidia-ml-py>=12.0.0``. A minor type-annotation
+  fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
 * Model downloads now try multiple sources in order (Azure → GCS) and fall back automatically
   if any source is unreachable or resets the connection mid-transfer. GCS
   (``storage.googleapis.com/rebel-pipeline-public-models``) is the built-in fallback for all

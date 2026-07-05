@@ -94,9 +94,6 @@ that build with the CUDA wheel after installing Scoutbot:
    # Replace CPU-only PyTorch with the CUDA build (requires NVIDIA GPU + driver >= 525)
    uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
 
-   # Pin numpy to a version compatible with ultralytics
-   uv pip install "numpy<2.0.0" --force-reinstall
-
    # Required for large image handling (SAHI tiling)
    uv pip install scikit-image imagecodecs
 

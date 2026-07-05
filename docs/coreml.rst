@@ -6,7 +6,7 @@ is dispatched through Apple's Core ML runtime (and is eligible for the Neural En
 macOS. The Core ML configs mirror their PyTorch counterparts and produce detections within
 sub-pixel / FP16 tolerance of the ``.pt`` models — see `Parity and caveats`_.
 
-This is a macOS feature. It requires ``coremltools``. See :doc:`installation` for Apple
+This is a macOS feature. It requires ``coremltools>=9.0``. See :doc:`installation` for Apple
 Silicon setup and explicit export commands.
 
 Configs
