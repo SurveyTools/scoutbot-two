@@ -52,9 +52,10 @@ Or from Python::
 
 The export is::
 
-    YOLO(pt_path).export(format='coreml', half=True, nms=False, imgsz=slice_width)
+    YOLO(pt_path).export(format='coreml', quantize=True, nms=False, imgsz=slice_width)
 
-* ``half=True`` — FP16 weights (a Neural Engine eligibility requirement).
+* ``quantize=True`` — FP16 weights (a Neural Engine eligibility requirement). ``half=True``
+  was the pre-8.3 spelling and is now deprecated.
 * ``nms=False`` — no built-in NMS; SAHI performs class-agnostic NMS downstream, so baking it
   into the model would double up.
 * ``imgsz`` is taken from the config's slice size (512), giving the model a **fixed** 512×512

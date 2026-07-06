@@ -381,7 +381,7 @@ def export_coreml(config, force: bool = False, observer=None) -> str:
     # Ultralytics writes "<pt_stem>.mlpackage" next to the .pt; since the .pt lives
     # in CACHE_DIR as e.g. yolov8-onecls.kaza.pt, the output lands exactly at target.
     exported = Path(
-        YOLO(pt_path).export(format='coreml', half=True, nms=False, imgsz=imgsz)
+        YOLO(pt_path).export(format='coreml', quantize=True, nms=False, imgsz=imgsz)
     )
     assert exported.exists(), f'Export produced no bundle for {config}'
     if exported.resolve() != target.resolve():
