@@ -14,38 +14,25 @@ Current priorities
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
 
-2. **Raw user onboarding and model resolution**
-
-   * make the first-run fetch-before-inference flow explicit
-   * document the registry-backed ``--model`` path and how it differs from ``--config``
-   * keep ``README.md``, ``docs/usage.rst``, ``docs/installation.rst``, and ``docs/models.rst`` aligned with the supported workflow
-
-3. **Pipeline integration stability**
+2. **Pipeline integration stability**
 
    * define the output schema compatibility policy for pipeline consumers
-   * keep per-run provenance and model resolution behavior stable
-   * finish the model-store / ``loc`` staged cleanup without breaking compatibility
+   * finish the ``loc`` wrapper removal without breaking compatibility
    * continue shaping the survey-level registry contract in ``pipeline-design``
 
-4. **Quality, compatibility, and platform coverage**
+3. **Model registry follow-on**
 
-   * keep the quality workflow aligned with ``pyproject.toml`` and CI
-   * maintain the dependency-currency policy and security scanning posture
-   * support Python 3.13 now and keep 3.14 readiness tracked
-   * expand platform coverage beyond the current macOS-focused Core ML work
-   * finish the Windows and cross-platform smoke coverage
+   * add ``scoutbot unregister NAME`` and ``scoutbot fetch --force`` (see `Registry model removal`_)
+   * define the dependency currency policy for ``ultralytics``, ``sahi``, and ``torch``
 
-5. **Developer tooling cleanup**
+4. **Quality workflow — v2 scope**
 
-   * finish the ``visualise.py`` relocation and rewrite into ``tools/``
-   * keep the docs and quality gates aligned with the new tool location
-   * retire the root-level utility once the new entry point is the source of truth
+   * coverage enforcement, expanded mypy, Ruff rule expansion, macOS CI runner for Core ML
 
-6. **Performance and model-ecosystem evolution**
+5. **Performance and model-ecosystem evolution**
 
-   * compare the latest M4 benchmark JSON against the upcoming M1 JSON and explain the gap
-   * validate the benchmark image set and the useful runtime diagnostics for future backends
-   * keep the benchmark and runtime instrumentation minimal but useful for batching and parallelism
+   * compare the M4 benchmark JSON against the M1 JSON and document the gap
+   * validate the benchmark image set against real survey imagery
    * evolve the model-family / alias / lineage contract in ``pipeline-design``
 
 Work triage
@@ -88,8 +75,8 @@ The repository should move through the following release steps together:
    with the tagged release
 6. publish the contributor-facing docs needed for external contributors, including the documented
    documentation-pass rule and the public contribution workflow
-7. confirm Python 3.13 support is actually in place, with CI and packaging aligned to the supported
-   interpreter floor / ceiling
+7. ✓ Python 3.13 support confirmed: CI runs the full fast suite on Python 3.13 under both
+   macOS and Windows; the 179-test slow suite passes on macOS 3.13.
 8. record the Python 3.14 readiness checklist so the next interpreter bump is scoped before it
    becomes urgent
 9. revisit PyPI publishing once namespace ownership is clarified
@@ -106,7 +93,8 @@ Release-note hygiene should include a short pre-tag check that the changelog ent
 Python interpreter readiness
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The public release path should treat Python 3.13 as the supported target now. Python 3.14 remains
+Python 3.13 is the confirmed supported target. The full fast suite and slow suite both pass on
+macOS 3.13; the Windows smoke job runs on Python 3.13 and passes. Python 3.14 remains
 awareness-only until a later readiness review says otherwise.
 
 Python 3.14 readiness checklist:
@@ -123,10 +111,10 @@ deliberate rather than reactive.
 Compatibility and platform support
 -----------------------------------
 
-**Status:** planned
-
 Output schema stability
 ~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
 
 The detection dict format (``l``, ``c``, ``x``, ``y``, ``w``, ``h``) is relied on by pipeline
 integrators, but the roadmap does not yet state whether that schema is stable across releases. Add
@@ -135,12 +123,13 @@ an explicit compatibility policy and versioning note before making further outpu
 Windows / cross-platform CI
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Status:** in-progress (smoke coverage added)
+**Status:** done
 
-A ``windows-smoke`` CI job now runs the fast/offline test suite on Python 3.13 under Windows,
-providing basic non-Core ML coverage without claiming full platform parity. Core ML configs
-(``v3-coreml``, ``v3-cls-coreml``) remain macOS-only. Further cross-platform testing may expand
-to additional Python versions and runners as needed.
+The ``windows-smoke`` CI job runs the full fast/offline test suite on Python 3.13 under Windows.
+The package import chain (sahi, torch, numpy) is deferred via PEP 562 ``__getattr__`` in
+``tile_batched/__init__.py`` so collection does not crash on Windows when numpy is not yet
+initialized. An import regression test (``tests/test_imports.py``) guards this path. Core ML
+configs (``v3-coreml``, ``v3-cls-coreml``) remain macOS-only.
 
 GPU / CUDA guidance
 ~~~~~~~~~~~~~~~~~~~
@@ -182,7 +171,8 @@ Dependency currency policy
 
 ``ultralytics``, ``sahi``, and ``torch`` move quickly. The roadmap should define how dependency
 updates are absorbed, how breaking changes are evaluated, and what gets pinned versus left to
-track upstream.
+track upstream. The recent ``ultralytics`` upgrade (8.2.103 → ≥8.3) is the first instance of
+a forced bump driven by a platform compatibility requirement (numpy 2.x / Python 3.13 Windows).
 
 Quality workflow -- v2 scope
 ----------------------------
@@ -192,15 +182,18 @@ Quality workflow -- v2 scope
 **Reference:** ``docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md``
 (V2 Scope section)
 
+Quality workflow v1 is complete: Ruff formatting and lint, scoped mypy on ``scoutbot/``,
+``bandit`` source-code scanning, and ``uv audit --locked`` dependency scanning all run in CI.
+
+Remaining v2 work:
+
 1. Coverage enforcement (``--cov-fail-under`` gated on meaningful branch coverage,
    not raw line count; branch coverage via ``--cov-branch``)
 2. Expand mypy to ``tests/`` and ``benchmarks/``; add targeted
    ``[[tool.mypy.overrides]]`` per library; revisit ``ignore_missing_imports = true``
-3. Ruff rule expansion -- enable ``UP`` (restores deferred pyupgrade behaviour),
+3. Ruff rule expansion — enable ``UP`` (restores deferred pyupgrade behaviour),
    ``B``, ``C4``, ``SIM`` one group per PR
-4. Security / dependency scanning -- ``uv audit --locked`` for dependencies and
-   ``bandit`` for source-code scanning, both in ``quality.yml`` (done).
-5. macOS CI runner for Core ML path (expensive; consider self-hosted M-series)
+4. macOS CI runner for Core ML path (expensive; consider self-hosted M-series)
 
 The quality work and the dependency currency policy above should stay aligned so breaking
 dependency upgrades are caught in CI instead of surfacing in release work.
@@ -267,14 +260,18 @@ The forward-looking runtime question is therefore:
 Model registry / model integration
 ----------------------------------
 
-**Status:** planned
+**Status:** in-progress
 
 **Reference:** ``docs/superpowers/plans/2026-05-09-scoutbot-registry.md``
 
-Future model integration work should provide a registry mechanism for model updates and new model
-integrations. Until that is mature, model configs remain internal implementation details in
-``scoutbot.model_store`` and new model work should include artifact provenance, integrity
-verification, config schema tests, CLI choice tests, and output compatibility checks.
+The local offline-first registry is implemented and in production use. ``scoutbot fetch``
+auto-registers downloaded models; ``scoutbot models`` / ``scoutbot models info NAME`` list
+registry entries; ``scoutbot register`` registers any local ``.pt`` file. All inference
+commands accept ``--model NAME`` as an alternative to ``--config``; JSONL output from
+``batch-resumable`` includes a ``model`` provenance block. Model downloads are resilient
+across multiple sources (Azure primary, GCS fallback) with automatic failover.
+
+Remaining registry work is tracked in the sub-sections below.
 
 Registry model removal
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -314,15 +311,14 @@ Model-store / ``loc`` staged cleanup
 
 **Status:** planned
 
-The current `scoutbot.loc` module is now a compatibility wrapper around
-``scoutbot.model_store``. That wrapper should be treated as temporary technical debt, not a new
-home for model policy.
+The model catalog and fetch/export plumbing live in ``scoutbot/model_store.py``. The
+``scoutbot.loc`` module is now a thin compatibility wrapper around ``model_store`` and should
+be treated as temporary technical debt, not the canonical home for model policy.
 
 The staged cleanup should:
 
 * move remaining internal imports to ``scoutbot.model_store`` instead of ``scoutbot.loc``
 * update tests and docs that still describe ``scoutbot.loc`` as the owner of the catalog
-* keep the wrapper in place until the registry and model-store refactors no longer depend on it
 * retire the wrapper once the remaining call sites are migrated and no public compatibility need
   remains
 
@@ -334,11 +330,11 @@ Model registry evolution / model-family lineage
 
 **Status:** planned
 
-The current registry plan should be treated as the first offline-first implementation step, not the
-final registry contract. The longer-term design work belongs in the sibling ``pipeline-design``
-project, where ``stage-3-ai-detection.md`` and ``schema-family.md`` already frame
-``model_registry.json`` as survey-level infrastructure and leave the survey-level versus run-level
-boundary open for refinement.
+The current registry is the first offline-first implementation step, not the final registry
+contract. The longer-term design work belongs in the sibling ``pipeline-design`` project, where
+``stage-3-ai-detection.md`` and ``schema-family.md`` already frame ``model_registry.json`` as
+survey-level infrastructure and leave the survey-level versus run-level boundary open for
+refinement.
 
 Survey-level registry contract (v3+)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -358,18 +354,6 @@ resolution. The survey-level artifact schema, validation rules, and stage-bounda
 in ``pipeline-design`` so future model families can evolve without forcing another schema rewrite
 in this repository.
 
-Future registry work should define how the registry represents:
-
-* model families and canonical family identifiers
-* parent/child relationships between base models and fine-tuned variants
-* versioned aliases for the same family across training or export iterations
-* compatibility metadata for Stage 3 consumers and pipeline integrations
-* the split between survey-level registry facts and per-run provenance in detection outputs
-
-The current ScoutBot registry plan should continue to focus on offline fetch, local provenance, and
-CLI plumbing. The richer family/lineage contract should be designed as a follow-on spec so future
-model integrations can grow without reworking the registry format from scratch.
-
 Completed work archive
 ----------------------
 
@@ -379,6 +363,24 @@ work:
 * benchmark hardening for ``benchmarks/benchmark_coreml.py``
 * CI coverage reporting via the GitHub Actions job summary
 * performance observability spec and Core ML compute-unit metadata follow-up
+* ``visualise.py`` relocation from repo root to ``tools/visualise.py``, full rewrite, and
+  wiring into all quality gates (ruff, mypy, bandit, pytest)
+* Windows smoke CI job and cross-platform import-chain fix (PEP 562 lazy loader for
+  ``tile_batched``, numpy/torch deferred to ``perform_inference()``, import regression test)
+* Python 3.13 support: full CI matrix coverage on macOS and Windows, 179-test slow suite
+  verified on macOS 3.13
+* multi-source model fetch: Azure primary with automatic GCS fallback, per-provider provenance
+  recording, increased chunk size
+* local model registry: offline-first fetch/register/resolve flow, ``scoutbot models`` and
+  ``scoutbot register`` CLI, ``--model NAME`` flag, JSONL provenance block
+* model store refactor: catalog and fetch/export plumbing moved from ``scoutbot.loc`` to
+  ``scoutbot/model_store.py``; ``scoutbot.loc`` is now a compatibility wrapper
+* quality workflow v1: Ruff formatting and lint, scoped mypy on ``scoutbot/``, bandit
+  source-code scanning, ``uv audit --locked`` dependency scanning, all running in CI
+* documentation reorganization: reader-intent Sphinx structure, GitHub Pages deployment,
+  Read the Docs retired
+* test coverage: fast-suite coverage raised from 58% to 92%+
+* GPU / CUDA guidance documented as best-effort for NVIDIA systems
 
 These remain reflected in the project history and in the implementation notes / changelog, but they
 no longer need to occupy active roadmap space.
