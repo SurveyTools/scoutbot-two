@@ -289,16 +289,25 @@ a re-fetch today, a user must manually delete the cached file and the registry e
    rm ~/.cache/scoutbot/<model-name>.pt
    rm ~/.rebel-workflow/model-registry.json   # or edit the JSON to remove one entry
 
+The cache also contains Core ML ``.mlpackage`` bundles (directory trees, not single files),
+which require ``rm -rf`` rather than ``rm``:
+
+.. code-block:: bash
+
+   rm -rf ~/.cache/scoutbot/<model-name>.mlpackage
+
 Two commands should be added:
 
 * ``scoutbot unregister NAME`` — removes the named entry from the registry JSON (does not
-  delete the model file, in case it was registered manually from an existing path).
-* ``scoutbot fetch --force`` — re-downloads the model from remote sources and overwrites both
-  the cached file and the registry entry, regardless of what the registry currently records.
+  delete the model file or bundle, in case it was registered manually from an existing path).
+* ``scoutbot fetch --force`` — re-downloads ``.pt`` models and re-exports ``.mlpackage``
+  bundles from remote sources, overwriting both the cache and the registry entry regardless
+  of what the registry currently records.
 
 These two commands cover the common cases: ``unregister`` for registry-only cleanup (e.g. a
 stale path after moving the model file), and ``fetch --force`` for a full cache-and-registry
-reset before a re-download.
+reset before a re-download. Both commands must handle ``.mlpackage`` bundle directories
+correctly (recursive delete / recursive copy rather than single-file operations).
 
 Model-store / ``loc`` staged cleanup
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
