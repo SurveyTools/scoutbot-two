@@ -6,13 +6,13 @@ is dispatched through Apple's Core ML runtime (and is eligible for the Neural En
 macOS. The Core ML configs mirror their PyTorch counterparts and produce detections within
 sub-pixel / FP16 tolerance of the ``.pt`` models — see `Parity and caveats`_.
 
-This is a macOS feature. It requires ``coremltools``. See :doc:`installation` for Apple
+This is a macOS feature. It requires ``coremltools>=9.0``. See :doc:`installation` for Apple
 Silicon setup and explicit export commands.
 
 Configs
 ~~~~~~~
 
-Two Core ML configs are registered in ``scoutbot/loc/__init__.py`` alongside ``v3`` / ``v3-cls``:
+Two Core ML configs are registered in ``scoutbot.model_store`` alongside ``v3`` / ``v3-cls``:
 
 ``v3-coreml`` — single-class detector
    * Bundle: ``yolov8-onecls.kaza.mlpackage``
@@ -35,9 +35,9 @@ Exporting the bundles
 
 Unlike the ``.pt`` models, the Core ML bundles are **not hosted** — they are exported on demand
 from their source ``.pt`` model and cached at ``~/.cache/scoutbot/``. The first time a Core ML
-config is used, ``loc.fetch()`` fetches the source ``.pt`` (downloading it if needed) and
-converts it; subsequent runs reuse the cached bundle. Nothing extra is required to use a Core ML
-config — the export happens transparently.
+config is used, ``scoutbot.model_store.fetch()`` fetches the source ``.pt`` (downloading it if
+needed) and converts it; subsequent runs reuse the cached bundle. Nothing extra is required to use
+a Core ML config — the export happens transparently.
 
 To build (or rebuild) the bundles explicitly::
 
@@ -52,9 +52,10 @@ Or from Python::
 
 The export is::
 
-    YOLO(pt_path).export(format='coreml', half=True, nms=False, imgsz=slice_width)
+    YOLO(pt_path).export(format='coreml', quantize=True, nms=False, imgsz=slice_width)
 
-* ``half=True`` — FP16 weights (a Neural Engine eligibility requirement).
+* ``quantize=True`` — FP16 weights (a Neural Engine eligibility requirement). ``half=True``
+  was the pre-8.3 spelling and is now deprecated.
 * ``nms=False`` — no built-in NMS; SAHI performs class-agnostic NMS downstream, so baking it
   into the model would double up.
 * ``imgsz`` is taken from the config's slice size (512), giving the model a **fixed** 512×512

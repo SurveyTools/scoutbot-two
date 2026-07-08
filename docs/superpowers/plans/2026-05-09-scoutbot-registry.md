@@ -4,7 +4,9 @@
 
 **Goal:** Add a local model registry to scoutbot-2026 so inference runs fully offline after an explicit one-time fetch, and every `batch_resumable` output record includes full model provenance.
 
-**Architecture:** A new `scoutbot/registry/` module owns the registry file (`~/.rebel-workflow/model-registry.json`), dataclasses, and I/O. `loc/fetch()` checks the registry before any network call. `batch_resumable()` stamps a full provenance block on every JSONL record. Four new/modified CLI commands surface the registry.
+**Architecture:** A new `scoutbot/registry/` module owns the registry file (`~/.rebel-workflow/model-registry.json`), dataclasses, and I/O. `scoutbot.model_store.fetch()` checks the registry before any network call. `batch_resumable()` stamps a full provenance block on every JSONL record. Four new/modified CLI commands surface the registry.
+
+**Scope boundary (stage-3-ai-detection.md §O2):** The machine-local registry (`~/.rebel-workflow/model-registry.json`) is a tool-cache artifact, not the survey-level `model_registry.json` (`rw:model-registry:1.0`) described in `schema-family.md`. It uses schema ID `rw:local-model-cache:1.0` to avoid collision. Per-run provenance (MD5, SAHI parameters, confidence threshold) is stamped directly into `batch_resumable` JSONL output. The survey-level `{survey_root}/model_registry.json` is out of scope for this plan; the roadmap defers that richer contract to a later spec.
 
 **Tech Stack:** Python stdlib only for registry core (`json`, `os`, `pathlib`, `dataclasses`). `click` for CLI. Existing `ultralytics` + `sahi` unchanged.
 
@@ -20,10 +22,11 @@
 | Create | `scoutbot/registry/schema.py` | `ModelEntry`, `RegistrySource` dataclasses with `to_dict`/`from_dict` |
 | Create | `scoutbot/registry/paths.py` | `get_registry_path()`, `get_models_dir()` — read env at call time |
 | Create | `tests/test_registry.py` | Tests for registry module |
-| Modify | `scoutbot/loc/__init__.py` | `fetch()` checks registry first; registers after download |
+| Modify | `pyproject.toml` | Add `scoutbot.registry` to the setuptools packages list |
+| Modify | `scoutbot/model_store.py` | `fetch()` checks registry first; preserves Core ML branch and observability emit calls; registers after download |
 | Modify | `scoutbot/__init__.py` | Add `_resolve_model()` helper; update `pipeline()`, `batch()`, `batch_resumable()` |
 | Modify | `scoutbot/scoutbot.py` | Add `register`, `models` commands; add `--model` flag |
-| Modify | `tests/test_loc.py` | Update fetch tests for offline-first behavior |
+| Modify | `tests/test_model_store.py` | Update fetch tests for offline-first behavior |
 | Modify | `tests/test_cli.py` | Add tests for new CLI commands |
 | Modify | `tests/test_pipeline.py` | Update for `_resolve_model` and provenance in output |
 
@@ -34,6 +37,7 @@
 **Files:**
 - Create: `scoutbot/registry/__init__.py` (stub only)
 - Create: `scoutbot/registry/paths.py`
+- Modify: `pyproject.toml`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -81,19 +85,28 @@ def test_get_models_dir_from_env(tmp_path):
 - [ ] **Step 2: Run test to verify it fails**
 
 ```bash
-cd /Users/kirk/projects/surveying/survey-tools/scoutbot-2026
-pytest tests/test_registry.py -v
+uv run pytest tests/test_registry.py -v
 ```
 Expected: `ModuleNotFoundError: No module named 'scoutbot.registry'`
 
-- [ ] **Step 3: Create stub `scoutbot/registry/__init__.py`**
+- [ ] **Step 3: Add `scoutbot.registry` to packaging metadata**
+
+Update the setuptools package list in `pyproject.toml`:
+
+```toml
+[tool.setuptools]
+packages = ["scoutbot", "scoutbot.loc", "scoutbot.tile_batched", "scoutbot.registry"]
+include-package-data = true
+```
+
+- [ ] **Step 4: Create stub `scoutbot/registry/__init__.py`**
 
 ```python
 # scoutbot/registry/__init__.py
 ```
 (empty for now)
 
-- [ ] **Step 4: Create `scoutbot/registry/paths.py`**
+- [ ] **Step 5: Create `scoutbot/registry/paths.py`**
 
 ```python
 # scoutbot/registry/paths.py
@@ -111,19 +124,16 @@ def get_models_dir() -> Path:
                           Path.home() / '.rebel-workflow' / 'models'))
 ```
 
-- [ ] **Step 5: Run tests**
+- [ ] **Step 6: Run tests**
 
 ```bash
-pytest tests/test_registry.py -v
+uv run pytest tests/test_registry.py -v
 ```
 Expected: all 4 pass.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Verify and hand off**
 
-```bash
-git add scoutbot/registry/__init__.py scoutbot/registry/paths.py tests/test_registry.py
-git commit -m "feat: add registry module skeleton and paths"
-```
+Run the fast suite to confirm nothing regressed: `uv run pytest -m "not slow" -q`
 
 ---
 
@@ -200,7 +210,7 @@ def test_model_entry_round_trip():
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_registry.py -v -k "schema or source or entry"
+uv run pytest tests/test_registry.py -v -k "schema or source or entry"
 ```
 Expected: `ImportError: cannot import name 'ModelEntry'`
 
@@ -264,16 +274,13 @@ class ModelEntry:
 - [ ] **Step 4: Run tests**
 
 ```bash
-pytest tests/test_registry.py -v
+uv run pytest tests/test_registry.py -v
 ```
 Expected: all schema tests pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify and hand off**
 
-```bash
-git add scoutbot/registry/schema.py tests/test_registry.py
-git commit -m "feat: add ModelEntry and RegistrySource dataclasses"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
@@ -358,7 +365,7 @@ def test_registry_file_is_valid_schema(registry_path):
     registry.register(_make_entry('x'))
     with open(registry_path) as f:
         data = json.load(f)
-    assert data['schema'] == 'rw:model-registry:1.0'
+    assert data['schema'] == 'rw:local-model-cache:1.0'
     assert 'updated' in data
     assert 'x' in data['models']
 
@@ -383,7 +390,7 @@ def test_load_returns_raw_dict(registry_path):
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_registry.py -v -k "lookup or register or list or schema or atomic or load"
+uv run pytest tests/test_registry.py -v -k "lookup or register or list or schema or atomic or load"
 ```
 Expected: failures due to empty `scoutbot/registry/__init__.py`.
 
@@ -400,7 +407,7 @@ from typing import Optional
 
 from scoutbot.registry.schema import ModelEntry
 
-SCHEMA_ID = 'rw:model-registry:1.0'
+SCHEMA_ID = 'rw:local-model-cache:1.0'
 
 
 def _registry_path() -> Path:
@@ -461,26 +468,23 @@ def list_models() -> list[ModelEntry]:
 - [ ] **Step 4: Run all registry tests**
 
 ```bash
-pytest tests/test_registry.py -v
+uv run pytest tests/test_registry.py -v
 ```
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify and hand off**
 
-```bash
-git add scoutbot/registry/__init__.py tests/test_registry.py
-git commit -m "feat: implement registry I/O (lookup, register, list_models)"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
-## Task 4: Update `fetch()` to check registry first
+## Task 4: Update `model_store.fetch()` to check registry first
 
 **Files:**
-- Modify: `scoutbot/loc/__init__.py`
-- Modify: `tests/test_loc.py`
+- Modify: `scoutbot/model_store.py`
+- Modify: `tests/test_model_store.py`
 
-- [ ] **Step 1: Write failing tests** — append to `tests/test_loc.py`
+- [ ] **Step 1: Write failing tests** — append to `tests/test_model_store.py`
 
 ```python
 # --- registry-integrated fetch tests ---
@@ -501,13 +505,13 @@ def isolated_registry(tmp_path, monkeypatch):
 def test_fetch_uses_registry_when_model_cached(isolated_registry):
     """fetch() does not hit the network if the model is in the registry with matching MD5."""
     from scoutbot.registry.schema import ModelEntry, RegistrySource
-    from scoutbot import registry, loc
+    from scoutbot import registry, model_store
 
     # Create a fake model file
     model_file = isolated_registry / 'models' / 'yolov8-onecls.kaza.pt'
     model_file.parent.mkdir(parents=True)
     model_file.write_bytes(b'fake model content')
-    md5 = loc._md5(model_file)
+    md5 = model_store._md5(model_file)
 
     registry.register(ModelEntry(
         name='scoutbot-v3',
@@ -520,7 +524,7 @@ def test_fetch_uses_registry_when_model_cached(isolated_registry):
     ))
 
     with patch('requests.get') as mock_get:
-        result = loc.fetch(config='v3')
+        result = model_store.fetch(config='v3')
         mock_get.assert_not_called()
 
     assert result == str(model_file)
@@ -528,20 +532,19 @@ def test_fetch_uses_registry_when_model_cached(isolated_registry):
 
 def test_fetch_fails_clearly_when_not_registered_and_no_network(isolated_registry):
     """fetch() raises a clear error if model not in registry and network unavailable."""
-    from scoutbot import loc
+    from scoutbot import model_store
     import requests
 
     with patch('requests.get', side_effect=requests.ConnectionError('no network')):
         with pytest.raises(Exception):
-            loc.fetch(config='v3')
+            model_store.fetch(config='v3')
 
 
 def test_fetch_registers_model_after_download(isolated_registry, tmp_path):
     """After a successful download, fetch() writes a ModelEntry to the registry."""
-    from scoutbot import registry, loc
+    from scoutbot import registry, model_store
 
     fake_content = b'fake model data'
-    fake_md5 = loc._md5.__func__ if hasattr(loc._md5, '__func__') else None
 
     # Compute expected MD5
     import hashlib
@@ -566,7 +569,7 @@ def test_fetch_registers_model_after_download(isolated_registry, tmp_path):
         return mock_model_response
 
     with patch('requests.get', side_effect=mock_get):
-        loc.fetch(config='v3')
+        model_store.fetch(config='v3')
 
     entry = registry.lookup('scoutbot-v3')
     assert entry is not None
@@ -578,57 +581,83 @@ def test_fetch_registers_model_after_download(isolated_registry, tmp_path):
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_loc.py -v -k "registry"
+uv run pytest tests/test_model_store.py -v -k "registry"
 ```
 Expected: all 3 new tests fail.
 
-- [ ] **Step 3: Update `scoutbot/loc/__init__.py`**
+- [ ] **Step 3: Update `scoutbot/model_store.py`**
 
-Replace the `fetch()` function body:
+Patch the `fetch()` function so the existing Core ML branch stays first and unchanged, then the registry hit check runs for the normal PT fetch path before any network call. Keep the current `observer` parameter and `emit()` calls intact, and only short-circuit the network path when a valid registry entry matches.
 
 ```python
-def fetch(config=DEFAULT_CONFIG) -> str:
+def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     if config is None:
         config = DEFAULT_CONFIG
 
+    started_ns = perf_counter_ns()
     cfg = CONFIGS[config]
     registry_name = f'scoutbot-{config}'
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    local_path = CACHE_DIR / str(cfg['name'])
 
-    # --- offline path: check registry first ---
+    # Keep the existing Core ML branch exactly where it is today.
+    # Registry lookup applies only to the non-Core ML fetch path below.
+    if cfg.get('backend') == 'coreml':
+        cache_hit = local_path.exists()
+        if not local_path.exists():
+            log.info(f'Core ML model missing, exporting: {cfg["name"]}')
+            export_coreml(config, observer=observer)
+        assert local_path.exists(), f'Core ML export failed: {local_path}'
+        log.debug(f'Using local Core ML model: {local_path}')
+        ended_ns = perf_counter_ns()
+        emit(
+            observer,
+            {
+                'name': 'fetch',
+                'status': 'ok',
+                'started_ns': started_ns,
+                'ended_ns': ended_ns,
+                'duration_ns': ended_ns - started_ns,
+                'config': config,
+                'backend': 'coreml',
+                'device': 'coreml',
+                'cache_hit': cache_hit,
+                'model_path': str(local_path),
+                'compute_units_requested': cfg.get('compute_units_requested'),
+            },
+        )
+        return str(local_path)
+
     from scoutbot import registry as _registry
-    from scoutbot.registry.paths import get_models_dir
+
     entry = _registry.lookup(registry_name)
     if entry is not None:
-        local_path = Path(entry.path)
-        if local_path.exists() and _md5(local_path) == entry.md5:
+        cached_path = Path(entry.path)
+        if cached_path.exists() and _md5(cached_path) == entry.md5:
             log.debug(f'Model found in registry: {registry_name}')
-            return str(local_path)
+            ended_ns = perf_counter_ns()
+            emit(
+                observer,
+                {
+                    'name': 'fetch',
+                    'status': 'ok',
+                    'started_ns': started_ns,
+                    'ended_ns': ended_ns,
+                    'duration_ns': ended_ns - started_ns,
+                    'config': config,
+                    'backend': 'pt',
+                    'device': 'cpu',
+                    'cache_hit': True,
+                    'model_path': str(cached_path),
+                },
+            )
+            return str(cached_path)
 
-    # --- online path: download and register ---
-    models_dir = get_models_dir()
-    models_dir.mkdir(parents=True, exist_ok=True)
-    local_path = models_dir / cfg['name']
-
-    response = requests.get(cfg['md5_url'], timeout=30)
-    response.raise_for_status()
-    remote_md5 = response.text.strip().split()[0]
-
-    if not local_path.exists() or _md5(local_path) != remote_md5:
-        log.info(f"Downloading {cfg['name']}...")
-        with requests.get(cfg['url'], stream=True, timeout=120) as r:
-            r.raise_for_status()
-            total = int(r.headers.get('content-length', 0))
-            with open(local_path, 'wb') as f, tqdm(
-                total=total, unit='B', unit_scale=True, desc=cfg['name']
-            ) as bar:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-                    bar.update(len(chunk))
-        assert _md5(local_path) == remote_md5, f"MD5 mismatch: {cfg['name']}"
-
-    # Register / update entry
+    # After the download / md5 verification block, add the explicit registry
+    # write-back block so later calls can resolve offline:
     from datetime import datetime, timezone
     from scoutbot.registry.schema import ModelEntry, RegistrySource
+
     new_entry = ModelEntry(
         name=registry_name,
         path=str(local_path),
@@ -653,22 +682,18 @@ def fetch(config=DEFAULT_CONFIG) -> str:
     )
     _registry.register(new_entry)
     log.info(f'Registered: {registry_name}')
-    return str(local_path)
 ```
 
-- [ ] **Step 4: Run all loc tests**
+- [ ] **Step 4: Run all model_store tests**
 
 ```bash
-pytest tests/test_loc.py -v
+uv run pytest tests/test_model_store.py -v
 ```
 Expected: all pass. Note: `test_fetch_v3_returns_path` etc. will hit the network if model not already registered — that is expected behaviour for the existing integration tests.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify and hand off**
 
-```bash
-git add scoutbot/loc/__init__.py tests/test_loc.py
-git commit -m "feat: fetch() checks registry before network; registers after download"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
@@ -745,7 +770,7 @@ def test_resolve_model_raises_when_not_registered(tmp_path, monkeypatch):
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_pipeline.py -v -k "resolve_model"
+uv run pytest tests/test_pipeline.py -v -k "resolve_model"
 ```
 Expected: `ImportError: cannot import name '_resolve_model'`
 
@@ -774,7 +799,14 @@ def _resolve_model(config=None, model_name=None, **overrides):
 
     entry = _registry.lookup(model_name)
     if entry is None:
-        hint = f'scoutbot fetch --config {config}' if config else f'scoutbot register --name {model_name} ...'
+        hint = (
+            f'uv run scoutbot fetch --config {config}'
+            if config
+            else (
+                'uv run scoutbot register --name scoutbot-v3 '
+                '--path /path/to/model.pt --arch yolov8'
+            )
+        )
         raise RuntimeError(
             f"Model '{model_name}' not found in registry. Run: {hint}"
         )
@@ -796,7 +828,7 @@ def _resolve_model(config=None, model_name=None, **overrides):
 - [ ] **Step 4: Run tests**
 
 ```bash
-pytest tests/test_pipeline.py -v -k "resolve_model"
+uv run pytest tests/test_pipeline.py -v -k "resolve_model"
 ```
 Expected: all 4 pass.
 
@@ -838,21 +870,86 @@ def test_batch_resumable_output_includes_model_provenance(tmp_path, monkeypatch,
     assert 'md5' in record['model']
 ```
 
+- [ ] **Step 5b: Write failing test for `batch()` model_name routing** — append to `tests/test_pipeline.py`
+
+```python
+def test_batch_accepts_model_name(tmp_path, monkeypatch, registry_with_model):
+    """batch() accepts model_name and resolves it through the registry (offline path)."""
+    from unittest.mock import patch
+    import scoutbot
+
+    fake_img = tmp_path / 'img.jpg'
+    fake_img.write_bytes(b'fake')
+
+    with patch.object(scoutbot, 'pipeline', return_value=(0.5, [])):
+        results = scoutbot.batch(
+            filepaths=[str(fake_img)],
+            config=None,
+            model_name='scoutbot-v3',
+        )
+
+    assert isinstance(results, list)
+    assert len(results) == 1
+```
+
+- [ ] **Step 5c: Run to verify failure**
+
+```bash
+uv run pytest tests/test_pipeline.py -v -k "batch_accepts_model"
+```
+Expected: fails — `batch()` does not yet accept `model_name`.
+
 - [ ] **Step 6: Run to verify failure**
 
 ```bash
-pytest tests/test_pipeline.py -v -k "provenance"
+uv run pytest tests/test_pipeline.py -v -k "provenance"
 ```
 Expected: fails — `'model'` key missing from output record.
 
-- [ ] **Step 7: Update `batch_resumable()` in `scoutbot/__init__.py`**
+- [ ] **Step 7: Update `batch_resumable()` and `batch()` in `scoutbot/__init__.py`**
 
-Near the top of `batch_resumable()`, after the config check and before the model load, add:
+Add `model_name=None` to both function signatures. Keep `config=None` as the default so `_resolve_model()` can derive the effective model when the caller uses `--model` or omits `--config`.
+
+```python
+def batch_resumable(
+    filepaths,
+    output_path,
+    config=None,
+    model_name=None,
+    backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
+    loc_thresh=0.45,
+    slice_height=512,
+    slice_width=512,
+    overlap_height_ratio=0.25,
+    overlap_width_ratio=0.25,
+    perform_standard_pred=False,
+    postprocess_class_agnostic=True,
+    show_progress=True,
+    observer=None,
+):
+def batch(
+    filepaths,
+    config=None,
+    model_name=None,
+    backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
+    loc_thresh=0.45,
+    slice_height=512,
+    slice_width=512,
+    overlap_height_ratio=0.25,
+    overlap_width_ratio=0.25,
+    perform_standard_pred=False,
+    postprocess_class_agnostic=True,
+    show_progress=True,
+    observer=None,
+):
+```
+
+For `batch_resumable()`, near the top of the function body, after the config check and before the model load, add this exact one-time resolution block. Remove the old direct `model_store.fetch(config=config, **observer_kwargs)` call entirely so the model is resolved only once:
 
 ```python
     model_path, effective_run_config, model_provenance = _resolve_model(
         config=config,
-        model_name=model_name if 'model_name' in locals() else None,
+        model_name=model_name,
         confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
         slice_height=slice_height if slice_height != 512 else None,
         slice_width=slice_width if slice_width != 512 else None,
@@ -868,27 +965,41 @@ Then update the record dict inside the loop:
                     'filepath': filepath,
                     'wic': wic_,
                     'detections': detects,
-                    'timestamp': datetime.utcnow().isoformat() + 'Z',
+                    'timestamp': datetime.now(timezone.utc)
+                    .isoformat()
+                    .replace('+00:00', 'Z'),
                     'config': config,        # kept for backward compatibility
                     'model': model_provenance,
                 }
 ```
 
-Note: `model_name` parameter is added to `batch_resumable()` signature in Task 7. For now the override dict approach is sufficient; the `model_name` kwarg defaults to None.
+For `batch()` and `batch_resumable()`, use the `model_path` returned by `_resolve_model()` instead of calling `model_store.fetch()` directly.
+Replace every downstream `yolov8_model_path` reference in both functions with `model_path`, including:
+- `tile_batched.Yolov8DetectionModel(model_path=model_path, ...)`
+- `backend`: `'coreml' if str(model_path).endswith('.mlpackage') else 'pt'`
+
+For `batch()`, add an equivalent `_resolve_model()` call near the top of the function body to enable offline model resolution and consistent `model_name` routing:
+
+```python
+    model_path, effective_run_config, _ = _resolve_model(
+        config=config,
+        model_name=model_name,
+        confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
+    )
+```
+
+`batch()` does not write a provenance-stamped output file, so the provenance dict is intentionally discarded. The `model_path` returned by `_resolve_model()` replaces any direct `model_store.fetch()` call that was previously in `batch()`.
 
 - [ ] **Step 8: Run all pipeline tests**
 
 ```bash
-pytest tests/test_pipeline.py -v
+uv run pytest tests/test_pipeline.py -v
 ```
-Expected: all pass.
+Expected: all pass, including `test_batch_accepts_model_name`.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Verify and hand off**
 
-```bash
-git add scoutbot/__init__.py tests/test_pipeline.py
-git commit -m "feat: add _resolve_model helper; stamp provenance block in batch_resumable output"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
@@ -955,7 +1066,7 @@ def test_register_fails_if_path_missing(isolated_registry_cli):
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_cli.py -v -k "register"
+uv run pytest tests/test_cli.py -v -k "register"
 ```
 Expected: `UsageError: No such command 'register'`
 
@@ -979,8 +1090,8 @@ def register_model(name, path, arch, description, threshold, slice_height, slice
     from datetime import datetime, timezone
     from pathlib import Path as _Path
     from scoutbot import registry as _registry
+    from scoutbot import model_store
     from scoutbot.registry.schema import ModelEntry, RegistrySource
-    from scoutbot.loc import _md5
 
     model_path = _Path(path).resolve()
     if not model_path.exists():
@@ -988,7 +1099,7 @@ def register_model(name, path, arch, description, threshold, slice_height, slice
         sys.exit(1)
 
     log.info(f'Computing MD5 for {model_path.name}...')
-    md5 = _md5(model_path)
+    md5 = model_store._md5(model_path)
 
     entry = ModelEntry(
         name=name,
@@ -1019,16 +1130,13 @@ cli.add_command(register_model, name='register')
 - [ ] **Step 4: Run tests**
 
 ```bash
-pytest tests/test_cli.py -v -k "register"
+uv run pytest tests/test_cli.py -v -k "register"
 ```
 Expected: both pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify and hand off**
 
-```bash
-git add scoutbot/scoutbot.py tests/test_cli.py
-git commit -m "feat: add 'scoutbot register' CLI command"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
@@ -1103,7 +1211,7 @@ def test_models_info_unknown_exits_nonzero(isolated_registry_cli):
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_cli.py -v -k "models"
+uv run pytest tests/test_cli.py -v -k "models"
 ```
 Expected: `UsageError: No such command 'models'`
 
@@ -1120,7 +1228,7 @@ def models_group(ctx):
         from scoutbot import registry as _registry
         entries = _registry.list_models()
         if not entries:
-            print('No models registered. Run: scoutbot fetch --config v3')
+            print('No models registered. Run: uv run scoutbot fetch --config v3')
             return
         col = '{:<25} {:<12} {:<35} {:<10} {}'
         print(col.format('NAME', 'FRAMEWORK', 'FILE', 'MD5', 'REGISTERED'))
@@ -1153,16 +1261,13 @@ cli.add_command(models_group, name='models')
 - [ ] **Step 4: Run tests**
 
 ```bash
-pytest tests/test_cli.py -v -k "models"
+uv run pytest tests/test_cli.py -v -k "models"
 ```
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify and hand off**
 
-```bash
-git add scoutbot/scoutbot.py tests/test_cli.py
-git commit -m "feat: add 'scoutbot models' and 'scoutbot models info' commands"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
@@ -1216,17 +1321,66 @@ def test_pipeline_model_and_config_are_exclusive(isolated_registry_cli, tmp_path
     runner = CliRunner()
     result = runner.invoke(cli, ['pipeline', str(img_file), '--model', 'x', '--config', 'v3'])
     assert result.exit_code != 0
-    assert 'mutually exclusive' in result.output.lower() or result.exit_code != 0
+    assert 'mutually exclusive' in result.output.lower()
+
+
+def test_batch_accepts_model_flag(isolated_registry_cli, tmp_path):
+    """--model flag routes batch command through the registry entry."""
+    from scoutbot.scoutbot import cli
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from unittest.mock import patch
+    import scoutbot
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake')
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'fake image')
+
+    registry.register(ModelEntry(
+        name='my-custom',
+        path=str(model_file),
+        md5='abc',
+        framework='yolov8',
+        registered='2026-05-09T00:00:00Z',
+        source=RegistrySource(type='manual'),
+        default_run_config={
+            'slice_height': 512, 'slice_width': 512,
+            'overlap_height_ratio': 0.25, 'overlap_width_ratio': 0.25,
+            'perform_standard_pred': False, 'postprocess_class_agnostic': True,
+            'confidence_threshold': 0.45,
+        },
+    ))
+
+    runner = CliRunner()
+    with patch.object(scoutbot, 'pipeline', return_value=(0.0, [])):
+        result = runner.invoke(cli, ['batch', str(img_file), '--model', 'my-custom'])
+    assert result.exit_code == 0, result.output
 ```
 
 - [ ] **Step 2: Run to verify failures**
 
 ```bash
-pytest tests/test_cli.py -v -k "model_flag or exclusive"
+uv run pytest tests/test_cli.py -v -k "model_flag or exclusive or batch_model"
 ```
 Expected: `Error: No such option: --model`
 
 - [ ] **Step 3: Add `--model` option to CLI commands in `scoutbot/scoutbot.py`**
+
+Add `from scoutbot import log, model_store` to the module imports. Update the `--config` option to use `model_store.CONFIGS`.
+
+Update the `model_option` definition to:
+
+```python
+model_option = [
+    click.option(
+        '--config',
+        help='Which ML model to use for inference',
+        default='v3',
+        type=click.Choice([k for k in model_store.CONFIGS if k is not None]),
+    ),
+]
+```
 
 Add to the `v3_options` list:
 
@@ -1253,55 +1407,32 @@ v3_options = [
 ]
 ```
 
-Update the `pipeline` command function signature to accept `model` and validate mutual exclusion:
+First, update `scoutbot.pipeline()` in `scoutbot/__init__.py` so it accepts `model_name=None` and, when `model_name` is set and `batched_detection_model` is `None`, resolves the model through `_resolve_model(model_name=model_name, ...)` instead of fetching by config.
 
-```python
-@click.command('pipeline')
-@click.argument('filepath', nargs=1, type=str, callback=pipeline_filepath_validator)
-@add_options(model_option)
-@add_options(v3_options)
-@add_options(output_option)
-def pipeline(filepath, config, output, device, loc_thresh, model):
-    if model is not None and config != 'v3':
-        raise click.UsageError('--model and --config are mutually exclusive.')
-
-    loc_thresh_float = loc_thresh / 100.0
-    model_name = model  # None means derive from config
-
-    wic_, detects = scoutbot.pipeline(
-        filepath,
-        config=config if model is None else None,
-        model_name=model_name,
-        backend_device=device,
-        loc_thresh=loc_thresh_float,
-        ...  # existing SAHI params from CONFIGS
-    )
-    ...
-```
-
-Also add `model_name=None` parameter to `scoutbot.pipeline()` and pass it through to `_resolve_model()` in `__init__.py`. Do the same for `batch` and `batch-resumable` commands.
-
-Full updated `pipeline` function in `scoutbot/__init__.py`:
+Add this change before the CLI wrapper work:
 
 ```python
 def pipeline(
-        filepath,
-        config='v3',
-        model_name=None,
-        batched_detection_model=None,
-        backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
-        loc_thresh=0.45,
-        slice_height=512,
-        slice_width=512,
-        overlap_height_ratio=0.25,
-        overlap_width_ratio=0.25,
-        perform_standard_pred=False,
-        postprocess_class_agnostic=True,
+    filepath,
+    config=None,
+    model_name=None,
+    batched_detection_model=None,
+    backend_device=os.getenv('SCOUTBOT_DEVICE', 'cuda:0'),
+    loc_thresh=0.45,
+    slice_height=512,
+    slice_width=512,
+    overlap_height_ratio=0.25,
+    overlap_width_ratio=0.25,
+    perform_standard_pred=False,
+    postprocess_class_agnostic=True,
+    observer=None,
 ):
-    from sahi.predict import get_sliced_prediction
-
+    ...
+    if config is None:
+        config = loc.DEFAULT_CONFIG
+    observer_kwargs = {'observer': observer} if observer is not None else {}
     if batched_detection_model is None:
-        model_path, effective_cfg, _ = _resolve_model(
+        model_path, effective_run_config, _ = _resolve_model(
             config=config,
             model_name=model_name,
             confidence_threshold=loc_thresh,
@@ -1312,69 +1443,190 @@ def pipeline(
         )
         batched_detection_model = tile_batched.Yolov8DetectionModel(
             model_path=model_path,
-            confidence_threshold=effective_cfg.get('confidence_threshold', loc_thresh),
+            confidence_threshold=effective_run_config['confidence_threshold'],
             device=backend_device,
+            **observer_kwargs,
+        )
+```
+
+Then update the CLI wrappers below. Each wrapper selects `run_cfg` from `model_store.CONFIGS[config]` when `model` is `None`, or from `_resolve_model()` when `model` is set. `--model` is already in `v3_options`, so the decorators stay the same; only the function signatures and guard logic change.
+
+Replace the three CLI wrapper bodies with the following pattern. The `model` branch must use `_resolve_model()` to obtain `effective_run_config`; the `config` branch continues to read `model_store.CONFIGS[config]`.
+
+```python
+@click.command('pipeline')
+@click.argument('filepath', nargs=1, type=str, callback=pipeline_filepath_validator)
+@add_options(v3_options)
+@add_options(output_option)
+def pipeline(filepath, config, output, device, loc_thresh, model):
+    ctx = click.get_current_context()
+    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+        raise click.UsageError('--model and --config are mutually exclusive.')
+
+    loc_thresh_float = loc_thresh / 100.0
+    if model is None:
+        run_cfg = model_store.CONFIGS[config]
+    else:
+        _, run_cfg, _ = scoutbot._resolve_model(
+            config=None,
+            model_name=model,
+            confidence_threshold=loc_thresh_float,
         )
 
-    # rest of function unchanged
-    ...
+    wic_, detects = scoutbot.pipeline(
+        filepath,
+        config=config if model is None else None,
+        model_name=model,
+        backend_device=device,
+        loc_thresh=loc_thresh_float,
+        slice_height=run_cfg['slice_height'],
+        slice_width=run_cfg['slice_width'],
+        overlap_height_ratio=run_cfg['overlap_height_ratio'],
+        overlap_width_ratio=run_cfg['overlap_width_ratio'],
+        perform_standard_pred=run_cfg['perform_standard_pred'],
+        postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
+    )
+    # Leave the existing JSON dump / print block unchanged.
+
+
+@click.command('batch')
+@click.argument('filepaths', nargs=-1, type=str)
+@add_options(v3_options)
+@add_options(output_option)
+@click.option('--no-progress', is_flag=True, help='Disable progress bar')
+def batch(filepaths, config, output, device, loc_thresh, model, no_progress):
+    ctx = click.get_current_context()
+    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+        raise click.UsageError('--model and --config are mutually exclusive.')
+
+    loc_thresh_float = loc_thresh / 100.0
+    if model is None:
+        run_cfg = model_store.CONFIGS[config]
+    else:
+        _, run_cfg, _ = scoutbot._resolve_model(
+            config=None,
+            model_name=model,
+            confidence_threshold=loc_thresh_float,
+        )
+
+    results = scoutbot.batch(
+        list(filepaths),
+        config=config if model is None else None,
+        model_name=model,
+        backend_device=device,
+        loc_thresh=loc_thresh_float,
+        slice_height=run_cfg['slice_height'],
+        slice_width=run_cfg['slice_width'],
+        overlap_height_ratio=run_cfg['overlap_height_ratio'],
+        overlap_width_ratio=run_cfg['overlap_width_ratio'],
+        perform_standard_pred=run_cfg['perform_standard_pred'],
+        postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
+        show_progress=not no_progress,
+    )
+    # Leave the existing JSON dump / print block unchanged.
+
+
+@click.command('batch-resumable')
+@click.argument('filepaths', nargs=-1, type=str)
+@click.option('--output', '-o', required=True, help='Output JSONL file path (results saved incrementally)', type=str)
+@add_options(v3_options)
+@click.option('--no-progress', is_flag=True, help='Disable progress bar')
+def batch_resumable(filepaths, output, config, device, loc_thresh, model, no_progress):
+    ctx = click.get_current_context()
+    if model is not None and ctx.get_parameter_source('config') != click.core.ParameterSource.DEFAULT:
+        raise click.UsageError('--model and --config are mutually exclusive.')
+
+    loc_thresh_float = loc_thresh / 100.0
+    if model is None:
+        run_cfg = model_store.CONFIGS[config]
+    else:
+        _, run_cfg, _ = scoutbot._resolve_model(
+            config=None,
+            model_name=model,
+            confidence_threshold=loc_thresh_float,
+        )
+
+    summary = scoutbot.batch_resumable(
+        filepaths=list(filepaths),
+        output_path=output,
+        config=config if model is None else None,
+        model_name=model,
+        backend_device=device,
+        loc_thresh=loc_thresh_float,
+        slice_height=run_cfg['slice_height'],
+        slice_width=run_cfg['slice_width'],
+        overlap_height_ratio=run_cfg['overlap_height_ratio'],
+        overlap_width_ratio=run_cfg['overlap_width_ratio'],
+        perform_standard_pred=run_cfg['perform_standard_pred'],
+        postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
+        show_progress=not no_progress,
+    )
+    # Leave the existing summary-print block unchanged.
 ```
 
 - [ ] **Step 4: Run all tests**
 
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Verify and hand off**
 
-```bash
-git add scoutbot/scoutbot.py scoutbot/__init__.py tests/test_cli.py
-git commit -m "feat: add --model flag to inference commands; mutually exclusive with --config"
-```
+Run the fast suite: `uv run pytest -m "not slow" -q`
 
 ---
 
-## Task 9: Run full test suite and pre-commit checks
+## Task 9: Run full test suite and quality gates
 
 - [ ] **Step 1: Run full test suite**
 
 ```bash
-pytest tests/ -v
+uv run pytest tests/ -v
 ```
 Expected: all tests pass.
 
-- [ ] **Step 2: Run pre-commit linting**
+- [ ] **Step 2: Run quality gates**
 
 ```bash
-pre-commit run --all-files
+uv run ruff format --check .
+uv run ruff check .
+uv run mypy scoutbot
+uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/ tools/
 ```
-Expected: no errors. Fix any formatting issues before committing.
+Expected: all pass. Fix any formatting or lint issues before handing off.
 
 - [ ] **Step 3: Smoke test against a real registered model** (requires internet for initial fetch)
 
 ```bash
 # Fetch and register the v3 model
-scoutbot fetch --config v3
+uv run scoutbot fetch --config v3
 
 # Confirm it appears in the registry
-scoutbot models
+uv run scoutbot models
 
-# Run on the built-in example — should work fully offline after this point
-scoutbot example
+# Run on the built-in example (downloads a test image; verifies end-to-end offline path)
+uv run scoutbot example
 
-# Confirm offline: disconnect network, run again
-scoutbot pipeline ~/.rebel-workflow/models/yolov8-onecls.kaza.pt --model scoutbot-v3
-# (or run on any image you have)
+# Confirm --model flag works: run pipeline on any local image using the registry entry
+# Replace /path/to/image.jpg with a real survey image or the example image.
+uv run scoutbot pipeline /path/to/image.jpg --model scoutbot-v3
+
+# Confirm offline: disconnect network, re-run the pipeline — should succeed without network
+uv run scoutbot pipeline /path/to/image.jpg --model scoutbot-v3
 ```
 
-- [ ] **Step 4: Final commit**
+- [ ] **Step 4: Documentation pass**
+
+Update the user-facing docs that describe first-time usage and model resolution flow:
 
 ```bash
-git add -p   # stage only intentional changes
-git commit -m "feat: complete scoutbot model registry — offline inference, full provenance output"
+uv run sphinx-build -b html docs docs/_build/html
 ```
+
+At minimum, update the quick-start / usage path in `README.md` and `docs/usage.rst` so they show the required `uv run scoutbot fetch --config v3` step before `scoutbot pipeline --model ...` or any other registry-backed inference command.
+
+- [ ] **Step 5: Hand off for review**
 
 ---
 
@@ -1392,4 +1644,10 @@ git commit -m "feat: complete scoutbot model registry — offline inference, ful
 - [x] Backward compat: `"config"` key kept in output → Task 5 (noted in record dict)
 - [x] Atomic writes → Task 3 (`os.replace`)
 
-**Note:** `batch()` also needs `model_name` parameter for full consistency — add it in Task 8 alongside `pipeline()` and `batch_resumable()`.
+**Note:** Task 8 adds `model_name` to `pipeline()`, `batch()`, and `batch_resumable()` so the registry-backed route is consistent across all inference entry points.
+
+**Schema ID:** The machine-local registry uses `rw:local-model-cache:1.0` to distinguish it from the survey-level `rw:model-registry:1.0` artifact in `schema-family.md`.
+
+**Stage-3 O2 (survey-level vs run-level boundary):** Addressed. Run-level provenance (MD5, SAHI params, threshold) goes into `batch_resumable` JSONL. Machine-local registry owns offline model resolution. Survey-level `{survey_root}/model_registry.json` is deferred per the roadmap.
+
+**Cache migration:** `fetch()` in Task 4 checks `~/.cache/scoutbot/` before hitting the network. Files found there can be served from the legacy cache when their MD5 matches, but this plan does not register them in place; only a successful fetch/download writes registry entries. Subsequent calls still resolve offline once the registry has been populated.

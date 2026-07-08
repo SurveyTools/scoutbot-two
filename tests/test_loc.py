@@ -13,8 +13,14 @@ class TestLocConfig:
 
     def test_configs_exist(self):
         """Test that v3, v3-cls, v3-coreml, and v3-cls-coreml configs exist."""
+        from importlib import import_module
+
         from scoutbot import loc
 
+        model_store = import_module('scoutbot.model_store')
+
+        assert loc.CONFIGS is model_store.CONFIGS
+        assert loc.DEFAULT_CONFIG == model_store.DEFAULT_CONFIG
         assert 'v3' in loc.CONFIGS
         assert 'v3-cls' in loc.CONFIGS
         assert 'v3-coreml' in loc.CONFIGS
@@ -60,8 +66,7 @@ class TestLocConfig:
 
         required_keys = [
             'name',
-            'url',
-            'md5_url',
+            'sources',
             'thresh',
             'slice_height',
             'slice_width',
@@ -75,6 +80,12 @@ class TestLocConfig:
             config = loc.CONFIGS[config_name]
             for key in required_keys:
                 assert key in config, f'Config {config_name} missing key: {key}'
+
+        for config_name in ['v3', 'v3-cls']:
+            for source in loc.CONFIGS[config_name]['sources']:
+                assert 'provider' in source
+                assert 'url' in source
+                assert 'md5_url' in source
 
     def test_default_config_is_v3(self):
         """Test that default config points to v3."""
@@ -240,8 +251,8 @@ class TestLocFetchUnit:
         bundle.mkdir()
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
-            patch('scoutbot.loc.export_coreml') as mock_export,
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.export_coreml') as mock_export,
         ):
             result = loc.fetch('v3-coreml')
 
@@ -258,14 +269,14 @@ class TestLocFetchUnit:
             bundle.mkdir(exist_ok=True)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch(
-                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+                'scoutbot.model_store.export_coreml', side_effect=_create_bundle
             ) as mock_export,
         ):
             result = loc.fetch('v3-coreml')
 
-        mock_export.assert_called_once_with('v3-coreml')
+        mock_export.assert_called_once_with('v3-coreml', observer=None)
         assert result == str(bundle)
 
     def test_fetch_coreml_forwards_observer_and_emits_event(self, tmp_path):
@@ -283,9 +294,9 @@ class TestLocFetchUnit:
         observer = list_observer(observer_events)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch(
-                'scoutbot.loc.export_coreml', side_effect=_create_bundle
+                'scoutbot.model_store.export_coreml', side_effect=_create_bundle
             ) as mock_export,
         ):
             result = loc.fetch('v3-coreml', observer=observer)
@@ -320,9 +331,12 @@ class TestLocFetchUnit:
         md5_response.raise_for_status = MagicMock()
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             result = loc.fetch('v3')
 
@@ -347,9 +361,12 @@ class TestLocFetchUnit:
                 events.append(event)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             result = loc.fetch('v3', observer=Collector())
 
@@ -382,8 +399,8 @@ class TestLocFetchUnit:
                 events.append(event)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
-            patch('scoutbot.loc.export_coreml') as mock_export,
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('scoutbot.model_store.export_coreml') as mock_export,
         ):
             result = loc.fetch('v3-coreml', observer=Collector())
 
@@ -421,7 +438,10 @@ class TestLocFetchUnit:
             return download_response
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', side_effect=_get),
         ):
             result = loc.fetch('v3')
@@ -443,14 +463,118 @@ class TestLocFetchUnit:
         md5_response.raise_for_status = MagicMock()
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             result = loc.fetch(None)
 
         assert result is not None
         assert isinstance(result, str)
+
+    def test_fetch_falls_back_to_second_source_on_network_error(self, tmp_path):
+        import requests as _requests
+
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3']
+        local = tmp_path / cfg['name']
+        fake_content = b'model weights fallback'
+        remote_md5 = hashlib.md5(fake_content).hexdigest()
+
+        md5_ok = MagicMock()
+        md5_ok.text = remote_md5
+        md5_ok.raise_for_status = MagicMock()
+
+        download_ok = MagicMock()
+        download_ok.raise_for_status = MagicMock()
+        download_ok.headers = {'content-length': str(len(fake_content))}
+        download_ok.iter_content.return_value = [fake_content]
+        download_ok.__enter__ = MagicMock(return_value=download_ok)
+        download_ok.__exit__ = MagicMock(return_value=False)
+
+        call_count = [0]
+
+        def _get(url, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                raise _requests.ConnectionError('Azure down')
+            if call_count[0] == 2:
+                return md5_ok
+            return download_ok
+
+        with (
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('requests.get', side_effect=_get),
+        ):
+            result = loc.fetch('v3')
+
+        assert result == str(local)
+        assert local.read_bytes() == fake_content
+
+    def test_fetch_raises_when_all_sources_fail(self, tmp_path):
+        import requests as _requests
+
+        from scoutbot import loc
+
+        with (
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('requests.get', side_effect=_requests.ConnectionError('all down')),
+        ):
+            with pytest.raises(RuntimeError, match='All sources failed'):
+                loc.fetch('v3')
+
+    def test_fetch_records_provider_in_registry(self, tmp_path):
+        import json
+
+        from scoutbot import loc
+
+        cfg = loc.CONFIGS['v3']
+        local = tmp_path / cfg['name']
+        fake_content = b'model data'
+        remote_md5 = hashlib.md5(fake_content).hexdigest()
+
+        md5_ok = MagicMock()
+        md5_ok.text = remote_md5
+        md5_ok.raise_for_status = MagicMock()
+
+        download_ok = MagicMock()
+        download_ok.raise_for_status = MagicMock()
+        download_ok.headers = {'content-length': str(len(fake_content))}
+        download_ok.iter_content.return_value = [fake_content]
+        download_ok.__enter__ = MagicMock(return_value=download_ok)
+        download_ok.__exit__ = MagicMock(return_value=False)
+
+        call_count = [0]
+
+        def _get(url, **kwargs):
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return md5_ok
+            return download_ok
+
+        registry_path = tmp_path / 'rw-registry.json'
+
+        with (
+            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(registry_path)}),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch('requests.get', side_effect=_get),
+        ):
+            loc.fetch('v3')
+
+        registry = json.loads(registry_path.read_text())
+        entry = registry['models']['scoutbot-v3']
+        assert entry['source']['provider'] == 'azure'
+        assert local.exists()
 
 
 class TestCoremlComputeUnitsConfig:
@@ -489,7 +613,7 @@ class TestFetchComputeUnitsEmission:
         events = []
         observer = list_observer(events)
 
-        with patch.object(loc, 'CACHE_DIR', tmp_path):
+        with patch('scoutbot.model_store.CACHE_DIR', tmp_path):
             loc.fetch('v3-coreml', observer=observer)
 
         fetch_event = next(e for e in events if e['name'] == 'fetch')
@@ -515,9 +639,12 @@ class TestFetchComputeUnitsEmission:
         observer = list_observer(events)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             loc.fetch('v3', observer=observer)
 
@@ -543,9 +670,12 @@ class TestFetchComputeUnitsEmission:
         observer = list_observer(events)
 
         with (
-            patch.object(loc, 'CACHE_DIR', tmp_path),
+            patch.dict(
+                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+            ),
+            patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', return_value=md5_response),
-            patch('scoutbot.loc._md5', return_value=remote_md5),
+            patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
             loc.fetch('v3-cls', observer=observer)
 

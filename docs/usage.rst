@@ -19,6 +19,14 @@ Save JSON to a file:
 
    uv run scoutbot pipeline /path/to/image.jpg --config v3-cls --output results.json
 
+Use ``--model NAME`` to select a model by registry name instead of a config alias. This
+requires the model to already be in the local registry (run ``scoutbot fetch`` once first):
+
+.. code-block:: bash
+
+   uv run scoutbot fetch --config v3             # register on first use
+   uv run scoutbot pipeline /path/to/image.jpg --model scoutbot-v3 --device mps
+
 Batch
 -----
 
@@ -50,7 +58,33 @@ skips completed images and resumes the remaining work:
 
    uv run scoutbot batch-resumable --output survey.jsonl --config v3 --device mps images/*.jpg
 
-Each JSONL line contains one image result.
+Each JSONL line contains one image result, including a ``model`` provenance block with the
+registry name, MD5, framework, and the effective SAHI parameters used for that run:
+
+.. code-block:: json
+
+   {
+     "filepath": "/path/to/img.jpg",
+     "wic": 0.832,
+     "detections": [],
+     "timestamp": "2026-05-09T12:00:00Z",
+     "config": "v3",
+     "model": {
+       "name": "scoutbot-v3",
+       "file": "yolov8-onecls.kaza.pt",
+       "md5": "bb1613609235f7f868e827cc5c5bba75",
+       "framework": "yolov8",
+       "run_config": {
+         "confidence_threshold": 0.45,
+         "slice_height": 512,
+         "slice_width": 512,
+         "overlap_height_ratio": 0.25,
+         "overlap_width_ratio": 0.25,
+         "perform_standard_pred": false,
+         "postprocess_class_agnostic": true
+       }
+     }
+   }
 
 Other commands
 --------------
@@ -61,6 +95,36 @@ Other commands
    uv run scoutbot get_classes --config v3-cls  # list species labels
    uv run scoutbot export-coreml                # export Core ML bundles
    uv run scoutbot example                      # run on a built-in test image
+
+**Registry commands**
+
+List all models in the local registry:
+
+.. code-block:: bash
+
+   uv run scoutbot models
+
+Print the full registry entry for a specific model as JSON:
+
+.. code-block:: bash
+
+   uv run scoutbot models info scoutbot-v3
+
+Register a local model file (for custom or community models not in the built-in catalog):
+
+.. code-block:: bash
+
+   uv run scoutbot register \
+     --name my-custom-model \
+     --path /path/to/model.pt \
+     --arch yolov8 \
+     --description "Fine-tuned on XYZ dataset" \
+     --threshold 0.4 \
+     --slice-height 512 \
+     --slice-width 512 \
+     --overlap 0.25
+
+Once registered, pass the model name to ``--model`` on any inference command instead of ``--config``.
 
 Python API
 ----------

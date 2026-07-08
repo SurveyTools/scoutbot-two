@@ -340,3 +340,242 @@ class TestCLIExecutionBodies:
 
         assert result.exit_code == 0
         mock_example.assert_called_once()
+
+
+# --- register command tests ---
+
+import pytest
+
+
+@pytest.fixture
+def isolated_registry_cli(tmp_path, monkeypatch):
+    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    return tmp_path
+
+
+def test_register_adds_model_to_registry(isolated_registry_cli, tmp_path):
+    from scoutbot import registry
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake model')
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            'register',
+            '--name',
+            'my-model',
+            '--path',
+            str(model_file),
+            '--arch',
+            'yolov8',
+            '--description',
+            'Test model',
+            '--threshold',
+            '0.60',
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    entry = registry.lookup('my-model')
+    assert entry is not None
+    assert entry.framework == 'yolov8'
+    assert entry.description == 'Test model'
+    assert entry.default_run_config['confidence_threshold'] == 0.60
+    assert entry.source.type == 'local'
+
+
+def test_register_fails_if_path_missing(isolated_registry_cli):
+    from scoutbot.scoutbot import cli
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            'register',
+            '--name',
+            'x',
+            '--path',
+            '/does/not/exist.pt',
+            '--arch',
+            'yolov8',
+        ],
+    )
+    assert result.exit_code != 0
+
+
+# --- models command tests ---
+
+
+def test_models_list_empty(isolated_registry_cli):
+    from scoutbot.scoutbot import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models'])
+    assert result.exit_code == 0
+    assert 'No models' in result.output
+
+
+def test_models_list_shows_registered(isolated_registry_cli, tmp_path):
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'm.pt'
+    model_file.write_bytes(b'x')
+    registry.register(
+        ModelEntry(
+            name='test-yolo',
+            path=str(model_file),
+            md5='abc123',
+            framework='yolov8',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='manual'),
+            default_run_config={},
+        )
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models'])
+    assert result.exit_code == 0
+    assert 'test-yolo' in result.output
+    assert 'yolov8' in result.output
+
+
+def test_models_info_prints_json(isolated_registry_cli, tmp_path):
+    import json
+
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'm.pt'
+    model_file.write_bytes(b'x')
+    registry.register(
+        ModelEntry(
+            name='info-model',
+            path=str(model_file),
+            md5='deadbeef',
+            framework='herdnet',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='manual', note='test'),
+            default_run_config={'patch_size': 256},
+        )
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models', 'info', 'info-model'])
+    assert result.exit_code == 0
+    data = json.loads(result.output)
+    assert data['name'] == 'info-model'
+    assert data['framework'] == 'herdnet'
+    assert data['default_run_config'] == {'patch_size': 256}
+
+
+def test_models_info_unknown_exits_nonzero(isolated_registry_cli):
+    from scoutbot.scoutbot import cli
+
+    runner = CliRunner()
+    result = runner.invoke(cli, ['models', 'info', 'nonexistent'])
+    assert result.exit_code != 0
+
+
+# --- --model flag tests ---
+
+
+def test_pipeline_accepts_model_flag(isolated_registry_cli, tmp_path):
+    """--model flag routes pipeline through the registry entry."""
+    from unittest.mock import patch
+
+    import scoutbot
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake')
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'fake image')
+
+    registry.register(
+        ModelEntry(
+            name='my-custom',
+            path=str(model_file),
+            md5='abc',
+            framework='yolov8',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='manual'),
+            default_run_config={
+                'slice_height': 512,
+                'slice_width': 512,
+                'overlap_height_ratio': 0.25,
+                'overlap_width_ratio': 0.25,
+                'perform_standard_pred': False,
+                'postprocess_class_agnostic': True,
+                'confidence_threshold': 0.45,
+            },
+        )
+    )
+
+    runner = CliRunner()
+    with patch.object(scoutbot, 'pipeline', return_value=(0.0, [])):
+        result = runner.invoke(cli, ['pipeline', str(img_file), '--model', 'my-custom'])
+    assert result.exit_code == 0, result.output
+
+
+def test_pipeline_model_and_config_are_exclusive(isolated_registry_cli, tmp_path):
+    from scoutbot.scoutbot import cli
+
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'x')
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ['pipeline', str(img_file), '--model', 'x', '--config', 'v3']
+    )
+    assert result.exit_code != 0
+    assert 'mutually exclusive' in result.output.lower()
+
+
+def test_batch_accepts_model_flag(isolated_registry_cli, tmp_path):
+    """--model flag routes batch command through the registry entry."""
+    from unittest.mock import patch
+
+    import scoutbot
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+    from scoutbot.scoutbot import cli
+
+    model_file = tmp_path / 'custom.pt'
+    model_file.write_bytes(b'fake')
+    img_file = tmp_path / 'img.jpg'
+    img_file.write_bytes(b'fake image')
+
+    registry.register(
+        ModelEntry(
+            name='my-custom',
+            path=str(model_file),
+            md5='abc',
+            framework='yolov8',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='manual'),
+            default_run_config={
+                'slice_height': 512,
+                'slice_width': 512,
+                'overlap_height_ratio': 0.25,
+                'overlap_width_ratio': 0.25,
+                'perform_standard_pred': False,
+                'postprocess_class_agnostic': True,
+                'confidence_threshold': 0.45,
+            },
+        )
+    )
+
+    runner = CliRunner()
+    with (
+        patch.object(scoutbot, 'pipeline', return_value=(0.0, [])),
+        patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+    ):
+        result = runner.invoke(cli, ['batch', str(img_file), '--model', 'my-custom'])
+    assert result.exit_code == 0, result.output

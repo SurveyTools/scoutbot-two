@@ -260,7 +260,7 @@ class TestPipelineUnit:
         assert event['filepath'] == str(fake_img)
         assert event['config'] == 'v3'
 
-    def test_pipeline_emits_observer_events(self, tmp_path):
+    def test_pipeline_emits_observer_events(self, tmp_path):  # noqa: E501
         import scoutbot
 
         fake_img = tmp_path / 'observer.jpg'
@@ -296,3 +296,133 @@ class TestPipelineUnit:
             'device',
         ):
             assert key in event
+
+
+# --- _resolve_model tests ---
+
+import pytest
+
+
+@pytest.fixture
+def registry_with_model(tmp_path, monkeypatch):
+    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    model_file = tmp_path / 'model.pt'
+    model_file.write_bytes(b'fake')
+    from scoutbot import registry
+    from scoutbot.registry.schema import ModelEntry, RegistrySource
+
+    registry.register(
+        ModelEntry(
+            name='scoutbot-v3',
+            path=str(model_file),
+            md5='abc',
+            framework='yolov8',
+            registered='2026-05-09T00:00:00Z',
+            source=RegistrySource(type='manual'),
+            default_run_config={
+                'slice_height': 512,
+                'slice_width': 512,
+                'overlap_height_ratio': 0.25,
+                'overlap_width_ratio': 0.25,
+                'perform_standard_pred': False,
+                'postprocess_class_agnostic': True,
+                'confidence_threshold': 0.45,
+            },
+        )
+    )
+    return str(model_file)
+
+
+def test_resolve_model_by_config(registry_with_model):
+    from scoutbot import _resolve_model
+
+    path, run_cfg, prov = _resolve_model(config='v3')
+    assert path == registry_with_model
+    assert run_cfg['confidence_threshold'] == 0.45
+    assert prov['name'] == 'scoutbot-v3'
+    assert prov['framework'] == 'yolov8'
+    assert 'run_config' in prov
+
+
+def test_resolve_model_by_name(registry_with_model):
+    from scoutbot import _resolve_model
+
+    path, run_cfg, prov = _resolve_model(model_name='scoutbot-v3')
+    assert prov['name'] == 'scoutbot-v3'
+
+
+def test_resolve_model_override_threshold(registry_with_model):
+    from scoutbot import _resolve_model
+
+    _, run_cfg, prov = _resolve_model(config='v3', confidence_threshold=0.70)
+    assert run_cfg['confidence_threshold'] == 0.70
+    assert prov['run_config']['confidence_threshold'] == 0.70
+
+
+def test_resolve_model_raises_when_not_registered(tmp_path, monkeypatch):
+    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'empty.json'))
+    from scoutbot import _resolve_model
+
+    with pytest.raises(RuntimeError, match='not found in registry'):
+        _resolve_model(config='v3')
+
+
+def test_batch_resumable_output_includes_model_provenance(tmp_path, registry_with_model):
+    """JSONL records include a 'model' provenance block when model_name is used."""
+    import json
+
+    import scoutbot
+
+    output_file = tmp_path / 'results.jsonl'
+    fake_img = tmp_path / 'img.jpg'
+    fake_img.write_bytes(b'fake')
+
+    with (
+        patch.object(
+            scoutbot,
+            'pipeline',
+            return_value=(
+                0.9,
+                [{'l': 'elephant', 'c': 0.9, 'x': 0, 'y': 0, 'w': 10, 'h': 10}],
+            ),
+        ),
+        patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+    ):
+        summary = scoutbot.batch_resumable(
+            filepaths=[str(fake_img)],
+            output_path=str(output_file),
+            model_name='scoutbot-v3',
+        )
+
+    assert summary['processed'] == 1
+    with open(output_file) as f:
+        record = json.loads(f.readline())
+
+    assert 'model' in record
+    assert record['model']['name'] == 'scoutbot-v3'
+    assert record['model']['framework'] == 'yolov8'
+    assert 'run_config' in record['model']
+    assert 'confidence_threshold' in record['model']['run_config']
+    assert 'file' in record['model']
+    assert 'md5' in record['model']
+
+
+def test_batch_accepts_model_name(tmp_path, registry_with_model):
+    """batch() accepts model_name and resolves it through the registry (offline path)."""
+    import scoutbot
+
+    fake_img = tmp_path / 'img.jpg'
+    fake_img.write_bytes(b'fake')
+
+    with (
+        patch.object(scoutbot, 'pipeline', return_value=(0.5, [])),
+        patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+    ):
+        wic_list, detects_list = scoutbot.batch(
+            filepaths=[str(fake_img)],
+            config=None,
+            model_name='scoutbot-v3',
+        )
+
+    assert isinstance(wic_list, list)
+    assert len(wic_list) == 1

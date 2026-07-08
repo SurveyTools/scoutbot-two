@@ -87,3 +87,19 @@ directory, for example ``C:\Users\<user>\.cache\scoutbot\``.
 PyTorch ``.pt`` models are downloaded and verified with MD5 sidecars. Core ML ``.mlpackage``
 bundles are exported locally from the verified source ``.pt`` model and cached in the same
 directory.
+
+Model download sources
+----------------------
+
+ScoutBot tries download sources in order and uses the first that succeeds.
+The built-in order is:
+
+1. **Azure Blob Storage** (``scoutmodels.blob.core.windows.net``) — primary
+2. **Google Cloud Storage** (``storage.googleapis.com/rebel-pipeline-public-models``) — fallback
+
+If Azure is unreachable or resets the connection mid-transfer, the download automatically retries
+from GCS with no user action required. A warning is logged for each skipped source. Once any
+source delivers the file and the local MD5 is verified, the model is registered in the local
+registry and subsequent runs resolve from cache with no network access.
+
+See :doc:`models` for the full URL listing per model.

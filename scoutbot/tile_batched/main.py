@@ -3,8 +3,6 @@ import sys
 from time import perf_counter_ns
 from typing import Optional
 
-import numpy as np
-import torch
 from sahi.models.ultralytics import UltralyticsDetectionModel as _Base
 
 from scoutbot._observability import emit
@@ -112,6 +110,9 @@ class Yolov8DetectionModel(_Base):
 
         started_ns = perf_counter_ns()
         observer = getattr(self, 'observer', None)
+
+        import numpy as np
+        import torch
 
         # SAHI calls with a single numpy array (one slice at a time);
         # external callers may pass a list for true batch inference.

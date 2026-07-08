@@ -528,7 +528,8 @@ class TestBatchUnit:
         ):
             scoutbot.batch([fake_img], config=None, show_progress=False)
 
-        mock_fetch.assert_called_once_with(config='v3')
+        mock_fetch.assert_called_once()
+        assert mock_fetch.call_args.kwargs.get('config') == 'v3'
 
     def test_batch_emits_observer_events(self, tmp_path):
         import scoutbot
