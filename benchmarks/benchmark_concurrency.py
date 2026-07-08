@@ -68,8 +68,15 @@ def _validate_images(images):
         raise SystemExit(f'{len(bad)} file(s) are not valid JPEG/PNG images: {names}')
 
 
-def _build_model(device, observer=None):
-    model_path = loc.fetch(config=CONFIG, observer=observer)
+def _build_model(device, observer=None, model_path=None):
+    # model_path lets the caller resolve/fetch the model once and hand every
+    # worker the same local path, so N workers don't race loc.fetch()'s download
+    # and registry write. This previews the production rule for
+    # batch_resumable(processes=N): the parent resolves the model, workers only
+    # load it. When model_path is None (sequential/threaded, single process) the
+    # single owner fetches directly.
+    if model_path is None:
+        model_path = loc.fetch(config=CONFIG, observer=observer)
     return tile_batched.Yolov8DetectionModel(
         model_path=model_path,
         confidence_threshold=LOC_THRESH,
@@ -90,14 +97,31 @@ def _run_one(model, device, filepath, observer=None):
 
 
 def _aggregate_phase_ns(events):
-    """Sum durations by phase name, excluding the outer pipeline/batch wrapper events."""
+    """Sum durations by phase, and derive the CPU pre/post bucket.
+
+    Named child phases (``perform_inference``, ``load_model``, ...) are summed
+    directly. The ``pipeline`` wrapper event spans the whole per-image call, so
+    ``pipeline - sum(child phases)`` approximates the pure-Python CPU work that
+    has no phase of its own -- SAHI slice generation, NMS merge, and result
+    serialization. It is reported as ``sahi+post`` so the GPU-vs-CPU split the
+    finding claims is visible in the output, not merely asserted.
+
+    (Explicit SAHI/NMS phase hooks inside the pipeline would attribute this more
+    precisely; that instrumentation is deferred to the productionization work.)
+    """
     totals = defaultdict(int)
+    wrapper_ns = 0
     for event in events:
         name = event.get('name')
         duration_ns = event.get('duration_ns')
-        if name in WRAPPER_EVENT_NAMES or not isinstance(duration_ns, (int, float)):
+        if not isinstance(duration_ns, (int, float)):
             continue
-        totals[name] += int(duration_ns)
+        if name in WRAPPER_EVENT_NAMES:
+            wrapper_ns += int(duration_ns)
+        else:
+            totals[name] += int(duration_ns)
+    if wrapper_ns:
+        totals['sahi+post'] = max(0, wrapper_ns - sum(totals.values()))
     return dict(sorted(totals.items()))
 
 
@@ -108,6 +132,7 @@ def run_sequential(images, device, _args):
     _run_one(
         model, device, images[0], observer=observer
     )  # warm-up: lazy load, caches, allocator
+    events.clear()  # drop warm-up events so phase totals cover timed runs only (parity with multiprocess)
 
     t0 = time.monotonic()
     for img in images[1:]:
@@ -127,6 +152,7 @@ def run_threaded(images, device, args):
     # threaded first so every concurrent call afterward hits an already-
     # initialized predictor.
     _run_one(model, device, images[0], observer=observer)
+    events.clear()  # drop warm-up events so phase totals cover timed runs only (parity with multiprocess)
 
     def _timed(img):
         _run_one(model, device, img, observer=observer)
@@ -144,16 +170,19 @@ _mp_events = None
 _mp_queue = None
 
 
-def _mp_init(device, event_queue):
+def _mp_init(device, event_queue, model_path):
     # perform_inference/load_model events fire via the model's *own* self.observer
     # (fixed at construction), not whatever observer a caller passes to
     # pipeline() later - so it must be wired in here, not per-call. Both land in
-    # this worker's _mp_events list.
+    # this worker's _mp_events list. model_path is resolved once by the parent
+    # (see run_multiprocess) so workers don't race loc.fetch().
     global _mp_model, _mp_device, _mp_events, _mp_queue
     _mp_device = device
     _mp_events = []
     _mp_queue = event_queue
-    _mp_model = _build_model(device, observer=list_observer(_mp_events))
+    _mp_model = _build_model(
+        device, observer=list_observer(_mp_events), model_path=model_path
+    )
 
 
 def _mp_run_one(filepath):
@@ -165,9 +194,13 @@ def _mp_run_one(filepath):
     # Draining via the queue avoids the earlier bug of mapping one drain task per
     # worker: Pool.map gives no guarantee each worker runs exactly one task, so
     # that approach could double-count or drop a worker's events.
-    start = len(_mp_events)
+    #
+    # Clear first so _mp_events holds only this image's events: otherwise the
+    # list would grow for the whole run in every worker. The queue put copies the
+    # snapshot (Manager.put serializes synchronously), so the next clear is safe.
+    _mp_events.clear()
     _run_one(_mp_model, _mp_device, filepath, observer=list_observer(_mp_events))
-    _mp_queue.put(_mp_events[start:])
+    _mp_queue.put(list(_mp_events))
 
 
 def _drain_queue(event_queue):
@@ -195,12 +228,24 @@ def run_multiprocess(images, device, args):
     # its put() is a synchronous RPC that completes before the worker task
     # returns, so once pool.map() returns every batch is already enqueued and the
     # drain below is complete -- no feeder-thread flush race to wait out.
+    #
+    # Resolve the model once here, in the parent, so N workers each load the same
+    # cached path instead of racing loc.fetch()'s download and registry write.
+    model_path = loc.fetch(config=CONFIG)
     manager = Manager()
     event_queue = manager.Queue()
     with Pool(
-        processes=args.processes, initializer=_mp_init, initargs=(device, event_queue)
+        processes=args.processes,
+        initializer=_mp_init,
+        initargs=(device, event_queue, model_path),
     ) as pool:
-        pool.map(_mp_run_one, images[: args.processes])  # warm every worker once, untimed
+        # Warm-up uses the SAME first image, submitted once per worker, rather
+        # than images[:processes]; the latter would process images[1:processes]
+        # once untimed and again in the timed pass, biasing disk/cache behavior.
+        # (Pool scheduling doesn't strictly guarantee one warm-up per worker, but
+        # with equal-cost tasks at chunksize 1 it distributes evenly in practice;
+        # any unwarmed worker just pays its cold start inside the timed pass.)
+        pool.map(_mp_run_one, [images[0]] * args.processes)  # untimed warm-up
         _drain_queue(
             event_queue
         )  # discard warm-up events so phase totals cover timed runs only
