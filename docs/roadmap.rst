@@ -33,6 +33,8 @@ Current priorities
 
    * compare the M4 benchmark JSON against the M1 JSON and document the gap
    * validate the benchmark image set against real survey imagery
+   * design a crash-safe multiprocess batch mode now that cross-image concurrency is measured
+     (see `Core ML / performance investigations`_)
    * evolve the model-family / alias / lineage contract in ``pipeline-design``
 
 Work triage
@@ -256,6 +258,24 @@ The forward-looking runtime question is therefore:
   added later?
 * what image-set metadata is needed so benchmark results can be compared to real survey workloads
   rather than a narrow demo corpus?
+
+Cross-image concurrency (CUDA)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** investigation done; productionization planned
+
+``benchmarks/benchmark_concurrency.py`` now gives the parallelism question above explicit CUDA
+measurements. On an RTX 5070 the ``v3`` pipeline is roughly 55% GPU inference / 45% single-threaded
+CPU (SAHI tiling + NMS), which leaves the GPU near 30% utilization on a full survey. Cross-image
+multiprocessing recovers about 2x (roughly 9 hours instead of ~20 on the full Matetsi survey);
+threading is GIL-limited to about 22%. See :doc:`performance` for the full finding. This is a CUDA
+observation, distinct from the Core ML M1 / M4 gap.
+
+The follow-on is to turn this into a first-class ``batch_resumable(processes=N)`` mode. That work
+is gated on a **write-integrity / resume design**: the current single-file JSONL append is not safe
+for concurrent writers, so a production mode needs a single-writer / queue or shard-and-merge
+scheme plus device / VRAM guidance for the process count. Within-image (per-tile) concurrency
+remains a separate deferred experiment.
 
 Model registry / model integration
 ----------------------------------

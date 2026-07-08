@@ -28,8 +28,9 @@ import json
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from multiprocessing import Pool
+from multiprocessing import Manager, Pool
 from pathlib import Path
+from queue import Empty
 
 import scoutbot
 from scoutbot import loc, tile_batched
@@ -46,8 +47,12 @@ _VALID_SIGS = (b'\xff\xd8\xff', b'\x89PNG')  # JPEG and PNG magic bytes
 def _validate_images(images):
     """Fail fast with a clear message if images are Git LFS stubs or wrong type."""
     stubs, bad = [], []
+    header_len = max(len(_LFS_PREFIX), 8)
     for p in images:
-        header = p.read_bytes()[: max(len(_LFS_PREFIX), 8)]
+        with open(p, 'rb') as fh:
+            header = fh.read(
+                header_len
+            )  # only the magic bytes, not the whole (multi-MB) image
         if header[: len(_LFS_PREFIX)] == _LFS_PREFIX:
             stubs.append(p)
         elif not any(header[: len(sig)] == sig for sig in _VALID_SIGS):
@@ -100,7 +105,9 @@ def run_sequential(images, device, _args):
     events = []
     observer = list_observer(events)
     model = _build_model(device, observer=observer)
-    _run_one(model, device, images[0], observer=observer)  # warm-up: lazy load, caches, allocator
+    _run_one(
+        model, device, images[0], observer=observer
+    )  # warm-up: lazy load, caches, allocator
 
     t0 = time.monotonic()
     for img in images[1:]:
@@ -134,26 +141,44 @@ def run_threaded(images, device, args):
 _mp_model = None
 _mp_device = None
 _mp_events = None
+_mp_queue = None
 
 
-def _mp_init(device):
+def _mp_init(device, event_queue):
     # perform_inference/load_model events fire via the model's *own* self.observer
     # (fixed at construction), not whatever observer a caller passes to
-    # pipeline() later - so it must be wired in here, not per-call.
-    global _mp_model, _mp_device, _mp_events
+    # pipeline() later - so it must be wired in here, not per-call. Both land in
+    # this worker's _mp_events list.
+    global _mp_model, _mp_device, _mp_events, _mp_queue
     _mp_device = device
     _mp_events = []
-    observer = list_observer(_mp_events)
-    _mp_model = _build_model(device, observer=observer)
+    _mp_queue = event_queue
+    _mp_model = _build_model(device, observer=list_observer(_mp_events))
 
 
 def _mp_run_one(filepath):
+    # Push this call's events to the shared queue as one batch. This is the same
+    # single-drainer pattern the multiprocess resume path will use to funnel each
+    # worker's per-image output back to one consumer -- prototyped here on
+    # observability events since results are discarded. Batching per image (not
+    # per event) keeps IPC off the hot per-tile path so it doesn't distort timing.
+    # Draining via the queue avoids the earlier bug of mapping one drain task per
+    # worker: Pool.map gives no guarantee each worker runs exactly one task, so
+    # that approach could double-count or drop a worker's events.
+    start = len(_mp_events)
     _run_one(_mp_model, _mp_device, filepath, observer=list_observer(_mp_events))
+    _mp_queue.put(_mp_events[start:])
 
 
-def _mp_drain_events(_ignored):
-    """Fetch this worker's accumulated events back to the main process."""
-    return _mp_events
+def _drain_queue(event_queue):
+    """Non-blocking drain of every per-image event batch currently queued."""
+    batches = []
+    while True:
+        try:
+            batches.append(event_queue.get_nowait())
+        except Empty:
+            break
+    return batches
 
 
 def run_multiprocess(images, device, args):
@@ -165,15 +190,27 @@ def run_multiprocess(images, device, args):
     # startup (measured: 2.0s/img fork vs 7.2s/img spawn, identical images/procs).
     # So instead: main() always runs 'multiprocess' first, before any other mode
     # touches CUDA in this process, keeping plain fork safe *and* fast.
-    with Pool(processes=args.processes, initializer=_mp_init, initargs=(device,)) as pool:
+    #
+    # A Manager().Queue() (not a raw multiprocessing.Queue) is used deliberately:
+    # its put() is a synchronous RPC that completes before the worker task
+    # returns, so once pool.map() returns every batch is already enqueued and the
+    # drain below is complete -- no feeder-thread flush race to wait out.
+    manager = Manager()
+    event_queue = manager.Queue()
+    with Pool(
+        processes=args.processes, initializer=_mp_init, initargs=(device, event_queue)
+    ) as pool:
         pool.map(_mp_run_one, images[: args.processes])  # warm every worker once, untimed
+        _drain_queue(
+            event_queue
+        )  # discard warm-up events so phase totals cover timed runs only
+        timed = images[1:]  # match sequential/threaded: first image is warm-up, not timed
         t0 = time.monotonic()
-        pool.map(_mp_run_one, images)
+        pool.map(_mp_run_one, timed)
         wall_s = time.monotonic() - t0
-        # one drain task per worker to collect each worker's accumulated events
-        per_worker_events = pool.map(_mp_drain_events, range(args.processes))
-    all_events = [e for evs in per_worker_events for e in evs]
-    return wall_s, len(images), _aggregate_phase_ns(all_events)
+        batches = _drain_queue(event_queue)
+    all_events = [event for batch in batches for event in batch]
+    return wall_s, len(timed), _aggregate_phase_ns(all_events)
 
 
 MODES = {
@@ -203,7 +240,9 @@ def main(argv=None):
         help='which execution modes to benchmark',
     )
     ap.add_argument(
-        '--summary-json', default=None, help='optional path for a machine-readable JSON summary'
+        '--summary-json',
+        default=None,
+        help='optional path for a machine-readable JSON summary',
     )
     args = ap.parse_args(argv)
 
@@ -236,7 +275,9 @@ def main(argv=None):
             'images_timed': count,
             'phase_totals_ns': phase_ns,
         }
-    results = {mode: results[mode] for mode in args.modes}  # restore requested order for display
+    results = {
+        mode: results[mode] for mode in args.modes
+    }  # restore requested order for display
 
     base = results.get('sequential', {}).get('mean_ms_per_image')
 
@@ -256,7 +297,9 @@ def main(argv=None):
         print(f'  {mode:<14} {phase_bits}')
 
     if args.summary_json is not None:
-        Path(args.summary_json).write_text(json.dumps(results, indent=2, sort_keys=True) + '\n')
+        Path(args.summary_json).write_text(
+            json.dumps(results, indent=2, sort_keys=True) + '\n'
+        )
 
     return results
 

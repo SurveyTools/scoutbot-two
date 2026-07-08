@@ -1,8 +1,8 @@
 Performance
 ===========
 
-This page explains how Scoutbot measures Core ML performance and how to read the current
-benchmark output.
+This page explains how Scoutbot measures performance -- Core ML backend timing and cross-image
+concurrency on CUDA -- and how to read the current benchmark output.
 
 Core ML benchmark
 -----------------
@@ -95,13 +95,75 @@ When ``actual=null`` appears, confirm ANE engagement via Activity Monitor's *Neu
 column (0% means the model fell back to CPU/GPU), or investigate whether the ``coremltools``
 version exposes the compute-unit readback API for the installed runtime.
 
+Concurrency benchmark (CUDA)
+----------------------------
+
+``benchmarks/benchmark_concurrency.py`` measures a different axis than the Core ML benchmark: how
+throughput scales when whole images are processed concurrently on a single CUDA GPU. It runs the
+full ``v3`` pipeline over a directory of images in three modes -- ``sequential``, ``threaded``,
+and ``multiprocess`` -- and reports mean milliseconds per image, relative speedup, and per-phase
+timing totals drawn from the same observability events the rest of Scoutbot emits.
+
+::
+
+   uv run python benchmarks/benchmark_concurrency.py
+   uv run python benchmarks/benchmark_concurrency.py --modes sequential multiprocess --processes 8
+
+The finding
+~~~~~~~~~~~
+
+Profiling on real survey imagery (8000x5320px, ``v3``) on an RTX 5070 showed each ``pipeline()``
+call splits roughly **55% GPU inference / 45% CPU**, where the CPU portion is SAHI slice
+generation and NMS merge -- pure single-threaded Python that runs *between* GPU calls. On the full
+Matetsi survey the GPU sat at ~30% utilization while one CPU core pinned at ~90-100% and the other
+23 cores stayed idle: the serial CPU pre/post-processing was starving the GPU, not the GPU itself
+being the bottleneck.
+
+Two ways to overlap that work were measured:
+
+* **Threading** (shared model, one process) plateaued at roughly **-22%** and stopped improving
+  past ~8 workers. Python's GIL means threads only overlap the fraction of work that releases it
+  (GPU kernel launches), not the CPU-bound 45%.
+* **Multiprocessing** (separate processes, each with its own model, no shared GIL) reached roughly
+  **-55% (about 2x)** and plateaued around 8 processes. The model is small enough (~1-2 GB VRAM)
+  that several loaded copies share one 12 GB GPU comfortably. On the full Matetsi survey this is
+  about **9 hours instead of ~20**.
+
+This is a CUDA / NVIDIA observation and is distinct from the Core ML M1 / M4 gap above: the
+CPU-versus-accelerator balance, and therefore the payoff from concurrency, differs by backend.
+
+Two axes, one measured
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+There are two independent ways to parallelize this workload:
+
+* **Cross-image** -- process several images at once, each on its own model copy. This is what the
+  benchmark measures and what delivered the ~2x above.
+* **Within-image** -- run the tiles of a *single* image concurrently or as larger batched
+  inferences. This remains deferred (see below) and is a separate, harder change.
+
+The cross-image win does not depend on, and does not preclude, the within-image work.
+
+Productionization is deferred
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The benchmark proves the speedup but deliberately **discards results**, so it does not address the
+hard part of exposing this as a first-class mode such as ``batch_resumable(processes=N)``:
+``batch_resumable`` guarantees crash-safe resume by appending each result to a single JSONL file,
+and several processes appending to one file would interleave and corrupt lines (writes larger than
+``PIPE_BUF`` are not atomic). A production ``processes=N`` therefore needs a write-integrity /
+resume design -- a single writer draining a result queue, or per-worker shards merged at the end --
+plus device / VRAM guidance for the process count. That design work is tracked in :doc:`roadmap`.
+
 What remains deferred
 ---------------------
 
-The current benchmark does not try to measure every possible optimization. The following remain
+The current benchmarks do not try to measure every possible optimization. The following remain
 follow-up work:
 
-* concurrent or batched tile inference experiments
+* within-image concurrent or batched tile inference experiments (the cross-image axis is now
+  measured; see `Concurrency benchmark (CUDA)`_)
+* a production-grade multiprocess batch mode with a crash-safe write-integrity design
 * direct hardware counters for ANE utilization
 
 Observability Follow-up
