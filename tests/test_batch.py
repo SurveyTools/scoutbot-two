@@ -2,6 +2,7 @@
 """Tests for scoutbot.batch() and scoutbot.batch_resumable() functions."""
 
 import json
+import json as _json
 import shutil
 from unittest.mock import MagicMock, patch
 
@@ -256,7 +257,9 @@ class TestBatchResumable:
         observer = list_observer(observer_events)
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt') as mock_fetch,
+            patch(
+                'scoutbot.model_store.fetch', return_value='/fake/model.pt'
+            ) as mock_fetch,
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.5, [])) as mock_pipeline,
         ):
@@ -320,7 +323,7 @@ class TestBatchResumableProgressBar:
 
         with (
             patch('tqdm.tqdm', self._fake_tqdm(captured)),
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.5, [])),
         ):
@@ -343,7 +346,7 @@ class TestBatchResumableProgressBar:
 
         with (
             patch('tqdm.tqdm', self._fake_tqdm(captured)),
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.5, [])),
         ):
@@ -396,7 +399,7 @@ class TestBatchResumableErrorResume:
             return 0.0, []
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', side_effect=mock_pipeline),
         ):
@@ -437,7 +440,7 @@ class TestBatchResumableErrorResume:
             return 0.0, []
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', side_effect=mock_pipeline),
         ):
@@ -588,7 +591,7 @@ class TestBatchResumableUnit:
             for fp in filepaths:
                 f.write(json.dumps({'filepath': fp, 'wic': 0.5, 'detections': []}) + '\n')
 
-        with patch('scoutbot.loc.fetch') as mock_fetch:
+        with patch('scoutbot.model_store.fetch') as mock_fetch:
             summary = scoutbot.batch_resumable(
                 filepaths=filepaths,
                 output_path=str(output),
@@ -615,7 +618,7 @@ class TestBatchResumableUnit:
             f.write(json.dumps({'bad': 'record'}) + '\n')  # valid JSON, no filepath key
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', return_value=(0.0, [])),
         ):
@@ -639,7 +642,7 @@ class TestBatchResumableUnit:
             open(p, 'wb').close()
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch(
                 'scoutbot.pipeline',
@@ -691,7 +694,7 @@ class TestBatchResumableUnit:
             return (0.9, [])
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', side_effect=_fake_pipeline),
         ):
@@ -716,7 +719,7 @@ class TestBatchResumableUnit:
         open(fake_img, 'wb').close()
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', side_effect=RuntimeError('inference exploded')),
         ):
@@ -767,7 +770,7 @@ class TestBatchResumableUnit:
             return 0.5, []
 
         with (
-            patch('scoutbot.loc.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
             patch('scoutbot.tile_batched.Yolov8DetectionModel'),
             patch('scoutbot.pipeline', side_effect=_fake_pipeline),
         ):
@@ -782,7 +785,171 @@ class TestBatchResumableUnit:
         names = [event['name'] for event in events]
         assert 'batch_resumable' in names
         assert names.count('pipeline') == 1
-        assert all('started_ns' in event for event in events)
+        pipeline_events = [event for event in events if event['name'] == 'pipeline']
+        assert all('started_ns' in event for event in pipeline_events)
+        # the batch_resumable summary event uses the shared build_batch_summary
+        # schema (wall_ns), not the started_ns/ended_ns/duration_ns span shape.
+        summary_event = next(
+            event for event in events if event['name'] == 'batch_resumable'
+        )
+        assert 'wall_ns' in summary_event
+
+
+class TestBatchResumableMultiprocess:
+    def test_processes_gt_1_uses_run_batch(self, tmp_path):
+        import scoutbot
+
+        out = tmp_path / 'out.jsonl'
+
+        def fake_submit(remaining):
+            for fp in remaining:
+                yield (
+                    fp,
+                    {'filepath': fp, 'wic': 0.5, 'detections': [], 'config': 'v3'},
+                    [],
+                )
+
+        with (
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot._batch_mp.make_mp_submit', return_value=fake_submit) as mk,
+        ):
+            summary = scoutbot.batch_resumable(
+                ['a.jpg', 'b.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=4,
+                show_progress=False,
+            )
+        assert mk.called
+        assert summary['processed'] == 2 and summary['total'] == 2
+        lines = [_json.loads(x) for x in out.read_text().splitlines()]
+        assert {r['filepath'] for r in lines} == {'a.jpg', 'b.jpg'}
+
+    def test_processes_1_still_sequential(self, tmp_path):
+        import scoutbot
+
+        out = tmp_path / 'out.jsonl'
+        with (
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.5, [])),
+            patch('scoutbot._batch_mp.make_mp_submit') as mk,
+        ):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=1,
+                show_progress=False,
+            )
+        assert not mk.called  # sequential path must not build a pool
+
+    def test_summary_json_written(self, tmp_path):
+        import scoutbot
+
+        out = tmp_path / 'out.jsonl'
+        sj = tmp_path / 'summary.json'
+
+        def fake_submit(remaining):
+            for fp in remaining:
+                yield (
+                    fp,
+                    {'filepath': fp, 'wic': 0.5, 'detections': [], 'config': 'v3'},
+                    [],
+                )
+
+        with (
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot._batch_mp.make_mp_submit', return_value=fake_submit),
+        ):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=2,
+                summary_json=str(sj),
+                show_progress=False,
+            )
+        assert sj.exists()
+        data = _json.loads(sj.read_text())
+        assert data['mode'] == 'multiprocess' and data['processes'] == 2
+
+    def test_summary_json_written_sequential(self, tmp_path):
+        import scoutbot
+
+        out = tmp_path / 'out.jsonl'
+        sj = tmp_path / 'summary.json'
+        with (
+            patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
+            patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+            patch('scoutbot.pipeline', return_value=(0.5, [])),
+        ):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=1,
+                summary_json=str(sj),
+                show_progress=False,
+            )
+        data = _json.loads(sj.read_text())
+        assert data['mode'] == 'sequential' and data['processes'] == 1
+
+    def test_processes_less_than_1_rejected(self, tmp_path):
+        import pytest
+
+        import scoutbot
+
+        out = tmp_path / 'out.jsonl'
+        with pytest.raises(ValueError):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=0,
+                show_progress=False,
+            )
+
+    def test_model_name_provenance_preserved_on_mp_path(self, tmp_path):
+        import scoutbot
+
+        out = tmp_path / 'out.jsonl'
+        provenance = {'model_name': 'scoutbot-v3', 'md5': 'abc'}
+        effective = {
+            'confidence_threshold': 0.45,
+            'slice_height': 512,
+            'slice_width': 512,
+            'overlap_height_ratio': 0.25,
+            'overlap_width_ratio': 0.25,
+            'perform_standard_pred': False,
+            'postprocess_class_agnostic': True,
+        }
+
+        def fake_submit(remaining):
+            for fp in remaining:
+                yield (
+                    fp,
+                    {'filepath': fp, 'wic': 0.5, 'detections': [], 'config': 'v3'},
+                    [],
+                )
+
+        with (
+            patch(
+                'scoutbot._resolve_model',
+                return_value=('/fake/model.pt', effective, provenance),
+            ) as rm,
+            patch('scoutbot._batch_mp.make_mp_submit', return_value=fake_submit),
+        ):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                model_name='scoutbot-v3',
+                processes=2,
+                show_progress=False,
+            )
+        assert rm.called  # registry resolution used on the mp path
+        rec = _json.loads(out.read_text().splitlines()[0])
+        assert rec['model'] == provenance  # provenance attached to written record
 
 
 @pytest.mark.slow
