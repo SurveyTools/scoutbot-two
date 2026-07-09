@@ -17,13 +17,23 @@ from scoutbot._observability import build_batch_summary, emit
 
 log = logging.getLogger(__name__)
 
+
 # Characterized on darwin/forkserver (Task 1, DL-5): a hard worker death (e.g.
 # os._exit) is NOT surfaced by Pool.imap_unordered -- the main process blocks
 # forever waiting for the dead worker's result (HANG/SILENT finding). The
 # bounded-wait fallback below converts that silent hang into a raised error
 # after RESULT_TIMEOUT_S so a lost worker is treated as fail-fast, matching
 # run_batch's write-integrity contract.
-RESULT_TIMEOUT_S = float(os.getenv('SCOUTBOT_MP_RESULT_TIMEOUT', '600'))
+def _parse_result_timeout():
+    raw = os.getenv('SCOUTBOT_MP_RESULT_TIMEOUT', '600')
+    try:
+        return float(raw)
+    except ValueError:
+        log.warning('Invalid SCOUTBOT_MP_RESULT_TIMEOUT=%r; using default 600s', raw)
+        return 600.0
+
+
+RESULT_TIMEOUT_S = _parse_result_timeout()
 
 
 @dataclass(frozen=True)

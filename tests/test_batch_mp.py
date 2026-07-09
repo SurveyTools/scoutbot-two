@@ -10,6 +10,7 @@ import pytest
 from scoutbot._batch_mp import (
     BatchWork,
     _load_processed,
+    _parse_result_timeout,
     make_mp_submit,
     plan_work,
     run_batch,
@@ -53,6 +54,16 @@ def test_plan_work_filters_and_counts(tmp_path):
     assert work.remaining == ['b.jpg', 'c.jpg']
     assert work.skipped_count == 1
     assert work.total_count == 3
+
+
+def test_parse_result_timeout_falls_back_on_invalid_value(monkeypatch):
+    monkeypatch.setenv('SCOUTBOT_MP_RESULT_TIMEOUT', 'not-a-number')
+    assert _parse_result_timeout() == 600.0
+
+
+def test_parse_result_timeout_accepts_valid_value(monkeypatch):
+    monkeypatch.setenv('SCOUTBOT_MP_RESULT_TIMEOUT', '42')
+    assert _parse_result_timeout() == 42.0
 
 
 def _meta(mode='multiprocess', processes=2):
@@ -138,11 +149,22 @@ def test_run_batch_counts_error_records(tmp_path):
         ('a.jpg', {'filepath': 'a.jpg', 'wic': 0.1, 'detections': []}, []),
         ('b.jpg', {'filepath': 'b.jpg', 'error': 'boom'}, []),
     ]
-    summary = run_batch(work, out, _fake_submit(results), summary_meta=_meta())
+    summary = run_batch(
+        work,
+        out,
+        _fake_submit(results),
+        summary_meta=_meta(),
+        provenance={'model_name': 'scoutbot-v3'},
+    )
     assert summary['processed'] == 1 and summary['errors'] == 1
-    # error record is not given a provenance block even if provenance is set
     lines = [json.loads(x) for x in out.read_text().splitlines()]
     assert any('error' in r for r in lines)
+    success_record = next(r for r in lines if 'error' not in r)
+    error_record = next(r for r in lines if 'error' in r)
+    # success record gets the provenance block ...
+    assert success_record['model'] == {'model_name': 'scoutbot-v3'}
+    # ... but an error record is NOT given a provenance block, even when set
+    assert 'model' not in error_record
 
 
 def test_run_batch_fail_fast_on_lost_worker(tmp_path):
