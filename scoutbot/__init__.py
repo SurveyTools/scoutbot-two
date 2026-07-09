@@ -38,6 +38,7 @@ from pathlib import Path
 from time import perf_counter_ns
 
 from scoutbot import utils
+from scoutbot._batch_mp import _load_processed
 from scoutbot._observability import emit
 
 log = utils.init_logging()
@@ -466,19 +467,7 @@ def batch_resumable(
     observer_kwargs = {'observer': observer} if observer is not None else {}
     output_path = Path(output_path)
 
-    processed = set()
-    if output_path.exists():
-        with open(output_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if 'filepath' in record and 'error' not in record:
-                        processed.add(record['filepath'])
-                except json.JSONDecodeError:
-                    continue
+    processed = _load_processed(output_path)
 
     remaining = [fp for fp in filepaths if fp not in processed]
 
