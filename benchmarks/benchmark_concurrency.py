@@ -26,7 +26,6 @@ Usage:
 import argparse
 import json
 import time
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Manager, Pool
 from pathlib import Path
@@ -34,11 +33,10 @@ from queue import Empty
 
 import scoutbot
 from scoutbot import loc, tile_batched
-from scoutbot._observability import list_observer
+from scoutbot._observability import aggregate_phase_ns, list_observer
 
 CONFIG = 'v3'
 LOC_THRESH = 0.45
-WRAPPER_EVENT_NAMES = {'pipeline', 'batch', 'batch_resumable'}
 
 _LFS_PREFIX = b'version https://git-lfs.github.com'
 _VALID_SIGS = (b'\xff\xd8\xff', b'\x89PNG')  # JPEG and PNG magic bytes
@@ -96,35 +94,6 @@ def _run_one(model, device, filepath, observer=None):
     )
 
 
-def _aggregate_phase_ns(events):
-    """Sum durations by phase, and derive the CPU pre/post bucket.
-
-    Named child phases (``perform_inference``, ``load_model``, ...) are summed
-    directly. The ``pipeline`` wrapper event spans the whole per-image call, so
-    ``pipeline - sum(child phases)`` approximates the pure-Python CPU work that
-    has no phase of its own -- SAHI slice generation, NMS merge, and result
-    serialization. It is reported as ``sahi+post`` so the GPU-vs-CPU split the
-    finding claims is visible in the output, not merely asserted.
-
-    (Explicit SAHI/NMS phase hooks inside the pipeline would attribute this more
-    precisely; that instrumentation is deferred to the productionization work.)
-    """
-    totals = defaultdict(int)
-    wrapper_ns = 0
-    for event in events:
-        name = event.get('name')
-        duration_ns = event.get('duration_ns')
-        if not isinstance(duration_ns, (int, float)):
-            continue
-        if name in WRAPPER_EVENT_NAMES:
-            wrapper_ns += int(duration_ns)
-        else:
-            totals[name] += int(duration_ns)
-    if wrapper_ns:
-        totals['sahi+post'] = max(0, wrapper_ns - sum(totals.values()))
-    return dict(sorted(totals.items()))
-
-
 def run_sequential(images, device, _args):
     events = []
     observer = list_observer(events)
@@ -138,7 +107,7 @@ def run_sequential(images, device, _args):
     for img in images[1:]:
         _run_one(model, device, img, observer=observer)
     wall_s = time.monotonic() - t0
-    return wall_s, len(images) - 1, _aggregate_phase_ns(events)
+    return wall_s, len(images) - 1, aggregate_phase_ns(events)
 
 
 def run_threaded(images, device, args):
@@ -161,7 +130,7 @@ def run_threaded(images, device, args):
     with ThreadPoolExecutor(max_workers=args.workers) as ex:
         list(ex.map(_timed, images[1:]))  # warm-up image already run
     wall_s = time.monotonic() - t0
-    return wall_s, len(images) - 1, _aggregate_phase_ns(events)
+    return wall_s, len(images) - 1, aggregate_phase_ns(events)
 
 
 _mp_model = None
@@ -255,7 +224,7 @@ def run_multiprocess(images, device, args):
         wall_s = time.monotonic() - t0
         batches = _drain_queue(event_queue)
     all_events = [event for batch in batches for event in batch]
-    return wall_s, len(timed), _aggregate_phase_ns(all_events)
+    return wall_s, len(timed), aggregate_phase_ns(all_events)
 
 
 MODES = {
