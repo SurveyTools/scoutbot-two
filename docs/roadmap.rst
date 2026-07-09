@@ -29,13 +29,30 @@ Current priorities
 
    * coverage enforcement, expanded mypy, Ruff rule expansion, macOS CI runner for Core ML
 
-5. **Performance and model-ecosystem evolution**
+5. **Performance and parallel execution**
 
-   * compare the M4 benchmark JSON against the M1 JSON and document the gap
-   * validate the benchmark image set against real survey imagery
-   * design a crash-safe multiprocess batch mode now that cross-image concurrency is measured
-     (see `Core ML / performance investigations`_)
-   * evolve the model-family / alias / lineage contract in ``pipeline-design``
+   * **Overall priority: high.** Finish ``batch_resumable(processes=N)`` as the next
+     production performance feature, with resume-safe single-writer output and machine-readable
+     run summaries (see `Linux / CUDA multiprocess batch mode`_).
+   * **Internal priority 1:** validate the Linux/CUDA implementation on real survey workloads:
+     sequential vs threads vs processes, ``processes=2/4/8/12``, sparse vs dense images, and
+     Matetsi-scale end-to-end timing.
+   * **Internal priority 2:** turn those measurements into tuning guidance: process-count sizing,
+     VRAM/model-copy cost, failure/re-run behavior, and interpretation of ``sahi+post``,
+     ``per_worker_counts``, and ``inference_duty_per_worker``.
+   * **Internal priority 3:** compare the M4 benchmark JSON against the M1 JSON and document the
+     Core ML gap once the M1 JSON is available.
+   * **Internal priority 4:** validate whether the benchmark image set represents real survey
+     imagery; add dense-detection and survey-subset cases if the current examples bias timings.
+   * **Internal priority 5:** spec a second performance phase for queue/backpressure behavior,
+     worker lifecycle and retry policy, process-count autotuning, SAHI/NMS bottlenecks, and
+     possible within-image tiling concurrency.
+
+6. **Long-term model ecosystem**
+
+   * define survey-level model-family IDs, aliases, parent/child fine-tunes, and compatibility
+     metadata in ``pipeline-design``
+   * keep Scoutbot's local model registry aligned with that future survey-level contract
 
 Work triage
 -----------
@@ -142,6 +159,47 @@ CUDA support is documented as best-effort for NVIDIA systems. Users can verify G
 with the verification command in :doc:`installation` (Windows NVIDIA section). CUDA is not
 required and not CI-tested; users on CPU-only machines will see ``torch.cuda.is_available()``
 return ``False``, which is expected and not an error.
+
+Windows parallel execution
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+**Overall priority:** medium. Windows should remain supported for base use, but it is not the
+first high-performance parallel execution target.
+
+Current support target:
+
+* keep ``pipeline()``, ``batch()``, and ``batch_resumable(processes=1)`` working under the
+  Windows smoke job
+* keep Windows NVIDIA / CUDA guidance documented as best-effort
+* do not block the Linux/CUDA multiprocess implementation on Windows multiprocessing semantics
+
+Future Windows parallel work needs its own design because Windows uses ``spawn`` rather than
+``forkserver``. That changes worker startup, import safety, model load cost, CUDA process
+behavior, path handling, and process cleanup. Treat Windows ``processes=N`` as a separate
+compatibility and performance spike before making support claims.
+
+macOS parallel execution
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+**Overall priority:** medium-low until Linux/CUDA measurements are complete. macOS parallelism
+is worth testing, but it should not be bundled into the first production multiprocess mode.
+
+The macOS path should be a dedicated ``spawn``-based spike covering:
+
+* ``pt-mps`` and ``coreml`` backends
+* ``processes=2/4/8`` on representative M-series machines, including low-memory and high-memory
+  cases where available
+* sparse and dense survey images
+* startup/warmup cost separated from steady-state throughput
+* Core ML / ANE, MPS, and memory-pressure behavior under multiple worker processes
+
+Only productize macOS ``processes=N`` if the spike shows stable speedup, clean resume behavior,
+and understandable resource limits. Until then, document multiprocess batch mode as
+Linux/CUDA-first with macOS parallel execution planned as a separate validation track.
 
 Dependency and maintenance policy
 ---------------------------------
@@ -259,10 +317,14 @@ The forward-looking runtime question is therefore:
 * what image-set metadata is needed so benchmark results can be compared to real survey workloads
   rather than a narrow demo corpus?
 
-Cross-image concurrency (CUDA)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Linux / CUDA multiprocess batch mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Status:** investigation done; productionization planned
+**Status:** in-progress
+
+**Overall priority:** high. This is the next production performance feature because the CUDA
+benchmark shows material survey-scale throughput gains and the current implementation plan
+directly addresses resume integrity.
 
 ``benchmarks/benchmark_concurrency.py`` now gives the parallelism question above explicit CUDA
 measurements. On an RTX 5070 the ``v3`` pipeline is roughly 55% GPU inference / 45% single-threaded
@@ -271,11 +333,20 @@ multiprocessing recovers about 2x (roughly 9 hours instead of ~20 on the full Ma
 threading is GIL-limited to about 22%. See :doc:`performance` for the full finding. This is a CUDA
 observation, distinct from the Core ML M1 / M4 gap.
 
-The follow-on is to turn this into a first-class ``batch_resumable(processes=N)`` mode. That work
-is gated on a **write-integrity / resume design**: the current single-file JSONL append is not safe
-for concurrent writers, so a production mode needs a single-writer / queue or shard-and-merge
-scheme plus device / VRAM guidance for the process count. Within-image (per-tile) concurrency
-remains a separate deferred experiment.
+The follow-on is to finish first-class ``batch_resumable(processes=N)`` support. That work is
+gated on a **write-integrity / resume design**: the current single-file JSONL append is not safe
+for concurrent writers, so production mode uses a single-writer orchestration path and explicit
+device / VRAM guidance for the process count.
+
+Internal priorities:
+
+1. land the resume-safe implementation and summary JSON output
+2. validate real survey runs against sequential, threaded, and multiprocess baselines
+3. document practical defaults for ``processes=N`` by GPU memory and model-copy cost
+4. retain observability for worker balance, ``sahi+post``, inference duty, errors, and skipped
+   resume records
+5. defer within-image / per-tile concurrency to a separate experiment after cross-image mode is
+   stable
 
 Model registry / model integration
 ----------------------------------
