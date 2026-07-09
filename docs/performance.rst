@@ -67,6 +67,53 @@ hardware throughput benchmark. Earlier M1 / M4 wall-clock numbers were too close
 included this dispatch overhead. The structured summary exists so future investigations can see
 which phase is actually expensive instead of guessing from one aggregate number.
 
+Current M1 / M4 comparison
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The July 2026 M1 and M4 JSON summaries both ran the same ``examples/`` corpus with six timed
+images after one warm-up image (880 timed tile invocations per variant). The M4 is consistently
+faster, but the full-pipeline Core ML gap is smaller than a raw hardware comparison would suggest
+because serial tile orchestration and post-processing remain part of the measured wall time.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Family / variant
+     - M1 ms/img
+     - M4 ms/img
+     - M1 / M4
+   * - ``onecls`` / ``pt-cpu``
+     - 33680.4
+     - 24626.9
+     - 1.37x
+   * - ``onecls`` / ``pt-mps``
+     - 7582.2
+     - 3252.9
+     - 2.33x
+   * - ``onecls`` / ``coreml``
+     - 3618.6
+     - 2191.7
+     - 1.65x
+   * - ``cls`` / ``pt-cpu``
+     - 18096.2
+     - 13851.6
+     - 1.31x
+   * - ``cls`` / ``pt-mps``
+     - 7580.9
+     - 3173.2
+     - 2.39x
+   * - ``cls`` / ``coreml``
+     - 3147.7
+     - 2196.5
+     - 1.43x
+
+For Core ML specifically, the attributed ``perform_inference`` totals were 1.74x slower on M1 for
+``onecls`` and 1.44x slower for ``cls``. The unattributed full-pipeline remainder was also slower
+on M1 (1.51x and 1.43x respectively), which means the comparison is not only a Core ML runtime
+question. Both machines reported ``compute_units_requested=all`` and ``compute_units_actual=null``,
+so the benchmark still cannot prove which physical Apple compute unit executed inference without
+external Activity Monitor / Instruments observation.
+
 Compute-unit observability
 --------------------------
 

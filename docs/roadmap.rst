@@ -40,11 +40,13 @@ Current priorities
    * **Internal priority 2:** turn those measurements into tuning guidance: process-count sizing,
      VRAM/model-copy cost, failure/re-run behavior, and interpretation of ``sahi+post``,
      ``per_worker_counts``, and ``inference_duty_per_worker``.
-   * **Internal priority 3:** compare the M4 benchmark JSON against the M1 JSON and document the
-     Core ML gap once the M1 JSON is available.
+   * **Internal priority 3:** spec and implement per-image benchmark records: phase timings,
+     image metadata, tile count, detection count, density indicators, and warning counts.
    * **Internal priority 4:** validate whether the benchmark image set represents real survey
      imagery; add dense-detection and survey-subset cases if the current examples bias timings.
-   * **Internal priority 5:** spec a second performance phase for queue/backpressure behavior,
+   * **Internal priority 5:** correlate macOS Core ML runs with external ANE / Instruments
+     observations because ``compute_units_actual`` is still unavailable from the runtime.
+   * **Internal priority 6:** spec a second performance phase for queue/backpressure behavior,
      worker lifecycle and retry policy, process-count autotuning, SAHI/NMS bottlenecks, and
      possible within-image tiling concurrency.
 
@@ -296,17 +298,23 @@ Core ML / performance investigations
 
 **Reference:** ``docs/coreml.rst`` (benchmark caveats)
 
-The next investigation pass should be broader than Core ML alone, but it is now an
-investigation and measurement track rather than a separate observability-spec track:
+The July 2026 M1 / M4 comparison is now documented in :doc:`performance`. It confirms that the
+M4 is consistently faster, but also that the full-pipeline Core ML gap is moderated by serial
+Scoutbot orchestration and post-processing. The next investigation pass should therefore be
+broader than Core ML alone:
 
-* compare the latest M4 benchmark JSON against the upcoming M1 JSON and document the actual
-  differences instead of relying on memory
 * break out image load/decode, tiling, model fetch/load, per-tile inference, post-processing,
   serialization, and error handling so the benchmark can explain where wall time goes
+* record per-image and per-tile distributions (p50 / p90 / p95 / max), not only aggregate totals
+* record image workload metadata: dimensions, file size, tile count, detection count,
+  post-processing / NMS warning count, and coarse density bucket
 * validate batching and parallelism ideas against explicit measurements, not just aggregate wall
   clock
 * check whether the benchmark image set is representative of real survey imagery, or whether the
   current examples bias the timing story
+* pair macOS Core ML runs with external hardware observations (Activity Monitor Neural Engine,
+  Instruments, or ``powermetrics`` where practical), because ``compute_units_actual`` remains
+  ``null`` in current benchmark output
 * identify the minimum benchmark and runtime diagnostics needed to support future tuning work
 
 The forward-looking runtime question is therefore:
@@ -316,6 +324,49 @@ The forward-looking runtime question is therefore:
   added later?
 * what image-set metadata is needed so benchmark results can be compared to real survey workloads
   rather than a narrow demo corpus?
+
+Per-image benchmark records
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+**Overall priority:** high within the performance track, after the current resume-safe
+``processes=N`` implementation lands.
+
+The most useful next observability increment is a machine-readable per-image record emitted by
+the benchmarks. Each record should include:
+
+* filepath and stable image identifier
+* dimensions and file size
+* tile count and timed model invocation count
+* detection count and coarse density bucket
+* phase timings for image load/decode, slice generation, per-tile inference, post-processing /
+  NMS, serialization, and unattributed remainder
+* distribution-friendly timings (per-image wall time and per-tile inference samples, so p50 /
+  p90 / p95 / max can be computed)
+* warning counters for NMS / post-processing pressure
+* backend, device, model provenance, and compute-unit fields where applicable
+
+This should support three use cases with the same data shape: M1 / M4 Core ML comparisons,
+Linux/CUDA concurrency tuning, and future agentic pipeline tuning.
+
+Benchmark corpus design
+~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+The current ``examples/`` corpus is useful for smoke tests but should not be assumed
+representative of production survey workloads. Define a small benchmark corpus with explicit
+categories:
+
+* current examples for continuity
+* sparse real survey images
+* dense real survey images
+* large / high-resolution edge cases
+* known NMS-heavy frames
+
+The corpus metadata should make benchmark results comparable across machines and future model
+families without relying on informal memory of which images were used.
 
 Linux / CUDA multiprocess batch mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
