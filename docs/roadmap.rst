@@ -31,9 +31,10 @@ Current priorities
 
 5. **Performance and parallel execution**
 
-   * **Overall priority: high.** Finish ``batch_resumable(processes=N)`` as the next
-     production performance feature, with resume-safe single-writer output and machine-readable
-     run summaries (see `Linux / CUDA multiprocess batch mode`_).
+   * **Overall priority: high.** ``batch_resumable(processes=N)`` has landed: resume-safe
+     single-writer output, ``forkserver`` workers, bounded-wait fail-fast, and machine-readable
+     run summaries. The emphasis now shifts to validating it on real survey workloads (see
+     `Linux / CUDA multiprocess batch mode`_).
    * **Internal priority 1:** validate the Linux/CUDA implementation on real survey workloads:
      sequential vs threads vs processes, ``processes=2/4/8/12``, sparse vs dense images, and
      Matetsi-scale end-to-end timing.
@@ -330,8 +331,8 @@ Per-image benchmark records
 
 **Status:** planned
 
-**Overall priority:** high within the performance track, after the current resume-safe
-``processes=N`` implementation lands.
+**Overall priority:** high within the performance track, now that the resume-safe
+``processes=N`` implementation has landed.
 
 The most useful next observability increment is a machine-readable per-image record emitted by
 the benchmarks. Each record should include:
@@ -371,11 +372,11 @@ families without relying on informal memory of which images were used.
 Linux / CUDA multiprocess batch mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Status:** in-progress
+**Status:** in-progress (implementation landed; validation remaining)
 
-**Overall priority:** high. This is the next production performance feature because the CUDA
-benchmark shows material survey-scale throughput gains and the current implementation plan
-directly addresses resume integrity.
+**Overall priority:** high. The CUDA benchmark showed material survey-scale throughput gains, and
+the resume-safe production implementation has now landed; the remaining work is validating it on
+real survey workloads and turning that into tuning guidance.
 
 ``benchmarks/benchmark_concurrency.py`` now gives the parallelism question above explicit CUDA
 measurements. On an RTX 5070 the ``v3`` pipeline is roughly 55% GPU inference / 45% single-threaded
@@ -384,14 +385,18 @@ multiprocessing recovers about 2x (roughly 9 hours instead of ~20 on the full Ma
 threading is GIL-limited to about 22%. See :doc:`performance` for the full finding. This is a CUDA
 observation, distinct from the Core ML M1 / M4 gap.
 
-The follow-on is to finish first-class ``batch_resumable(processes=N)`` support. That work is
-gated on a **write-integrity / resume design**: the current single-file JSONL append is not safe
-for concurrent writers, so production mode uses a single-writer orchestration path and explicit
-device / VRAM guidance for the process count.
+``batch_resumable(processes=N)`` / ``--processes N`` (see :doc:`usage` and :doc:`configuration`)
+now provides first-class support for this mode. It uses a **write-integrity / resume design**: a
+single writer in the parent process appends each completed result to the JSONL file in completion
+order, while ``forkserver``-launched workers each hold their own model copy and never write to the
+file directly. A lost or hung worker aborts the run fail-fast once it misses a bounded per-result
+deadline (``SCOUTBOT_MP_RESULT_TIMEOUT``), and re-running the same command resumes the remaining
+work. Every run emits a machine-readable summary (``summary_json`` / ``--summary-json``) with
+worker-balance and phase-timing fields.
 
 Internal priorities:
 
-1. land the resume-safe implementation and summary JSON output
+1. land the resume-safe implementation and summary JSON output -- done
 2. validate real survey runs against sequential, threaded, and multiprocess baselines
 3. document practical defaults for ``processes=N`` by GPU memory and model-copy cost
 4. retain observability for worker balance, ``sahi+post``, inference duty, errors, and skipped

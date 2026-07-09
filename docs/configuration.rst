@@ -60,6 +60,12 @@ Environment variables
    * - ``VERBOSE``
      - unset
      - Enable debug logging when set to any value.
+   * - ``SCOUTBOT_MP_RESULT_TIMEOUT``
+     - ``600``
+     - Per-result deadline in seconds for ``batch_resumable(processes=N)`` /
+       ``--processes N`` when ``N`` > 1. A worker that does not return a result within
+       this many seconds is treated as dead, which aborts the run fail-fast (see
+       `Parallel execution`_). Re-running the same command resumes the remaining work.
 
 Device guidance
 ---------------
@@ -68,6 +74,19 @@ Use ``cuda`` or ``cuda:0`` for NVIDIA GPUs, ``mps`` for PyTorch acceleration on 
 and ``cpu`` for portable CPU inference. Core ML configs are macOS-only and use Ultralytics' Core
 ML runtime internally; the command-line ``--device`` option is not meaningful for Core ML in the
 same way it is for PyTorch configs.
+
+Parallel execution
+-------------------
+
+``batch_resumable`` accepts ``processes=N`` (CLI: ``--processes N``) to process images across
+``N`` worker processes on a single machine instead of the default sequential loop
+(``processes=1``). This mode is **Linux/CUDA-first**; it uses the ``forkserver`` start method to
+launch workers.
+
+Each worker process loads its own copy of the model, so ``N`` copies must all fit in the GPU's
+available VRAM at once. As a data point, the ``v3`` model uses roughly 1-2 GB of VRAM per copy, so
+around 8 copies share a 12 GB GPU comfortably. Size ``N`` to your model and hardware accordingly,
+and see :doc:`performance` for the measured throughput gains and how to read the run summary.
 
 Thresholds and slicing
 ----------------------

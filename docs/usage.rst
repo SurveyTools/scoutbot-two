@@ -86,6 +86,35 @@ registry name, MD5, framework, and the effective SAHI parameters used for that r
      }
    }
 
+Use ``--processes N`` to process images across multiple worker processes on a single machine
+(Linux/CUDA-first; ``N`` defaults to ``1``, the unchanged sequential path). Each worker loads its
+own copy of the model, so ``N`` copies must fit in available VRAM -- see
+:doc:`configuration` for sizing guidance. Because workers complete at different speeds, results
+are written to the JSONL file in **completion order**, not input order; resume matches on the
+``filepath`` field, so completion order does not affect correctness. Sort the output file by
+``filepath`` afterwards if a consumer needs input order.
+
+If a worker process is lost or stops responding, the run aborts (fail-fast) rather than silently
+dropping results. Everything already written to the JSONL file stays valid and durable, so
+re-running the exact same command resumes from where it left off, processing only the remaining
+images:
+
+.. code-block:: bash
+
+   uv run scoutbot batch-resumable --output survey.jsonl --config v3 --device cuda:0 \
+     --processes 8 images/*.jpg
+
+Pass ``--summary-json PATH`` to also write a machine-readable run summary (throughput, per-worker
+image counts, and phase timing totals) alongside the JSONL output. This is written for both the
+sequential and multiprocess paths:
+
+.. code-block:: bash
+
+   uv run scoutbot batch-resumable --output survey.jsonl --config v3 --device cuda:0 \
+     --processes 8 --summary-json survey-summary.json images/*.jpg
+
+See :doc:`performance` for how to interpret the summary fields.
+
 Other commands
 --------------
 
@@ -149,6 +178,17 @@ Python API
        output_path='survey.jsonl',
        config='v3',
        backend_device='mps',
+   )
+
+   # Multiprocess resumable batch (Linux/CUDA-first): each of the N worker
+   # processes loads its own model copy; results land in completion order.
+   summary = scoutbot.batch_resumable(
+       filepaths=filepaths,
+       output_path='survey.jsonl',
+       config='v3',
+       backend_device='cuda:0',
+       processes=8,
+       summary_json='survey-summary.json',
    )
 
    # Download a model and list supported classes

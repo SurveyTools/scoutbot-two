@@ -179,6 +179,15 @@ Two ways to overlap that work were measured:
 This is a CUDA / NVIDIA observation and is distinct from the Core ML M1 / M4 gap above: the
 CPU-versus-accelerator balance, and therefore the payoff from concurrency, differs by backend.
 
+``batch_resumable(processes=N)`` (see :doc:`usage` and :doc:`configuration`) turns this finding
+into a first-class, resume-safe mode. Every ``processes>1`` run -- and, when requested via
+``summary_json`` / ``--summary-json``, every sequential run too -- emits a machine-readable
+summary in-band with fields drawn from the same observability events described below:
+``per_worker_counts`` (how evenly work was balanced across workers), ``phase_totals_ns``
+(including a derived ``sahi+post`` CPU bucket), and ``inference_duty_per_worker``. The latter is
+an honest proxy for how much of a worker's wall time was spent in GPU inference calls -- it is
+**not** a GPU-occupancy measurement, since it cannot see time spent on the GPU by other workers.
+
 Two axes, one measured
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -191,16 +200,25 @@ There are two independent ways to parallelize this workload:
 
 The cross-image win does not depend on, and does not preclude, the within-image work.
 
-Productionization is deferred
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Productionization has landed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The benchmark proves the speedup but deliberately **discards results**, so it does not address the
-hard part of exposing this as a first-class mode such as ``batch_resumable(processes=N)``:
-``batch_resumable`` guarantees crash-safe resume by appending each result to a single JSONL file,
-and several processes appending to one file would interleave and corrupt lines (writes larger than
-``PIPE_BUF`` are not atomic). A production ``processes=N`` therefore needs a write-integrity /
-resume design -- a single writer draining a result queue, or per-worker shards merged at the end --
-plus device / VRAM guidance for the process count. That design work is tracked in :doc:`roadmap`.
+The benchmark itself proves the speedup but deliberately **discards results**; it does not append
+to the resumable JSONL file. The hard part of exposing this as a first-class mode was write
+integrity: ``batch_resumable`` guarantees crash-safe resume by appending each result to a single
+JSONL file, and several processes appending to that file directly would interleave and corrupt
+lines (writes larger than ``PIPE_BUF`` are not atomic).
+
+``batch_resumable(processes=N)`` (see :doc:`usage` and :doc:`configuration`) now solves this with
+a single-writer design: worker processes each load their own model copy and process images
+independently, but only the parent process writes to the JSONL file, appending one flushed result
+at a time in completion order as workers finish. Workers are launched via ``forkserver``. A lost
+or hung worker is treated as dead once it misses a bounded per-result deadline
+(``SCOUTBOT_MP_RESULT_TIMEOUT``, default 600 seconds) and aborts the run fail-fast; everything
+already flushed to disk stays valid, so re-running the same command resumes the rest. A
+machine-readable run summary (``summary_json`` / ``--summary-json``) is available in both modes.
+Remaining real-survey validation at scale and per-GPU default guidance for ``processes`` are
+tracked in :doc:`roadmap`.
 
 What remains deferred
 ---------------------
@@ -209,8 +227,7 @@ The current benchmarks do not try to measure every possible optimization. The fo
 follow-up work:
 
 * within-image concurrent or batched tile inference experiments (the cross-image axis is now
-  measured; see `Concurrency benchmark (CUDA)`_)
-* a production-grade multiprocess batch mode with a crash-safe write-integrity design
+  measured and productionized; see `Concurrency benchmark (CUDA)`_)
 * direct hardware counters for ANE utilization
 
 Observability Follow-up
