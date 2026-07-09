@@ -10,6 +10,8 @@ import sys
 
 import pytest
 
+from scoutbot._batch_mp import BatchWork, run_batch
+
 SENTINEL = '__DIE__'
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -92,3 +94,45 @@ def test_imap_unordered_behavior_on_hard_worker_death():
         f'cleanly, update this test and the recorded finding accordingly.'
     )
     assert out == '', f'Hung probe unexpectedly produced output: {out!r}'
+
+
+def _die_submit(remaining):
+    # First image completes, then simulate the pool surfacing a hard death.
+    yield ('a.jpg', {'filepath': 'a.jpg', 'wic': 0.1, 'detections': []}, [])
+    raise RuntimeError('pool worker died')
+
+
+@pytest.mark.slow
+def test_run_batch_fail_fast_flushes_partial(tmp_path):
+    out = tmp_path / 'out.jsonl'
+    work = BatchWork(remaining=['a.jpg', 'b.jpg'], skipped_count=0, total_count=2)
+    meta = {
+        'mode': 'multiprocess',
+        'start_method': 'forkserver',
+        'processes': 2,
+        'default_pid': 1,
+        'base': {'name': 'batch_resumable'},
+    }
+    with pytest.raises(RuntimeError):
+        run_batch(work, out, _die_submit, summary_meta=meta)
+    assert out.read_text().strip() != ''  # completed result flushed before abort
+
+
+_PRELOAD_PROBE = """
+import multiprocessing
+from tests.test_batch_mp_faults import _torch_in_worker
+ctx = multiprocessing.get_context('forkserver')
+ctx.set_forkserver_preload(['torch'])
+with ctx.Pool(processes=1) as pool:
+    print('TORCH_PRELOADED:' + str(pool.apply(_torch_in_worker, (None,))))
+"""
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(sys.platform != 'linux', reason='forkserver path is Linux/CUDA-first')
+def test_forkserver_preload_puts_torch_in_workers():
+    completed, out = _run_probe(_PRELOAD_PROBE, timeout=60)
+    assert completed, 'preload probe hung'
+    # With preload, torch is inherited from the server -> already in sys.modules at
+    # worker start, not re-imported per worker.
+    assert out == 'TORCH_PRELOADED:True', out
