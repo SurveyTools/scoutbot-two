@@ -128,3 +128,55 @@ def aggregate_phase_ns(events: list[dict[str, Any]]) -> dict[str, int]:
     if pipeline_ns:
         totals['sahi+post'] = max(0, pipeline_ns - sum(totals.values()))
     return dict(sorted(totals.items()))
+
+
+def _per_worker_counts(events: list[dict[str, Any]], default_pid: int) -> dict[Any, int]:
+    """Count ``pipeline`` events per worker PID, defaulting missing PIDs."""
+    counts: dict[Any, int] = defaultdict(int)
+    for event in events:
+        if event.get('name') == 'pipeline':
+            counts[event.get('worker_pid') or default_pid] += 1
+    return dict(counts)
+
+
+def build_batch_summary(
+    events: list[dict[str, Any]],
+    *,
+    wall_ns: int,
+    processes: int,
+    mode: str,
+    start_method: str | None,
+    processed: int,
+    skipped: int,
+    errors: int,
+    total: int,
+    default_pid: int,
+    base: dict[str, Any],
+) -> dict[str, Any]:
+    """Assemble the enriched, machine-readable batch summary dict."""
+    inference_ns = sum(
+        int(e['duration_ns'])
+        for e in events
+        if e.get('name') == 'perform_inference'
+        and isinstance(e.get('duration_ns'), (int, float))
+    )
+    wall_s = wall_ns / 1e9 if wall_ns else 0.0
+    return {
+        **base,
+        'status': 'ok',
+        'mode': mode,
+        'processes': processes,
+        'start_method': start_method,
+        'wall_ns': wall_ns,
+        'images_processed': processed,
+        'processed': processed,
+        'skipped': skipped,
+        'errors': errors,
+        'total': total,
+        'throughput_img_per_s': (processed / wall_s) if wall_s else 0.0,
+        'per_worker_counts': _per_worker_counts(events, default_pid),
+        'phase_totals_ns': aggregate_phase_ns(events),
+        'inference_duty_per_worker': (
+            inference_ns / (wall_ns * processes) if wall_ns and processes else 0.0
+        ),
+    }
