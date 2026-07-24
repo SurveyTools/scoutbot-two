@@ -18,6 +18,7 @@ changes.
 - Check the open issues and pull requests to avoid duplicating work in progress.
 - For non-trivial changes, open an issue first to discuss the approach before writing code.
 - By contributing you agree that your changes will be licensed under the project's Apache-2.0 license.
+- These standards implement the family-wide engineering practices maintained in the **`pipeline-design`** repo at `docs/engineering-practices.md` (the shared rulebook); this guide adds only Scoutbot specifics. Referenced by repo name rather than linked, since a sibling checkout layout is not assumed.
 
 ---
 

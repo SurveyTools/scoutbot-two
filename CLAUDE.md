@@ -35,6 +35,17 @@ staging and commits manually.
 If an upstream skill, template, or plan format includes commit steps, ignore those steps in this
 repository. Stop at the review checkpoint and provide a suggested commit message instead.
 
+## Engineering Rules
+
+Family engineering standard — short, always-on behavior rules. Full rulebook:
+`pipeline-design/docs/engineering-practices.md` (referenced by repo; this file adds only Scoutbot
+specifics).
+
+- Test-first: for code changes, write a failing test and run it red before implementing.
+- Comments explain WHY, not what; match the file's existing comment density and idiom.
+- Never silently swallow errors — log and surface them (P3).
+- Build only what the spec/plan asks; record deferrals as "Out of scope", don't gold-plate (YAGNI).
+
 ## Commands
 
 ```bash
