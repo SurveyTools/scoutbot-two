@@ -126,10 +126,10 @@ Replacement/source of truth: after adding `pyproject.toml` docs/test extras as t
 
 These files contain obsolete commands or pre-quality tool references as historical implementation records. Do not rewrite them solely for staleness cleanup:
 
-- `docs/superpowers/plans/2026-07-01-pr2-group1-fixes.md`
-- `docs/superpowers/plans/2026-07-01-pr2-group2-docs-tests.md`
-- `docs/superpowers/plans/2026-07-01-pr2-group3-preexisting-bugs.md`
-- `docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md`
+- `docs/plans/2026-07-01-pr2-group1-fixes.md`
+- `docs/plans/2026-07-01-pr2-group2-docs-tests.md`
+- `docs/plans/2026-07-01-pr2-group3-preexisting-bugs.md`
+- `docs/plans/2026-07-02-quality-workflow-modernization.md`
 
 The active documentation reorganization plan may continue to mention stale terms when describing what must be fixed or when specifying validation searches.
 

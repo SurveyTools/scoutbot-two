@@ -14,7 +14,7 @@ docs and roadmap should point at the new module so future model work does not ke
 inference path.
 
 **Dependency on the registry plan:** This refactor must land before
-`docs/superpowers/plans/2026-05-09-scoutbot-registry.md` is executed. That registry plan currently
+`docs/plans/2026-05-09-scoutbot-registry.md` is executed. That registry plan currently
 targets `scoutbot/loc/__init__.py` for the offline-first `fetch()` rewrite; after this refactor,
 that task must be updated to target `scoutbot/model_store.py` instead. The compatibility wrapper in
 `scoutbot.loc` is intentionally thin and should not become the new implementation target.
@@ -256,7 +256,7 @@ Expected: the tests pass once the module move is complete and the wrapper re-exp
 ```rst
 The current public model-extension API is not mature. Model configs live in
 ``scoutbot.model_store`` today, and future registry work is tracked in
-``docs/superpowers/plans/2026-05-09-scoutbot-registry.md`` and :doc:`roadmap`.
+``docs/plans/2026-05-09-scoutbot-registry.md`` and :doc:`roadmap`.
 ```
 
 Replace the existing paragraph under ``Model contributors and integrators`` that currently says
@@ -282,7 +282,7 @@ Replace the opening paragraph under ``Configs`` in `docs/coreml.rst`.
 ```rst
 The current models were trained on KAZA aerial survey data. New model integration is planned but
 not yet a mature public extension API. Future registry work is tracked in
-``docs/superpowers/plans/2026-05-09-scoutbot-registry.md`` and in :doc:`roadmap`.
+``docs/plans/2026-05-09-scoutbot-registry.md`` and in :doc:`roadmap`.
 ```
 
 Replace the closing paragraph under ``Model provenance and future integrations`` in `docs/models.rst`.

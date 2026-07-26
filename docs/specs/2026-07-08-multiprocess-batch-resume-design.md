@@ -348,6 +348,6 @@ Per the repository documentation-pass rule, the implementation must update:
 
 - `benchmarks/benchmark_concurrency.py` — the investigation artifact this productionizes.
 - `docs/performance.rst` — "Concurrency benchmark (CUDA)" finding.
-- `docs/superpowers/specs/2026-07-02-performance-observability-spec.md` — the observability hooks and
+- `docs/specs/2026-07-02-performance-observability-spec.md` — the observability hooks and
   private `_observability` module this builds on.
 - `scoutbot/__init__.py` — current `batch_resumable` and resume logic.

@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13, `multiprocessing` (forkserver), SAHI + Ultralytics YOLOv8, `uv`, pytest, Click, Sphinx.
 
-**Reference spec:** `docs/superpowers/specs/2026-07-08-multiprocess-batch-resume-design.md`
+**Reference spec:** `docs/specs/2026-07-08-multiprocess-batch-resume-design.md`
 
 ## Global Constraints
 
