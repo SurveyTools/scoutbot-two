@@ -242,7 +242,7 @@ Quality workflow -- v2 scope
 
 **Status:** planned
 
-**Reference:** ``docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md``
+**Reference:** ``docs/plans/2026-07-02-quality-workflow-modernization.md``
 (V2 Scope section)
 
 Quality workflow v1 is complete: Ruff formatting and lint, scoped mypy on ``scoutbot/``,
@@ -266,7 +266,7 @@ Documentation reorganization
 
 **Status:** done
 
-**Reference:** ``docs/superpowers/plans/2026-07-02-documentation-reorganization.md``
+**Reference:** ``docs/plans/2026-07-02-documentation-reorganization.md``
 
 Documentation was reorganized around reader intent, separating user guide, reference, project,
 development, security, roadmap, and changelog content into discrete Sphinx pages. An ongoing
@@ -409,7 +409,7 @@ Model registry / model integration
 
 **Status:** in-progress
 
-**Reference:** ``docs/superpowers/plans/2026-05-09-scoutbot-registry.md``
+**Reference:** ``docs/plans/2026-05-09-scoutbot-registry.md``
 
 The local offline-first registry is implemented and in production use. ``scoutbot fetch``
 auto-registers downloaded models; ``scoutbot models`` / ``scoutbot models info NAME`` list
