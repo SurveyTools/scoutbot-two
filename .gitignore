@@ -15,7 +15,6 @@ __pycache__/
 docs/build/
 docs/_build/
 
-uv.lock
 test.json
 
 .claude/

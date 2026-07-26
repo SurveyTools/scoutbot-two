@@ -40,7 +40,10 @@ test = [
     "pytest",
     "pytest-cov",
     "pytest-random-order",
-    "ruff",
+    # Pinned exactly: ruff's format/lint output is version-sensitive (e.g. 0.16
+    # made Markdown code-block formatting default), so an unpinned range let CI
+    # drift ahead of the lock. Bump deliberately.
+    "ruff==0.16.0",
     "mypy",
     "bandit",
 ]
@@ -83,6 +86,11 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 90
 target-version = "py310"
+# Planning/design docs hold illustrative code snippets, not maintained source.
+# ruff >=0.16 formats Markdown code blocks by default, so exclude these dirs
+# (previously these lived under docs/superpowers/, which ruff's older .md
+# behavior left untouched).
+extend-exclude = ["docs/plans", "docs/specs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
