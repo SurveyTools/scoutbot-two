@@ -46,6 +46,16 @@ specifics).
 - Never silently swallow errors — log and surface them (P3).
 - Build only what the spec/plan asks; record deferrals as "Out of scope", don't gold-plate (YAGNI).
 
+## Plan & Spec Paths
+
+When writing implementation plans or design specs in this repository, use
+`docs/plans/YYYY-MM-DD-<topic>.md` and `docs/specs/YYYY-MM-DD-<topic>-design.md`.
+These paths intentionally **override skill defaults** such as
+`docs/superpowers/plans` or `docs/superpowers/specs` (from the writing-plans /
+brainstorming skills). Agents must follow this repository rule over the skill
+default. The durable repository structure uses project-generic terms, not names
+tied to a specific agent-skill implementation.
+
 ## Commands
 
 ```bash
