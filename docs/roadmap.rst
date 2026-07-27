@@ -7,29 +7,50 @@ Lightweight tracking for deferred work. Status values are ``planned``,
 Current priorities
 ------------------
 
-1. **Release and contributor readiness**
+1. **Dependency security — torch 2.13 ML-stack upgrade**
+
+   * **Overall priority: high — security / CI-blocking.** Newly-disclosed CVEs in
+     the pinned dependency graph fail the ``uv audit`` CI gate. The interim fix
+     bumped ``pillow`` to 12.3.0 and added three ``--ignore`` flags to the audit
+     step; this item removes the need for those ignores.
+   * **Upgrade the ML stack:** ``torch`` 2.11.0 → 2.13.0, ``torchvision`` 0.26.0 →
+     0.28.0, ``triton``, the CUDA runtime packages, and ``setuptools`` 81.0.0 →
+     83.0.0. Verified locally that this resolves cleanly and clears all 29
+     advisories with **zero** ignores.
+   * **CVEs cleared:** ``GHSA-rrmf-rvhw-rf47`` (torch ``torch.jit.script`` memory
+     corruption, fixed in 2.13.0) and ``GHSA-h35f-9h28-mq5c`` / ``PYSEC-2026-3447``
+     (setuptools sdist ``MANIFEST.in`` bypass, fixed in 83.0.0 — pulled forward
+     only by the torch bump).
+   * **Validation required before merge** (why this is not an interim fix): the
+     full ``slow`` model-inference suite, Core ML export parity re-check, and a
+     performance re-benchmark, since torch/torchvision changes affect model
+     loading, inference numerics, and ANE/CUDA behavior.
+   * **On completion:** drop the three ``--ignore`` flags from
+     ``.github/workflows/quality.yml`` and this item's interim ``pillow`` note.
+
+2. **Release and contributor readiness**
 
    * define the release/tagging checklist and release-note hygiene
    * make the repository public and enable branch protection
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
 
-2. **Pipeline integration stability**
+3. **Pipeline integration stability**
 
    * define the output schema compatibility policy for pipeline consumers
    * finish the ``loc`` wrapper removal without breaking compatibility
    * continue shaping the survey-level registry contract in ``pipeline-design``
 
-3. **Model registry follow-on**
+4. **Model registry follow-on**
 
    * add ``scoutbot unregister NAME`` and ``scoutbot fetch --force`` (see `Registry model removal`_)
    * define the dependency currency policy for ``ultralytics``, ``sahi``, and ``torch``
 
-4. **Quality workflow — v2 scope**
+5. **Quality workflow — v2 scope**
 
    * coverage enforcement, expanded mypy, Ruff rule expansion, macOS CI runner for Core ML
 
-5. **Performance and parallel execution**
+6. **Performance and parallel execution**
 
    * **Overall priority: high.** ``batch_resumable(processes=N)`` has landed: resume-safe
      single-writer output, ``forkserver`` workers, bounded-wait fail-fast, and machine-readable
@@ -51,7 +72,7 @@ Current priorities
      worker lifecycle and retry policy, process-count autotuning, SAHI/NMS bottlenecks, and
      possible within-image tiling concurrency.
 
-6. **Long-term model ecosystem**
+7. **Long-term model ecosystem**
 
    * define survey-level model-family IDs, aliases, parent/child fine-tunes, and compatibility
      metadata in ``pipeline-design``

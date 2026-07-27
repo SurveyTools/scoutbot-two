@@ -115,10 +115,9 @@ ignore = [
 exclude_dirs = ["tests"]
 skips = ["B101"]
 
-[tool.uv.audit]
-# torch.jit.script memory-corruption CVE; no upstream fix available.
-# ScoutBot does not use torch.jit.script — remove this entry once torch ships a fix.
-ignore-until-fixed = ["GHSA-rrmf-rvhw-rf47"]
+# Note: `uv audit` ignores live in .github/workflows/quality.yml (CLI flags);
+# it does not read a [tool.uv.audit] table. See docs/roadmap.rst (top priority)
+# for the torch 2.13 upgrade that clears them.
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["E402"]
