@@ -14,22 +14,38 @@ Current priorities
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
 
-2. **Pipeline integration stability**
+2. **Dill-free model Azure fallback upload + failover validation**
+
+   * **Overall priority: high — reliability gap in flight.** The re-serialized (dill-free)
+     KAZA models are hosted and validated on **GCS (primary)**, but **Azure storage was
+     unavailable** when the dill-removal work landed, so the dated artifacts
+     (``yolov8-onecls.kaza.20260729.pt`` / ``yolov8-cls.kaza.20260729.pt`` + ``.md5`` sidecars)
+     and ``INDEX.txt`` are **not yet uploaded** to the Azure ``localizer`` container.
+   * **Consequence:** the Azure fallback URLs in ``scoutbot/model_store.py`` ``CONFIGS`` point at
+     objects that do not exist yet, so failover is temporarily non-functional — redundancy is
+     reduced (a GCS outage before this is closed would break model fetch), though normal
+     operation on GCS is unaffected.
+   * **To close:** when Azure is available, upload the four files + ``INDEX.txt`` to ``localizer``
+     (same names as on GCS), then run Task 4 Step 2 in
+     ``docs/plans/2026-07-29-dill-removal.md`` (isolated clean-room fetch with GCS mocked
+     unreachable, asserting Azure serves both configs with the pinned hashes).
+
+3. **Pipeline integration stability**
 
    * define the output schema compatibility policy for pipeline consumers
    * finish the ``loc`` wrapper removal without breaking compatibility
    * continue shaping the survey-level registry contract in ``pipeline-design``
 
-3. **Model registry follow-on**
+4. **Model registry follow-on**
 
    * add ``scoutbot unregister NAME`` and ``scoutbot fetch --force`` (see `Registry model removal`_)
    * define the dependency currency policy for ``ultralytics``, ``sahi``, and ``torch``
 
-4. **Quality workflow — v2 scope**
+5. **Quality workflow — v2 scope**
 
    * coverage enforcement, expanded mypy, Ruff rule expansion, macOS CI runner for Core ML
 
-5. **Performance and parallel execution**
+6. **Performance and parallel execution**
 
    * **Overall priority: high.** ``batch_resumable(processes=N)`` has landed: resume-safe
      single-writer output, ``forkserver`` workers, bounded-wait fail-fast, and machine-readable
@@ -51,7 +67,7 @@ Current priorities
      worker lifecycle and retry policy, process-count autotuning, SAHI/NMS bottlenecks, and
      possible within-image tiling concurrency.
 
-6. **Long-term model ecosystem**
+7. **Long-term model ecosystem**
 
    * define survey-level model-family IDs, aliases, parent/child fine-tunes, and compatibility
      metadata in ``pipeline-design``

@@ -576,29 +576,31 @@ feat: re-host KAZA models dill-free, gcs-first, md5-pinned
 
 ## Upload Hand-off (gate — user action)
 
-Before Task 4, the agent hands the user the Task 2 build directory and this checklist; **the user uploads**. Task 4 cannot run until the objects are live.
+The agent hands the user the Task 2 build directory and this checklist; **the user uploads**.
 
 Upload these exact bytes (do not let any tool re-compress or rename):
 
-- GCS bucket `rebel-pipeline-public-models`, prefix `scoutbot/`:
+- GCS bucket `rebel-pipeline-public-models`, prefix `scoutbot/` — **DONE (uploaded and verified 2026-07-29)**:
   - `yolov8-onecls.kaza.20260729.pt` + `yolov8-onecls.kaza.20260729.pt.md5`
   - `yolov8-cls.kaza.20260729.pt` + `yolov8-cls.kaza.20260729.pt.md5`
   - `INDEX.txt`
-- Azure container `localizer` (`scoutmodels`):
+- Azure container `localizer` (`scoutmodels`) — **DEFERRED (Azure storage unavailable, no ETA; do NOT block the plan on this — tracked in `docs/roadmap.rst`)**:
   - the same four model/sidecar files (same names) + `INDEX.txt`
 
 Old `yolov8-*.kaza.pt` objects are left in place for rollback.
+
+**Azure deferral.** GCS is the primary source and is fully validated (Task 4 Step 1). Azure is the fallback only. Until the four dated files + `INDEX.txt` are uploaded to `localizer`, the Azure fallback URLs in `CONFIGS` point at objects that do not exist yet, so failover is temporarily non-functional — reduced redundancy, not broken functionality while GCS is healthy. Uploading to Azure and validating failover (Task 4 Step 2) are deferred to the roadmap item *Dill-free model Azure fallback upload + failover validation*.
 
 ---
 
 ## Task 4: Post-upload real-network validation
 
-Confirm the hosted artifacts resolve GCS-first, fail over to Azure, and match the pinned hashes — from a **fully isolated** cache and registry so a real network download is proven and the Task 3 seed cannot short-circuit it.
+Confirm the hosted artifacts resolve GCS-first and match the pinned hashes — from a **fully isolated** cache and registry so a real network download is proven and the Task 3 seed cannot short-circuit it. Azure failover (Step 2) is **deferred** — see the note on Step 2.
 
 **Files:** none modified (validation only).
 
 **Interfaces:**
-- Consumes: the live GCS/Azure objects and `CONFIGS` from Task 3.
+- Consumes: the live GCS objects and `CONFIGS` from Task 3. (Azure objects are not yet uploaded — see Step 2 deferral.)
 - Isolation note: `CACHE_DIR` is a module global (`scoutbot/model_store.py:22`, not env-driven) and the registry default is `~/.rebel-workflow/model-registry.json` (`scoutbot/registry/paths.py`) — **not** under `~/.cache/scoutbot`. Deleting `~/.cache/scoutbot/registry.json` would miss the real registry and false-pass. Isolation therefore overrides `CACHE_DIR` in-process AND points `RW_REGISTRY_PATH`/`RW_MODELS_DIR` at temp paths.
 
 - [ ] **Step 1: Clean-room network fetch of BOTH configs (GCS primary)**
@@ -628,9 +630,11 @@ PY
 ```
 Expected: two lines confirming each config downloaded from **gcs** with the pinned hash verified. A hash assertion failure means the uploaded bytes or sidecar differ from the pin — fix the upload.
 
-- [ ] **Step 2: Confirm Azure failover for BOTH configs**
+- [ ] **Step 2: Confirm Azure failover for BOTH configs — DEFERRED**
 
-Run:
+> **DEFERRED (2026-07-29): Azure storage is unavailable with no ETA.** Per the decision not to block the plan mid-flight, this step is deferred to the roadmap item *Dill-free model Azure fallback upload + failover validation*. It requires (a) the four dated files + `INDEX.txt` uploaded to the Azure `localizer` container, then (b) running the check below. Until then the Azure fallback in `CONFIGS` points at not-yet-existing objects. **Do not run this step or block Task 5 on it.** When Azure returns, upload the artifacts and run the check below to close the roadmap item.
+
+Run (only after Azure is populated):
 ```bash
 uv run python - <<'PY'
 import os, tempfile
@@ -665,7 +669,7 @@ Expected: two lines confirming each config failed over to **azure** with the pin
 
 - [ ] **Step 3: Review checkpoint**
 
-Pause for human review. No repo changes — validation only.
+Pause for human review. No repo changes — validation only. Task 4 is complete for the purpose of proceeding to Task 5 once **Step 1 (GCS-primary) passes**; Step 2 (Azure failover) stays open on the roadmap and does **not** gate Task 5.
 
 ---
 

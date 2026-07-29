@@ -335,6 +335,7 @@ class TestLocFetchUnit:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
@@ -365,6 +366,7 @@ class TestLocFetchUnit:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
@@ -442,6 +444,7 @@ class TestLocFetchUnit:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', side_effect=_get),
         ):
             result = loc.fetch('v3')
@@ -467,6 +470,7 @@ class TestLocFetchUnit:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS[loc.DEFAULT_CONFIG], {'md5': remote_md5}),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
@@ -511,6 +515,7 @@ class TestLocFetchUnit:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', side_effect=_get),
         ):
             result = loc.fetch('v3')
@@ -567,13 +572,14 @@ class TestLocFetchUnit:
         with (
             patch.dict('os.environ', {'RW_REGISTRY_PATH': str(registry_path)}),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', side_effect=_get),
         ):
             loc.fetch('v3')
 
         registry = json.loads(registry_path.read_text())
         entry = registry['models']['scoutbot-v3']
-        assert entry['source']['provider'] == 'azure'
+        assert entry['source']['provider'] == 'gcs'  # GCS is now the primary source
         assert local.exists()
 
 
@@ -643,6 +649,7 @@ class TestFetchComputeUnitsEmission:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):
@@ -674,6 +681,7 @@ class TestFetchComputeUnitsEmission:
                 'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
+            patch.dict(loc.CONFIGS['v3-cls'], {'md5': remote_md5}),
             patch('requests.get', return_value=md5_response),
             patch('scoutbot.model_store._md5', return_value=remote_md5),
         ):

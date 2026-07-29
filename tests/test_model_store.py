@@ -64,7 +64,10 @@ def test_fetch_uses_registry_when_model_cached(isolated_registry):
         )
     )
 
-    with patch('requests.get') as mock_get:
+    with (
+        patch('requests.get') as mock_get,
+        patch.dict(model_store.CONFIGS['v3'], {'md5': md5}),
+    ):
         result = model_store.fetch(config='v3')
         mock_get.assert_not_called()
 
@@ -113,6 +116,7 @@ def test_fetch_registers_model_after_download(isolated_registry):
     with (
         patch('requests.get', side_effect=mock_get),
         patch('scoutbot.model_store.CACHE_DIR', isolated_registry),
+        patch.dict(model_store.CONFIGS['v3'], {'md5': expected_md5}),
     ):
         model_store.fetch(config='v3')
 
@@ -269,3 +273,22 @@ def test_pinned_md5_raises_on_sidecar_mismatch(isolated_registry):
     ):
         with pytest.raises(AssertionError, match='[Pp]inned'):
             model_store.fetch(config='v3')
+
+
+def test_pt_configs_are_gcs_first_and_pinned():
+    from scoutbot import model_store
+
+    # Exact hashes recorded in Task 2 Step 5 (verified against the GCS upload).
+    expected = {
+        'v3': ('yolov8-onecls.kaza.20260729.pt', 'c4954cd3957b286913c886c4219cd6c5'),
+        'v3-cls': ('yolov8-cls.kaza.20260729.pt', '6a1565be5460d88a0e2eea2a74e66863'),
+    }
+    for key, (fname, expected_md5) in expected.items():
+        cfg = model_store.CONFIGS[key]
+        assert cfg['name'] == fname
+        providers = [s['provider'] for s in cfg['sources']]
+        assert providers == ['gcs', 'azure']  # GCS primary, Azure fallback
+        assert cfg['md5'] == expected_md5  # exact pinned MD5 (not just shape)
+        for s in cfg['sources']:
+            assert s['url'].endswith(fname)
+            assert s['md5_url'].endswith(fname + '.md5')
