@@ -27,6 +27,21 @@ Current priorities
      loading, inference numerics, and ANE/CUDA behavior.
    * **On completion:** drop the three ``--ignore`` flags from
      ``.github/workflows/quality.yml`` and this item's interim ``pillow`` note.
+   * **Residual follow-ups surfaced during validation** (separable; relocate to
+     their durable homes when this item is closed):
+
+     * ``benchmarks/benchmark_coreml.py`` / ``benchmark_concurrency.py`` do not
+       record the ML-stack versions (torch, torchvision, ultralytics, coremltools,
+       numpy) in their ``--summary-json`` output, so a saved benchmark cannot be
+       tied to the stack that produced it. Add version metadata to the summary
+       schema.
+     * ``ultralytics`` 8.4.90 declares a runtime ``numpy<=2.3.5`` requirement but
+       the lock resolves ``numpy`` 2.5.1 on Python 3.13 (from the windows-smoke
+       floor). ultralytics warns and attempts an auto-downgrade (which fails
+       harmlessly — no ``pip`` in the venv) then proceeds; export and inference
+       succeed. A future ultralytics bump that raises the numpy ceiling clears
+       the warning. Tracks under the ``ultralytics``/``sahi``/``torch``
+       dependency-currency policy.
 
 2. **Release and contributor readiness**
 
