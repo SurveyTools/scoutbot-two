@@ -125,8 +125,9 @@ uv audit --locked --preview-features audit-command
 ```
 
 This runs automatically in CI. Any new vulnerability finding blocks the quality gate. If an
-advisory has no available fix, document the waiver in `[tool.uv.audit]` in `pyproject.toml`
-with a comment explaining why and when to revisit.
+advisory has no available fix, document any temporary waiver directly on the `uv audit` command
+in `.github/workflows/quality.yml`, including the advisory ID, rationale, and removal condition
+before opening a PR.
 
 ---
 

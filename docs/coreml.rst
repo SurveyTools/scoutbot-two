@@ -52,10 +52,11 @@ Or from Python::
 
 The export is::
 
-    YOLO(pt_path).export(format='coreml', quantize=True, nms=False, imgsz=slice_width)
+    YOLO(pt_path).export(format='coreml', quantize='fp16', nms=False, imgsz=slice_width)
 
-* ``quantize=True`` — FP16 weights (a Neural Engine eligibility requirement). ``half=True``
-  was the pre-8.3 spelling and is now deprecated.
+* ``quantize='fp16'`` — FP16 weights (a Neural Engine eligibility requirement). ultralytics
+  ``>=8.3`` replaced the boolean ``quantize=True`` with explicit precision values
+  (``'fp16'`` / ``'int8'`` / ``8`` / ``16`` / ...); the older ``half=True`` spelling is deprecated.
 * ``nms=False`` — no built-in NMS; SAHI performs class-agnostic NMS downstream, so baking it
   into the model would double up.
 * ``imgsz`` is taken from the config's slice size (512), giving the model a **fixed** 512×512
@@ -157,7 +158,6 @@ Parity and caveats
   if a config's ``slice_width`` changes, rebuild with ``scoutbot export-coreml --force`` so the
   fixed input matches the tiles.
 * **Torch / coremltools version pairing.** The export and inference paths have been
-  validated with Torch 2.7.0 (the most recent version tested by coremltools at writing).
-  Torch 2.11.0 produces a runtime warning but inference results are correct in practice.
-  If you see unexpected export failures or accuracy regressions, check whether a newer
-  ``coremltools`` release supports your installed Torch version before filing a bug.
+  validated with Torch 2.13.0 and the locked ``coremltools`` version listed in ``uv.lock``.
+  Future Torch or ``coremltools`` bumps should re-run ``scoutbot export-coreml --force`` and the
+  Core ML benchmark before updating performance claims.

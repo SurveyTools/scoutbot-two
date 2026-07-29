@@ -7,65 +7,29 @@ Lightweight tracking for deferred work. Status values are ``planned``,
 Current priorities
 ------------------
 
-1. **Dependency security — torch 2.13 ML-stack upgrade**
-
-   * **Overall priority: high — security / CI-blocking.** Newly-disclosed CVEs in
-     the pinned dependency graph fail the ``uv audit`` CI gate. The interim fix
-     bumped ``pillow`` to 12.3.0 and added three ``--ignore`` flags to the audit
-     step; this item removes the need for those ignores.
-   * **Upgrade the ML stack:** ``torch`` 2.11.0 → 2.13.0, ``torchvision`` 0.26.0 →
-     0.28.0, ``triton``, the CUDA runtime packages, and ``setuptools`` 81.0.0 →
-     83.0.0. Verified locally that this resolves cleanly and clears all 29
-     advisories with **zero** ignores.
-   * **CVEs cleared:** ``GHSA-rrmf-rvhw-rf47`` (torch ``torch.jit.script`` memory
-     corruption, fixed in 2.13.0) and ``GHSA-h35f-9h28-mq5c`` / ``PYSEC-2026-3447``
-     (setuptools sdist ``MANIFEST.in`` bypass, fixed in 83.0.0 — pulled forward
-     only by the torch bump).
-   * **Validation required before merge** (why this is not an interim fix): the
-     full ``slow`` model-inference suite, Core ML export parity re-check, and a
-     performance re-benchmark, since torch/torchvision changes affect model
-     loading, inference numerics, and ANE/CUDA behavior.
-   * **On completion:** drop the three ``--ignore`` flags from
-     ``.github/workflows/quality.yml`` and this item's interim ``pillow`` note.
-   * **Residual follow-ups surfaced during validation** (separable; relocate to
-     their durable homes when this item is closed):
-
-     * ``benchmarks/benchmark_coreml.py`` / ``benchmark_concurrency.py`` do not
-       record the ML-stack versions (torch, torchvision, ultralytics, coremltools,
-       numpy) in their ``--summary-json`` output, so a saved benchmark cannot be
-       tied to the stack that produced it. Add version metadata to the summary
-       schema.
-     * ``ultralytics`` 8.4.90 declares a runtime ``numpy<=2.3.5`` requirement but
-       the lock resolves ``numpy`` 2.5.1 on Python 3.13 (from the windows-smoke
-       floor). ultralytics warns and attempts an auto-downgrade (which fails
-       harmlessly — no ``pip`` in the venv) then proceeds; export and inference
-       succeed. A future ultralytics bump that raises the numpy ceiling clears
-       the warning. Tracks under the ``ultralytics``/``sahi``/``torch``
-       dependency-currency policy.
-
-2. **Release and contributor readiness**
+1. **Release and contributor readiness**
 
    * define the release/tagging checklist and release-note hygiene
    * make the repository public and enable branch protection
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
 
-3. **Pipeline integration stability**
+2. **Pipeline integration stability**
 
    * define the output schema compatibility policy for pipeline consumers
    * finish the ``loc`` wrapper removal without breaking compatibility
    * continue shaping the survey-level registry contract in ``pipeline-design``
 
-4. **Model registry follow-on**
+3. **Model registry follow-on**
 
    * add ``scoutbot unregister NAME`` and ``scoutbot fetch --force`` (see `Registry model removal`_)
    * define the dependency currency policy for ``ultralytics``, ``sahi``, and ``torch``
 
-5. **Quality workflow — v2 scope**
+4. **Quality workflow — v2 scope**
 
    * coverage enforcement, expanded mypy, Ruff rule expansion, macOS CI runner for Core ML
 
-6. **Performance and parallel execution**
+5. **Performance and parallel execution**
 
    * **Overall priority: high.** ``batch_resumable(processes=N)`` has landed: resume-safe
      single-writer output, ``forkserver`` workers, bounded-wait fail-fast, and machine-readable
@@ -87,7 +51,7 @@ Current priorities
      worker lifecycle and retry policy, process-count autotuning, SAHI/NMS bottlenecks, and
      possible within-image tiling concurrency.
 
-7. **Long-term model ecosystem**
+6. **Long-term model ecosystem**
 
    * define survey-level model-family IDs, aliases, parent/child fine-tunes, and compatibility
      metadata in ``pipeline-design``
@@ -273,6 +237,12 @@ updates are absorbed, how breaking changes are evaluated, and what gets pinned v
 track upstream. The recent ``ultralytics`` upgrade (8.2.103 → ≥8.3) is the first instance of
 a forced bump driven by a platform compatibility requirement (numpy 2.x / Python 3.13 Windows).
 
+One open tension the policy should resolve: ``ultralytics`` 8.4.90 declares a runtime
+``numpy<=2.3.5`` requirement, but the lock resolves ``numpy`` 2.5.1 on Python 3.13 (pinned up by
+the windows-smoke floor). ultralytics warns and attempts an auto-downgrade (which fails
+harmlessly — no ``pip`` in the venv) then proceeds; export and inference succeed. A future
+ultralytics bump that raises the numpy ceiling clears the warning.
+
 Quality workflow -- v2 scope
 ----------------------------
 
@@ -404,6 +374,11 @@ categories:
 
 The corpus metadata should make benchmark results comparable across machines and future model
 families without relying on informal memory of which images were used.
+
+Relatedly, ``benchmarks/benchmark_coreml.py`` and ``benchmark_concurrency.py`` do not record the
+ML-stack versions (torch, torchvision, ultralytics, coremltools, numpy) in their
+``--summary-json`` output, so a saved benchmark cannot be tied to the stack that produced it. Add
+version metadata to the summary schema alongside the corpus metadata.
 
 Linux / CUDA multiprocess batch mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -564,6 +539,10 @@ work:
   Read the Docs retired
 * test coverage: fast-suite coverage raised from 58% to 92%+
 * GPU / CUDA guidance documented as best-effort for NVIDIA systems
+* torch 2.13 ML-stack upgrade: ``torch==2.13.0`` / ``torchvision==0.28.0`` / ``setuptools==83.0.0``
+  locked, the temporary ``uv audit`` ignores removed, and the graph audits with zero advisories;
+  validated locally against the slow inference suite, MPS, and Core ML export parity (CUDA left to
+  hardware availability). Established the macOS 14+ Apple Silicon floor
 
 These remain reflected in the project history and in the implementation notes / changelog, but they
 no longer need to occupy active roadmap space.

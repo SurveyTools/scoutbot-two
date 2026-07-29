@@ -45,8 +45,11 @@ runs two complementary security checks:
 
 ``uv audit --locked``
    Checks all installed packages in the locked dependency graph against the OSV vulnerability
-   database. Catches known CVEs in third-party dependencies. Waivers (e.g. CVEs with no
-   available fix) are recorded in ``[tool.uv.audit]`` in ``pyproject.toml`` with an explanation.
+   database. Catches known CVEs in third-party dependencies. Temporary audit exceptions, if any
+   are accepted, live directly on the ``uv audit`` command in
+   ``.github/workflows/quality.yml`` with comments naming the advisory, rationale, and planned
+   removal path. ``uv audit`` does not read a project ``[tool.uv.audit]`` table in this
+   repository.
 
 ``bandit -c pyproject.toml -r scoutbot/ benchmarks/``
    Scans the project's own source code for common Python security mistakes (insecure hash

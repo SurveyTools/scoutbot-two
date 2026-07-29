@@ -569,10 +569,14 @@ If no Linux CUDA machine is available in this task, skip to Step 4 and record th
 Use a small local image directory and write outputs to `/private/tmp`:
 
 ```bash
-uv run scoutbot batch-resumable examples /private/tmp/scoutbot-torch213-mp.jsonl \
+uv run scoutbot batch-resumable examples/*.jpg \
+  -o /private/tmp/scoutbot-torch213-mp.jsonl \
   --processes 2 \
   --summary-json /private/tmp/scoutbot-torch213-mp-summary.json
 ```
+
+The `batch-resumable` command takes image files as positional arguments and a required
+`-o/--output` JSONL path — not a directory plus a positional output path.
 
 Expected:
 

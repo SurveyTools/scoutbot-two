@@ -52,6 +52,11 @@ Use the docs extra when building Sphinx documentation:
 Apple Silicon Core ML
 ---------------------
 
+.. note::
+
+   Apple Silicon requires **macOS 14 (Sonoma) or newer**. The locked ``torch`` 2.13 build
+   publishes only ``macosx_14_0_arm64`` wheels, so macOS 13 is no longer supported on arm64.
+
 Core ML support is macOS-only and requires ``coremltools`` through the ``coreml`` extra:
 
 .. code-block:: bash
