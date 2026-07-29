@@ -279,11 +279,12 @@ class TestBatchResumable:
         ]
         assert events, 'batch_resumable() must emit an observability event'
         event = events[0]
+        # batch_resumable emits a build_batch_summary event whose timing key is
+        # wall_ns (not the started_ns/ended_ns/duration_ns span shape used by the
+        # per-operation batch/pipeline events).
         for key in (
             'name',
-            'started_ns',
-            'ended_ns',
-            'duration_ns',
+            'wall_ns',
             'config',
             'backend',
             'device',
