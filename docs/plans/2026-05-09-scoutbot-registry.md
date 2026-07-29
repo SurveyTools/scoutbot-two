@@ -10,7 +10,7 @@
 
 **Tech Stack:** Python stdlib only for registry core (`json`, `os`, `pathlib`, `dataclasses`). `click` for CLI. Existing `ultralytics` + `sahi` unchanged.
 
-**Spec:** `pipeline-design/docs/superpowers/specs/2026-05-09-scoutbot-registry-design.md`
+**Spec:** `pipeline-design/docs/specs/2026-05-09-scoutbot-registry-design.md`
 
 ---
 

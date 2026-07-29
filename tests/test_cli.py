@@ -579,3 +579,48 @@ def test_batch_accepts_model_flag(isolated_registry_cli, tmp_path):
     ):
         result = runner.invoke(cli, ['batch', str(img_file), '--model', 'my-custom'])
     assert result.exit_code == 0, result.output
+
+
+def test_batch_resumable_cli_passes_processes_and_summary_json(tmp_path):
+    from scoutbot.scoutbot import batch_resumable as cli_batch_resumable
+
+    out = tmp_path / 'out.jsonl'
+    sj = tmp_path / 'summary.json'
+    with patch(
+        'scoutbot.batch_resumable',
+        return_value={
+            'processed': 1,
+            'skipped': 0,
+            'errors': 0,
+            'total': 1,
+        },
+    ) as mock_br:
+        result = CliRunner().invoke(
+            cli_batch_resumable,
+            [
+                'a.jpg',
+                '-o',
+                str(out),
+                '--processes',
+                '4',
+                '--summary-json',
+                str(sj),
+            ],
+        )
+    assert result.exit_code == 0, result.output
+    kwargs = mock_br.call_args.kwargs
+    assert kwargs['processes'] == 4
+    assert kwargs['summary_json'] == str(sj)
+
+
+def test_batch_resumable_cli_rejects_zero_processes(tmp_path):
+    from scoutbot.scoutbot import batch_resumable as cli_batch_resumable
+
+    out = tmp_path / 'out.jsonl'
+    with patch('scoutbot.batch_resumable') as mock_br:
+        result = CliRunner().invoke(
+            cli_batch_resumable,
+            ['a.jpg', '-o', str(out), '--processes', '0'],
+        )
+    assert result.exit_code != 0  # IntRange(min=1) rejects 0
+    assert not mock_br.called

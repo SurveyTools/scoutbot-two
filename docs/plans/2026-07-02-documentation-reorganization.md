@@ -8,7 +8,7 @@
 
 **Tech Stack:** Markdown for `README.md` and internal plan files, reStructuredText for Sphinx pages and the converted roadmap, Sphinx + sphinx-click for generated CLI docs.
 
-**Quality baseline now in force:** `docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md` has been implemented on branch `quality`. The finalized state is:
+**Quality baseline now in force:** `docs/plans/2026-07-02-quality-workflow-modernization.md` has been implemented on branch `quality`. The finalized state is:
 
 - `pyproject.toml` declares `requires-python = ">=3.10,<3.13"`.
 - The `test` and `all` extras include `pytest`, `pytest-cov`, `pytest-random-order`, `ruff`, and `mypy`.
@@ -37,7 +37,7 @@
 - `docs/roadmap.md` now exists. It tracks benchmark hardening, quality workflow v2 scope, and CoreML/performance investigations. The docs reorganization should convert it to `docs/roadmap.rst` for Sphinx, then delete the Markdown source.
 - `docs/models.rst` has durable reference content for ops, security/governance, and future model contributors. It should remain as a focused model reference instead of being folded into `configuration.rst`.
 - `docs/colors.rst` defines color roles and is excluded from Sphinx. It appears unused by current docs and should be removed if no references exist.
-- `docs/superpowers/plans/` contains active implementation history mixed with published docs source. These plans should remain available, but they should be treated as maintainer artifacts and excluded from primary user navigation.
+- `docs/plans/` contains active implementation history mixed with published docs source. These plans should remain available, but they should be treated as maintainer artifacts and excluded from primary user navigation.
 - `.readthedocs.yaml` installs `requirements.txt` and the package with pip. It must be updated to install a dedicated `docs` extra so hosted docs build with the same Sphinx dependencies as local docs.
 
 ---
@@ -123,7 +123,7 @@ Root `README.md` should be:
 | Optional create | `docs/model-registry.rst` | Future model contributor/integrator route if `models.rst` is not enough |
 | Modify | `CHANGELOG.rst` | Add an Unreleased section for Core ML, quality workflow, and documentation reorganization |
 | Delete | `docs/colors.rst` | Remove if `rg ":[a-z]+:" docs README.md` confirms no role usage |
-| Optional | `docs/superpowers/plans/README.md` | Explain that plan files are internal maintainer artifacts |
+| Optional | `docs/plans/README.md` | Explain that plan files are internal maintainer artifacts |
 | Modify | `pyproject.toml` | Add a `docs` extra for Sphinx, sphinx-rtd-theme, and sphinx-click |
 | Modify | `.readthedocs.yaml` | Install the project with the `docs` extra so hosted docs build consistently |
 
@@ -132,7 +132,7 @@ Root `README.md` should be:
 ## Task 0: Confirm the finalized quality command surface
 
 **Files:**
-- Read: `docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md`
+- Read: `docs/plans/2026-07-02-quality-workflow-modernization.md`
 - Read: `pyproject.toml`, `.github/workflows/testing.yml`, `.github/workflows/quality.yml`, `.pre-commit-config.yaml`, `setup.cfg`, `CLAUDE.md`
 - Read: `docs/conf.py`, `.readthedocs.yaml`
 
@@ -142,7 +142,7 @@ Root `README.md` should be:
 
 ```bash
 git status --short --branch
-sed -n '1,220p' docs/superpowers/plans/2026-07-02-quality-workflow-modernization.md
+sed -n '1,220p' docs/plans/2026-07-02-quality-workflow-modernization.md
 sed -n '1,180p' pyproject.toml
 sed -n '1,180p' .github/workflows/testing.yml
 sed -n '1,180p' .github/workflows/quality.yml
@@ -178,7 +178,7 @@ uv run pre-commit run --all-files
 ## Task 1: Build a precise staleness matrix
 
 **Files:**
-- Read all docs: `README.md`, `CLAUDE.md`, `CHANGELOG.rst`, `docs/*.rst`, `docs/superpowers/plans/*.md`
+- Read all docs: `README.md`, `CLAUDE.md`, `CHANGELOG.rst`, `docs/*.rst`, `docs/plans/*.md`
 
 - [x] **Step 1: Inventory every public command and config value**
 
@@ -548,7 +548,7 @@ Include:
 - model contributor/integrator note:
   - current public extension API is not mature
   - current model configs live in `scoutbot/loc/__init__.py`
-  - future registry work is tracked in `docs/superpowers/plans/2026-05-09-scoutbot-registry.md`
+  - future registry work is tracked in `docs/plans/2026-05-09-scoutbot-registry.md`
   - new model integration expectations should include artifact provenance, integrity verification, config schema tests, CLI choice tests, and output compatibility checks
 
 - [x] **Step 3: Create `docs/security.rst`**
@@ -574,7 +574,7 @@ Keep it short and link to `docs/development.rst`.
 **Files:**
 - Rename/modify: `docs/roadmap.md` -> `docs/roadmap.rst`
 - Modify: `CHANGELOG.rst`
-- Optional create: `docs/superpowers/plans/README.md`
+- Optional create: `docs/plans/README.md`
 
 - [x] **Step 1: Convert and refine existing roadmap**
 
@@ -587,7 +587,7 @@ tracking format and ensure it covers:
 - future community contribution docs should include the same documentation-pass expectation for external contributors, likely in a future `CONTRIBUTING.md` or equivalent contributor guide
 - CoreML/performance investigations, including phase timing, Core ML dispatch overhead, tile batching/parallelism, ANE confirmation, and M4 follow-up benchmark
 - performance observability spec as the next investigation if it is tracked separately
-- model registry/model integration future work, linking to `docs/superpowers/plans/2026-05-09-scoutbot-registry.md`
+- model registry/model integration future work, linking to `docs/plans/2026-05-09-scoutbot-registry.md`
 - quality v2 deferred scope:
   - expand mypy to tests/benchmarks
   - coverage enforcement
@@ -606,7 +606,7 @@ Add an `Unreleased` section to `CHANGELOG.rst` that covers:
 
 - [x] **Step 3: Add a plans README**
 
-If keeping plan files under `docs/superpowers/plans/`, add:
+If keeping plan files under `docs/plans/`, add:
 
 ```md
 # Implementation Plans
@@ -732,7 +732,7 @@ Include it in the contributor workflow section so external contributors see the 
 
 - [x] **Step 3: Update future-plan expectations**
 
-Any future plan under `docs/superpowers/plans/` should include a final checklist item:
+Any future plan under `docs/plans/` should include a final checklist item:
 
 ```md
 - [ ] Documentation pass completed: reviewed README/Sphinx docs/changelog/roadmap/security docs

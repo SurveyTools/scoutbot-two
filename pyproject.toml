@@ -19,7 +19,9 @@ dependencies = [
     # version that embedded dill pickle references. Remove once models are re-exported
     # without dill serialization; see docs/roadmap.rst "Model re-export / dill removal".
     "dill>=0.4.0",
-    "numpy",
+    # >=2.1 required for Python 3.13: numpy 1.26.x has no stable 3.13 build and
+    # its native init access-violates on the Windows 3.13 runner (windows-smoke).
+    "numpy>=2.1",
     # sahi and ultralytics both depend on opencv-python (GUI build); this overrides
     # them with the headless build so CI and server environments without a display work.
     "opencv-python-headless>=4.7.0",
@@ -40,7 +42,10 @@ test = [
     "pytest",
     "pytest-cov",
     "pytest-random-order",
-    "ruff",
+    # Pinned exactly: ruff's format/lint output is version-sensitive (e.g. 0.16
+    # made Markdown code-block formatting default), so an unpinned range let CI
+    # drift ahead of the lock. Bump deliberately.
+    "ruff==0.16.0",
     "mypy",
     "bandit",
 ]
@@ -83,6 +88,11 @@ ignore_missing_imports = true
 [tool.ruff]
 line-length = 90
 target-version = "py310"
+# Planning/design docs hold illustrative code snippets, not maintained source.
+# ruff >=0.16 formats Markdown code blocks by default, so exclude these dirs
+# (previously these lived under docs/superpowers/, which ruff's older .md
+# behavior left untouched).
+extend-exclude = ["docs/plans", "docs/specs"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]
@@ -107,10 +117,9 @@ ignore = [
 exclude_dirs = ["tests"]
 skips = ["B101"]
 
-[tool.uv.audit]
-# torch.jit.script memory-corruption CVE; no upstream fix available.
-# ScoutBot does not use torch.jit.script — remove this entry once torch ships a fix.
-ignore-until-fixed = ["GHSA-rrmf-rvhw-rf47"]
+# Note: `uv audit` ignores live in .github/workflows/quality.yml (CLI flags);
+# it does not read a [tool.uv.audit] table. See docs/roadmap.rst (top priority)
+# for the torch 2.13 upgrade that clears them.
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["E402"]

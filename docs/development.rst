@@ -213,7 +213,7 @@ Model contributors and integrators
 
 The current public model-extension API is not mature. Model configs live in
 ``scoutbot.model_store`` today, and future registry work is tracked in
-``docs/superpowers/plans/2026-05-09-scoutbot-registry.md`` and :doc:`roadmap`.
+``docs/plans/2026-05-09-scoutbot-registry.md`` and :doc:`roadmap`.
 
 New model integration work should include:
 

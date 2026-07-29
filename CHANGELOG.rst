@@ -5,6 +5,20 @@ Changelog
 Unreleased
 ----------
 
+* Added an opt-in multiprocess batch mode: ``batch_resumable(processes=N)`` /
+  ``scoutbot batch-resumable --processes N`` (Linux/CUDA-first, default ``processes=1`` unchanged).
+  Each of the ``N`` worker processes is launched via ``forkserver`` and loads its own model copy;
+  a single writer in the parent process appends completed results to the JSONL file in completion
+  order, keeping the existing crash-safe resume contract intact for concurrent writers. A lost or
+  hung worker aborts the run fail-fast once it misses a bounded per-result deadline (new
+  ``SCOUTBOT_MP_RESULT_TIMEOUT`` env var, default 600 seconds); re-running the same command
+  resumes the remaining work. Both ``batch_resumable()`` and the CLI now accept
+  ``summary_json`` / ``--summary-json`` to write a machine-readable run summary (throughput,
+  ``per_worker_counts``, ``phase_totals_ns``, ``inference_duty_per_worker``) in sequential and
+  multiprocess modes alike. **Observability change:** the ``batch_resumable`` observer summary
+  event now reports ``wall_ns`` plus these enriched fields instead of the previous
+  ``started_ns`` / ``ended_ns`` / ``duration_ns``; external consumers of that event should switch
+  to ``wall_ns``.
 * Upgraded ``ultralytics`` from ``==8.2.103`` to ``>=8.3,<9`` (currently resolves to 8.4.89).
   The 8.3+ series removes the ``numpy<2.0`` restriction for standard inference, which was
   previously forcing a source-built numpy on Python 3.13 / Windows and causing a fatal access

@@ -270,6 +270,19 @@ def batch(
     is_flag=True,
     help='Disable progress bar',
 )
+@click.option(
+    '--processes',
+    default=1,
+    type=click.IntRange(min=1),  # reject 0/negatives at the CLI boundary
+    help='Number of worker processes (Linux/CUDA). 1 = sequential. Each process '
+    'loads its own model copy; ensure N copies fit in VRAM.',
+)
+@click.option(
+    '--summary-json',
+    default=None,
+    type=str,
+    help='Optional path for a machine-readable run summary.',
+)
 def batch_resumable(
     filepaths,
     output,
@@ -278,6 +291,8 @@ def batch_resumable(
     loc_thresh,
     model,
     no_progress,
+    processes,
+    summary_json,
 ):
     """
     Process images in batch with automatic resume capability.
@@ -325,6 +340,8 @@ def batch_resumable(
         perform_standard_pred=run_cfg['perform_standard_pred'],
         postprocess_class_agnostic=run_cfg['postprocess_class_agnostic'],
         show_progress=not no_progress,
+        processes=processes,
+        summary_json=summary_json,
     )
 
     print('\nSummary:')

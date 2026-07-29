@@ -33,7 +33,18 @@ jobs:
         run: uv run mypy scoutbot tools/visualise.py
 
       - name: Dependency audit
-        run: uv audit --locked --preview-features audit-command
+        # `uv audit` reads ignores from CLI flags only (not pyproject config).
+        # Each accepted CVE is build-time or an unused codepath; the durable fix
+        # is the torch 2.13 ML-stack upgrade (docs/roadmap.rst, top priority),
+        # which clears all three and lets these flags be removed.
+        #   GHSA-rrmf-rvhw-rf47  torch.jit.script memory corruption — unused in ScoutBot
+        #   GHSA-h35f-9h28-mq5c  setuptools MANIFEST.in sdist bypass — build-time only
+        #   PYSEC-2026-3447      setuptools (same, fixed in 83.0.0; gated behind torch 2.13)
+        run: >
+          uv audit --locked --preview-features audit-command
+          --ignore GHSA-rrmf-rvhw-rf47
+          --ignore GHSA-h35f-9h28-mq5c
+          --ignore PYSEC-2026-3447
 
       - name: Bandit security scan
         run: uv run bandit -c pyproject.toml -r scoutbot/ benchmarks/ tools/

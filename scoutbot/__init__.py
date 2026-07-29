@@ -38,12 +38,13 @@ from pathlib import Path
 from time import perf_counter_ns
 
 from scoutbot import utils
-from scoutbot._observability import emit
+from scoutbot._batch_mp import _load_processed
+from scoutbot._observability import build_batch_summary, emit
 
 log = utils.init_logging()
 QUIET = not utils.VERBOSE
 
-from scoutbot import loc, tile_batched  # NOQA
+from scoutbot import loc, model_store, tile_batched  # NOQA
 
 VERSION = '0.2.0'
 version = VERSION
@@ -423,6 +424,8 @@ def batch_resumable(
     postprocess_class_agnostic=True,
     show_progress=True,
     observer=None,
+    processes=1,
+    summary_json=None,
 ):
     """
     Process images with automatic resume capability.
@@ -451,6 +454,15 @@ def batch_resumable(
         perform_standard_pred (bool): also run standard (non-sliced) prediction
         postprocess_class_agnostic (bool): apply class-agnostic NMS
         show_progress (bool): show progress bar during processing
+        processes (int): number of worker processes to use. Defaults to 1
+            (the sequential loop). When greater than 1, the model is resolved
+            once in the parent and each of the N worker processes loads its
+            own copy, so ensure N copies fit in available VRAM. Linux/CUDA is
+            the primary target for this mode.
+        summary_json (str or Path, optional): if given, the machine-readable
+            batch summary (counts, timing, throughput) is written to this
+            path as JSON on completion, in both sequential and multiprocess
+            modes.
 
     Returns:
         dict: Summary with keys 'processed', 'skipped', 'errors', 'total'
@@ -459,6 +471,9 @@ def batch_resumable(
 
     from tqdm import tqdm
 
+    if processes < 1:
+        raise ValueError(f'processes must be >= 1, got {processes}')
+
     if config is None:
         config = loc.DEFAULT_CONFIG
 
@@ -466,19 +481,7 @@ def batch_resumable(
     observer_kwargs = {'observer': observer} if observer is not None else {}
     output_path = Path(output_path)
 
-    processed = set()
-    if output_path.exists():
-        with open(output_path, 'r') as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    record = json.loads(line)
-                    if 'filepath' in record and 'error' not in record:
-                        processed.add(record['filepath'])
-                except json.JSONDecodeError:
-                    continue
+    processed = _load_processed(output_path)
 
     remaining = [fp for fp in filepaths if fp not in processed]
 
@@ -490,28 +493,122 @@ def batch_resumable(
             'errors': 0,
             'total': len(filepaths),
         }
-        ended_ns = perf_counter_ns()
-        emit(
-            observer,
-            {
+        summary_event = build_batch_summary(
+            [],
+            wall_ns=perf_counter_ns() - started_ns,
+            processes=processes,
+            mode='sequential' if processes == 1 else 'multiprocess',
+            start_method=None,  # no pool was started; nothing ran
+            processed=0,
+            skipped=len(filepaths),
+            errors=0,
+            total=len(filepaths),
+            default_pid=os.getpid(),
+            base={
                 'name': 'batch_resumable',
-                'status': 'ok',
-                'started_ns': started_ns,
-                'ended_ns': ended_ns,
-                'duration_ns': ended_ns - started_ns,
                 'config': config,
                 'backend': 'unknown',
                 'device': backend_device,
                 'output_path': str(output_path),
                 'file_count': len(filepaths),
-                'skipped': len(filepaths),
-                'processed': 0,
-                'errors': 0,
             },
         )
+        emit(observer, summary_event)
+        if summary_json is not None:
+            Path(summary_json).write_text(
+                json.dumps(summary_event, indent=2, sort_keys=True) + '\n'
+            )
         return result
 
     log.info(f'Resuming: {len(processed)} done, {len(remaining)} remaining')
+
+    if processes > 1:
+        from scoutbot import _batch_mp
+
+        work = _batch_mp.BatchWork(
+            remaining=remaining,
+            skipped_count=len(filepaths) - len(remaining),
+            total_count=len(filepaths),
+        )
+        if model_name is not None:
+            model_path, effective_run_config, model_provenance = _resolve_model(
+                config=config,
+                model_name=model_name,
+                confidence_threshold=loc_thresh if loc_thresh != 0.45 else None,
+                slice_height=slice_height if slice_height != 512 else None,
+                slice_width=slice_width if slice_width != 512 else None,
+                overlap_height_ratio=overlap_height_ratio
+                if overlap_height_ratio != 0.25
+                else None,
+                overlap_width_ratio=overlap_width_ratio
+                if overlap_width_ratio != 0.25
+                else None,
+            )
+        else:
+            # forward the observer to fetch, matching the sequential path.
+            # Use the model-store surface directly (not the loc compatibility
+            # wrapper) so new code does not reinforce loc.
+            model_path = model_store.fetch(config=config, **observer_kwargs)
+            effective_run_config = {
+                'confidence_threshold': loc_thresh,
+                'slice_height': slice_height,
+                'slice_width': slice_width,
+                'overlap_height_ratio': overlap_height_ratio,
+                'overlap_width_ratio': overlap_width_ratio,
+                'perform_standard_pred': perform_standard_pred,
+                'postprocess_class_agnostic': postprocess_class_agnostic,
+            }
+            model_provenance = None
+
+        submit = _batch_mp.make_mp_submit(
+            model_path=model_path,
+            effective_run_config=effective_run_config,
+            config_name=config,
+            backend_device=backend_device,
+            processes=processes,
+        )
+        progress_bar = tqdm(
+            total=len(remaining),
+            desc='Processing',
+            unit='img',
+            disable=not show_progress,
+        )
+
+        def _on_progress(filepath, record):
+            progress_bar.update(1)
+
+        try:
+            result = _batch_mp.run_batch(
+                work,
+                output_path,
+                submit,
+                summary_meta={
+                    'mode': 'multiprocess',
+                    'start_method': 'forkserver',
+                    'processes': processes,
+                    'default_pid': os.getpid(),
+                    'base': {
+                        'name': 'batch_resumable',
+                        'config': config,
+                        'backend': 'coreml'
+                        if str(model_path).endswith('.mlpackage')
+                        else 'pt',
+                        'device': backend_device,
+                        'output_path': str(output_path),
+                        'file_count': len(filepaths),
+                    },
+                },
+                provenance=model_provenance,
+                on_progress=_on_progress,
+                observer=observer,
+            )
+        finally:
+            progress_bar.close()  # closed even if run_batch fails fast on worker death
+        if summary_json is not None:
+            Path(summary_json).write_text(
+                json.dumps(result['summary'], indent=2, sort_keys=True) + '\n'
+            )
+        return {k: result[k] for k in ('processed', 'skipped', 'errors', 'total')}
 
     if model_name is not None:
         model_path, _, model_provenance = _resolve_model(
@@ -528,7 +625,7 @@ def batch_resumable(
             else None,
         )
     else:
-        model_path = loc.fetch(config=config, **observer_kwargs)
+        model_path = model_store.fetch(config=config, **observer_kwargs)
         model_provenance = None
 
     batched_detection_model = tile_batched.Yolov8DetectionModel(
@@ -611,24 +708,36 @@ def batch_resumable(
         'total': len(filepaths),
     }
     ended_ns = perf_counter_ns()
-    emit(
-        observer,
-        {
+    summary_event = build_batch_summary(
+        [],  # v1: per-phase breakdown is not collected on the sequential path
+        wall_ns=ended_ns - started_ns,
+        processes=1,
+        mode='sequential',
+        start_method=None,
+        processed=processed_count,
+        skipped=len(processed),
+        errors=error_count,
+        total=len(filepaths),
+        default_pid=os.getpid(),
+        base={
             'name': 'batch_resumable',
-            'status': 'ok',
-            'started_ns': started_ns,
-            'ended_ns': ended_ns,
-            'duration_ns': ended_ns - started_ns,
             'config': config,
             'backend': 'coreml' if str(model_path).endswith('.mlpackage') else 'pt',
             'device': backend_device,
             'output_path': str(output_path),
             'file_count': len(filepaths),
-            'processed': result['processed'],
-            'skipped': result['skipped'],
-            'errors': result['errors'],
         },
     )
+    # Spec: the sequential summary keys per_worker_counts by the parent pid (the
+    # single process that did all the work). build_batch_summary derives counts
+    # from per-image events, which the sequential path does not collect, so set
+    # it explicitly here.
+    summary_event['per_worker_counts'] = {os.getpid(): processed_count}
+    emit(observer, summary_event)
+    if summary_json is not None:
+        Path(summary_json).write_text(
+            json.dumps(summary_event, indent=2, sort_keys=True) + '\n'
+        )
     return result
 
 
