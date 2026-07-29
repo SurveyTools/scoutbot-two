@@ -225,26 +225,6 @@ Dependency and maintenance policy
 
 **Status:** planned
 
-Model re-export / dill removal
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-**Status:** planned
-
-The KAZA ``.pt`` model files were serialized with an older Ultralytics version that embedded
-``dill`` pickle references. Loading them at runtime requires ``dill`` as a dependency even though
-the inference code itself has no need for it. ``dill>=0.4.0`` has been re-added to
-``[project.dependencies]`` as a temporary shim.
-
-To remove ``dill`` properly:
-
-1. Download the current KAZA ``.pt`` files from Azure Blob Storage.
-2. Load each model with ``dill`` available (current environment is fine).
-3. Re-export using ``model.save()`` or extract and re-save the state dict with plain
-   ``torch.save``, targeting a Ultralytics version that serializes without ``dill``.
-4. Verify MD5s, update ``scoutbot/model_store.py`` ``CONFIGS`` with the new hashes and URLs,
-   and re-upload the artifacts to Azure.
-5. Remove ``dill`` from ``[project.dependencies]`` and this roadmap entry.
-
 Dependency currency policy
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -443,7 +423,7 @@ auto-registers downloaded models; ``scoutbot models`` / ``scoutbot models info N
 registry entries; ``scoutbot register`` registers any local ``.pt`` file. All inference
 commands accept ``--model NAME`` as an alternative to ``--config``; JSONL output from
 ``batch-resumable`` includes a ``model`` provenance block. Model downloads are resilient
-across multiple sources (Azure primary, GCS fallback) with automatic failover.
+across multiple sources (GCS primary, Azure fallback) with automatic failover.
 
 Remaining registry work is tracked in the sub-sections below.
 
@@ -481,7 +461,7 @@ reset before a re-download. Both commands must handle ``.mlpackage`` bundle dire
 correctly (recursive delete / recursive copy rather than single-file operations).
 
 Model-store / ``loc`` staged cleanup
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 **Status:** planned
 
@@ -543,8 +523,8 @@ work:
   ``tile_batched``, numpy/torch deferred to ``perform_inference()``, import regression test)
 * Python 3.13 support: full CI matrix coverage on macOS and Windows, 179-test slow suite
   verified on macOS 3.13
-* multi-source model fetch: Azure primary with automatic GCS fallback, per-provider provenance
-  recording, increased chunk size
+* multi-source model fetch: two-provider hosting with automatic failover (later reordered to
+  GCS-primary / Azure-fallback), per-provider provenance recording, increased chunk size
 * local model registry: offline-first fetch/register/resolve flow, ``scoutbot models`` and
   ``scoutbot register`` CLI, ``--model NAME`` flag, JSONL provenance block
 * model store refactor: catalog and fetch/export plumbing moved from ``scoutbot.loc`` to
@@ -559,6 +539,12 @@ work:
   locked, the temporary ``uv audit`` ignores removed, and the graph audits with zero advisories;
   validated locally against the slow inference suite, MPS, and Core ML export parity (CUDA left to
   hardware availability). Established the macOS 14+ Apple Silicon floor
+* dill removal: the two KAZA models re-serialized dill-free (identical weights) with the current
+  Ultralytics/torch stack, re-hosted GCS-first under date-tagged ``yolov8-*.kaza.20260729.pt``
+  filenames with their MD5 pinned in ``CONFIGS``, and the runtime ``dill`` dependency dropped;
+  validated by the full slow suite running with ``dill`` uninstalled. The GCS-primary upload and
+  failover are validated; the **Azure fallback upload + failover validation remains open** and is
+  tracked as a current-priority item above
 
 These remain reflected in the project history and in the implementation notes / changelog, but they
 no longer need to occupy active roadmap space.

@@ -33,8 +33,8 @@ Model configs
 
 Four configs are available:
 
-   - ``v3`` (``yolov8-onecls.kaza.pt``) — single-class detector
-   - ``v3-cls`` (``yolov8-cls.kaza.pt``) — multi-class species detector
+   - ``v3`` (``yolov8-onecls.kaza.20260729.pt``) — single-class detector
+   - ``v3-cls`` (``yolov8-cls.kaza.20260729.pt``) — multi-class species detector
    - ``v3-coreml`` (``yolov8-onecls.kaza.mlpackage``) — Core ML export of ``v3``
    - ``v3-cls-coreml`` (``yolov8-cls.kaza.mlpackage``) — Core ML export of ``v3-cls``
 
