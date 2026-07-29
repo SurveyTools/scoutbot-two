@@ -120,3 +120,34 @@ def test_fetch_registers_model_after_download(isolated_registry):
     assert entry.framework == 'yolov8'
     assert entry.source.type == 'fetched'
     assert 'confidence_threshold' in entry.default_run_config
+
+
+def test_export_coreml_uses_valid_fp16_quantize(tmp_path, monkeypatch):
+    """Guard the Core ML export precision argument.
+
+    ultralytics >=8.3 rejects the boolean ``quantize=True`` (valid values are
+    ``'fp16'``/``'int8'``/``8``/``16``/...). That broken value shipped undetected
+    because the CLI tests mock ``loc.export_coreml`` and there is no macOS CI to
+    run a real export. This exercises the real ``export_coreml`` with ``YOLO`` and
+    the network fetch mocked, and asserts the export uses ``quantize='fp16'``.
+    """
+    from scoutbot import loc, model_store
+
+    monkeypatch.setattr(loc, 'CACHE_DIR', tmp_path)
+    target = tmp_path / str(loc.CONFIGS['v3-coreml']['name'])
+
+    def fake_export(**kwargs):
+        target.mkdir(parents=True, exist_ok=True)  # a .mlpackage is a directory bundle
+        return str(target)
+
+    yolo = MagicMock()
+    yolo.return_value.export.side_effect = fake_export
+
+    with (
+        patch('ultralytics.YOLO', yolo),
+        patch.object(loc, 'fetch', return_value=str(tmp_path / 'src.pt')),
+    ):
+        result = model_store.export_coreml('v3-coreml', force=True)
+
+    assert result == str(target)
+    assert yolo.return_value.export.call_args.kwargs['quantize'] == 'fp16'

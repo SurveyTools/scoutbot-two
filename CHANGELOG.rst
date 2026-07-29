@@ -5,6 +5,11 @@ Changelog
 Unreleased
 ----------
 
+* Upgraded the locked ML stack to ``torch==2.13.0`` / ``torchvision==0.28.0`` (with the
+  attendant ``triton``, CUDA-runtime, and ``setuptools==83.0.0`` bumps) and removed the
+  temporary ``uv audit`` ignores for the torch and setuptools advisories after the locked graph
+  audited cleanly. **Platform change:** torch 2.13 ships only ``macosx_14_0_arm64`` wheels, so
+  Apple Silicon now requires macOS 14 or newer.
 * Added an opt-in multiprocess batch mode: ``batch_resumable(processes=N)`` /
   ``scoutbot batch-resumable --processes N`` (Linux/CUDA-first, default ``processes=1`` unchanged).
   Each of the ``N`` worker processes is launched via ``forkserver`` and loads its own model copy;
