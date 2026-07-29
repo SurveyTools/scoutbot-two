@@ -19,7 +19,9 @@ dependencies = [
     # version that embedded dill pickle references. Remove once models are re-exported
     # without dill serialization; see docs/roadmap.rst "Model re-export / dill removal".
     "dill>=0.4.0",
-    "numpy",
+    # >=2.1 required for Python 3.13: numpy 1.26.x has no stable 3.13 build and
+    # its native init access-violates on the Windows 3.13 runner (windows-smoke).
+    "numpy>=2.1",
     # sahi and ultralytics both depend on opencv-python (GUI build); this overrides
     # them with the headless build so CI and server environments without a display work.
     "opencv-python-headless>=4.7.0",
