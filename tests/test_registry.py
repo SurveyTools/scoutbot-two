@@ -5,43 +5,41 @@ from pathlib import Path
 
 
 def test_get_registry_path_default():
-    """Default registry path is under ~/.rebel-workflow/."""
+    """Default registry path is under ~/.osw/."""
     # Ensure env var is not set
-    os.environ.pop('RW_REGISTRY_PATH', None)
+    os.environ.pop('OSW_REGISTRY_PATH', None)
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
-    assert (
-        p.get_registry_path() == Path.home() / '.rebel-workflow' / 'model-registry.json'
-    )
+    assert p.get_registry_path() == Path.home() / '.osw' / 'model-registry.json'
 
 
 def test_get_registry_path_from_env(tmp_path):
-    """RW_REGISTRY_PATH env var overrides default."""
+    """OSW_REGISTRY_PATH env var overrides default."""
     custom = str(tmp_path / 'custom-registry.json')
-    os.environ['RW_REGISTRY_PATH'] = custom
+    os.environ['OSW_REGISTRY_PATH'] = custom
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
     assert p.get_registry_path() == Path(custom)
-    os.environ.pop('RW_REGISTRY_PATH')
+    os.environ.pop('OSW_REGISTRY_PATH')
 
 
 def test_get_models_dir_default():
-    os.environ.pop('RW_MODELS_DIR', None)
+    os.environ.pop('OSW_MODELS_DIR', None)
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
-    assert p.get_models_dir() == Path.home() / '.rebel-workflow' / 'models'
+    assert p.get_models_dir() == Path.home() / '.osw' / 'models'
 
 
 def test_get_models_dir_from_env(tmp_path):
-    os.environ['RW_MODELS_DIR'] = str(tmp_path / 'models')
+    os.environ['OSW_MODELS_DIR'] = str(tmp_path / 'models')
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
     assert p.get_models_dir() == tmp_path / 'models'
-    os.environ.pop('RW_MODELS_DIR')
+    os.environ.pop('OSW_MODELS_DIR')
 
 
 # --- schema tests ---
@@ -107,7 +105,7 @@ def test_model_entry_round_trip():
 
 
 # --- I/O tests ---
-# All I/O tests use tmp_path and set RW_REGISTRY_PATH to isolate from real registry.
+# All I/O tests use tmp_path and set OSW_REGISTRY_PATH to isolate from real registry.
 
 import json
 
@@ -117,7 +115,7 @@ import pytest
 @pytest.fixture
 def registry_path(tmp_path, monkeypatch):
     path = tmp_path / 'registry.json'
-    monkeypatch.setenv('RW_REGISTRY_PATH', str(path))
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(path))
     return path
 
 

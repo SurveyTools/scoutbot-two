@@ -349,7 +349,7 @@ import pytest
 
 @pytest.fixture
 def isolated_registry_cli(tmp_path, monkeypatch):
-    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
     return tmp_path
 
 

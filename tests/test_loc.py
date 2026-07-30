@@ -332,7 +332,7 @@ class TestLocFetchUnit:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
@@ -363,7 +363,7 @@ class TestLocFetchUnit:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
@@ -441,7 +441,7 @@ class TestLocFetchUnit:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
@@ -467,7 +467,7 @@ class TestLocFetchUnit:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS[loc.DEFAULT_CONFIG], {'md5': remote_md5}),
@@ -512,7 +512,7 @@ class TestLocFetchUnit:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
@@ -530,7 +530,7 @@ class TestLocFetchUnit:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch('requests.get', side_effect=_requests.ConnectionError('all down')),
@@ -570,7 +570,7 @@ class TestLocFetchUnit:
         registry_path = tmp_path / 'rw-registry.json'
 
         with (
-            patch.dict('os.environ', {'RW_REGISTRY_PATH': str(registry_path)}),
+            patch.dict('os.environ', {'OSW_REGISTRY_PATH': str(registry_path)}),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
             patch('requests.get', side_effect=_get),
@@ -646,7 +646,7 @@ class TestFetchComputeUnitsEmission:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3'], {'md5': remote_md5}),
@@ -678,7 +678,7 @@ class TestFetchComputeUnitsEmission:
 
         with (
             patch.dict(
-                'os.environ', {'RW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
+                'os.environ', {'OSW_REGISTRY_PATH': str(tmp_path / 'rw-registry.json')}
             ),
             patch('scoutbot.model_store.CACHE_DIR', tmp_path),
             patch.dict(loc.CONFIGS['v3-cls'], {'md5': remote_md5}),

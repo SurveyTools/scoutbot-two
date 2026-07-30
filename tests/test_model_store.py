@@ -36,8 +36,8 @@ import pytest
 
 @pytest.fixture
 def isolated_registry(tmp_path, monkeypatch):
-    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
-    monkeypatch.setenv('RW_MODELS_DIR', str(tmp_path / 'models'))
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    monkeypatch.setenv('OSW_MODELS_DIR', str(tmp_path / 'models'))
     return tmp_path
 
 
