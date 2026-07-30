@@ -436,7 +436,7 @@ def get_classes(config, output):
 def register_model(
     name, path, arch, description, threshold, slice_height, slice_width, overlap
 ):
-    """Register a local model file in the Rebel Workflow model registry."""
+    """Register a local model file in the Overhead Survey Workflow (OSW) model registry."""
     import sys
     from datetime import datetime, timezone
     from pathlib import Path as _Path

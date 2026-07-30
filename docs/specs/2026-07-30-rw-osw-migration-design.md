@@ -59,11 +59,33 @@ Out of scope:
 
 The rename is "complete" when every `rw`/`rebel` ecosystem-naming token is gone from the
 **live surface** — source, tests, and user-facing docs/metadata — while archival planning docs
-are left intact. Concretely, this command must return **zero** matches:
+are left intact. Run:
 
 ```bash
 grep -rniE "RW_|rebel[ _-]workflow|rebel-pipeline|\brw:" \
   scoutbot/ tests/ docs/*.rst README.md CONTRIBUTING.md CHANGELOG.rst pyproject.toml docs/conf.py
+```
+
+The completion target is zero **stale/live** references. Documenting and testing a rename,
+however, *requires naming the old thing*, so a small set of matches are **intentional
+old-name references** and are expected to remain:
+
+- **Guard-rejection tests** — tests that write a `rw:local-model-cache:*` schema (or otherwise
+  name an old identifier) to prove the schema-guard rejects a pre-migration registry
+  (e.g. `test_guard_rejects_old_rw_family`, and the CLI clean-error test's fixture data).
+- **Absence assertions** — tests that assert an old token is *gone*
+  (e.g. `assert 'rebel-pipeline-public-models' not in url`).
+- **Changelog / rename history** — the `CHANGELOG.rst` bullet documenting the rename, which
+  names "Rebel Workflow" and `~/.rebel-workflow` to describe what changed and what is orphaned.
+
+So the pass criterion is: **every remaining match is one of the intentional categories above; no
+stale/live reference survives.** Confirm by filtering the intentional matches out and expecting
+an empty result:
+
+```bash
+grep -rniE "RW_|rebel[ _-]workflow|rebel-pipeline|\brw:" \
+  scoutbot/ tests/ docs/*.rst README.md CONTRIBUTING.md CHANGELOG.rst pyproject.toml docs/conf.py \
+  | grep -vE "test_guard_rejects_old_rw_family|schema.{0,4}rw:local-model-cache|not in gcs\['url'\]|Rebel Workflow|~/\.rebel-workflow.* orphaned"
 ```
 
 The `rebel[ _-]workflow` class matches the spaced "Rebel Workflow" prose form (e.g. the

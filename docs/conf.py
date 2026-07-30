@@ -20,7 +20,7 @@
 
 project = 'Scoutbot 2026'
 copyright = '2026'
-author = 'Rebel Workflow Team'
+author = 'Overhead Survey Workflow Team'
 
 
 # -- General configuration ---------------------------------------------------

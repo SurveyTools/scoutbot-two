@@ -5,6 +5,14 @@ Changelog
 Unreleased
 ----------
 
+* Renamed the ecosystem namespace from ``rw`` ("Rebel Workflow") to ``osw`` ("Overhead Survey
+  Workflow"): environment variables ``OSW_REGISTRY_PATH`` / ``OSW_MODELS_DIR``, the registry
+  directory ``~/.osw``, the registry schema id ``osw:local-model-cache:1.0``, and the public
+  model bucket ``osw-public-models``. This is a clean break with no ``rw`` compatibility
+  aliases; existing ``~/.rebel-workflow`` registries are orphaned and rebuilt on next fetch. A
+  registry schema-guard now rejects foreign or incompatible-major registry files with a clear,
+  actionable ``RegistrySchemaError`` (surfaced as a clean CLI error) instead of failing
+  cryptically.
 * Removed the runtime ``dill`` dependency. The two bundled KAZA models were re-serialized with the
   current Ultralytics/torch stack so they load without ``dill`` (weights unchanged — CPU inference
   is bit-identical), re-hosted under date-tagged filenames
@@ -42,10 +50,10 @@ Unreleased
   fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
 * Model downloads now try multiple sources in order (Azure → GCS) and fall back automatically
   if any source is unreachable or resets the connection mid-transfer. GCS
-  (``storage.googleapis.com/rebel-pipeline-public-models``) is the built-in fallback for all
+  (``storage.googleapis.com/osw-public-models``) is the built-in fallback for all
   ``.pt`` models. Registry provenance now records which provider delivered the file. Download
   chunk size increased from 8 KB to 64 KB for better throughput on large model files.
-* Added a local model registry backed by ``~/.rebel-workflow/model-registry.json``.
+* Added a local model registry backed by ``~/.osw/model-registry.json``.
   ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
   from the registry and skip the network. New CLI commands: ``scoutbot register``
   registers any local ``.pt`` file; ``scoutbot models`` lists all registry entries;

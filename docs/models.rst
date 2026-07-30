@@ -49,8 +49,8 @@ which these do not — so the filenames carry a ``20260729`` build tag.
 
   *GCS (primary)*
 
-  * Model: https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt
-  * MD5:   https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5
+  * Model: https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt
+  * MD5:   https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5
 
   *Azure (fallback)*
 
@@ -61,8 +61,8 @@ which these do not — so the filenames carry a ``20260729`` build tag.
 
   *GCS (primary)*
 
-  * Model: https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt
-  * MD5:   https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5
+  * Model: https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt
+  * MD5:   https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5
 
   *Azure (fallback)*
 

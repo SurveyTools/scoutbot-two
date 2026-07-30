@@ -113,7 +113,7 @@ Model download sources
 ScoutBot tries download sources in order and uses the first that succeeds.
 The built-in order is:
 
-1. **Google Cloud Storage** (``storage.googleapis.com/rebel-pipeline-public-models``) — primary
+1. **Google Cloud Storage** (``storage.googleapis.com/osw-public-models``) — primary
 2. **Azure Blob Storage** (``scoutmodels.blob.core.windows.net``) — fallback
 
 If GCS is unreachable or resets the connection mid-transfer, the download automatically retries

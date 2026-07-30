@@ -438,7 +438,7 @@ a re-fetch today, a user must manually delete the cached file and the registry e
 .. code-block:: bash
 
    rm ~/.cache/scoutbot/<model-name>.pt
-   rm ~/.rebel-workflow/model-registry.json   # or edit the JSON to remove one entry
+   rm ~/.osw/model-registry.json   # or edit the JSON to remove one entry
 
 The cache also contains Core ML ``.mlpackage`` bundles (directory trees, not single files),
 which require ``rm -rf`` rather than ``rm``:
@@ -478,6 +478,19 @@ The staged cleanup should:
 
 This cleanup should stay coupled to the broader registry/model-store work so the eventual
 deprecation does not break the offline-first model path or the existing test surface prematurely.
+
+Consolidate model resolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+Registry-backed model resolution is currently reachable through multiple paths —
+``scoutbot._resolve_model()``, ``scoutbot.model_store.fetch()``, and direct calls from several
+CLI commands (``pipeline`` / ``batch`` / ``batch-resumable`` each call ``_resolve_model`` and
+also fetch). This scattering is why registry error handling had to be centralized at the CLI
+group level (``_ScoutbotGroup``) rather than at the resolution boundary. Consolidate resolution
+behind a single well-defined entry point so registry access, ``--model`` / ``--config``
+resolution, provenance, and error handling live in one place.
 
 Model registry evolution / model-family lineage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
