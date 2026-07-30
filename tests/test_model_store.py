@@ -292,3 +292,18 @@ def test_pt_configs_are_gcs_first_and_pinned():
         for s in cfg['sources']:
             assert s['url'].endswith(fname)
             assert s['md5_url'].endswith(fname + '.md5')
+
+
+def test_pt_configs_use_osw_bucket():
+    from scoutbot import model_store
+
+    for key in ('v3', 'v3-cls'):
+        gcs = model_store.CONFIGS[key]['sources'][0]
+        assert gcs['provider'] == 'gcs'
+        assert gcs['url'].startswith(
+            'https://storage.googleapis.com/osw-public-models/scoutbot/'
+        )
+        assert gcs['md5_url'].startswith(
+            'https://storage.googleapis.com/osw-public-models/scoutbot/'
+        )
+        assert 'rebel-pipeline-public-models' not in gcs['url']

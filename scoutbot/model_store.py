@@ -30,8 +30,8 @@ CONFIGS = {
         'sources': [
             {
                 'provider': 'gcs',
-                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt',
-                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5',
+                'url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt',
+                'md5_url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5',
             },
             {
                 'provider': 'azure',
@@ -53,8 +53,8 @@ CONFIGS = {
         'sources': [
             {
                 'provider': 'gcs',
-                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt',
-                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5',
+                'url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt',
+                'md5_url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5',
             },
             {
                 'provider': 'azure',
