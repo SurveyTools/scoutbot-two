@@ -71,8 +71,8 @@ registry name, MD5, framework, and the effective SAHI parameters used for that r
      "config": "v3",
      "model": {
        "name": "scoutbot-v3",
-       "file": "yolov8-onecls.kaza.pt",
-       "md5": "bb1613609235f7f868e827cc5c5bba75",
+       "file": "yolov8-onecls.kaza.20260729.pt",
+       "md5": "c4954cd3957b286913c886c4219cd6c5",
        "framework": "yolov8",
        "run_config": {
          "confidence_threshold": 0.45,

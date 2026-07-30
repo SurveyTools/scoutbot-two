@@ -28,6 +28,10 @@ models explicitly:
    uv run scoutbot fetch --config v3
    uv run scoutbot fetch --config v3-cls
 
+Upgrading is automatic: the expected model hash is pinned in code, so after upgrading past a model
+re-serialization (such as the 2026-07-29 dill-free re-export) the next run detects the cached file
+is stale and re-downloads the current artifact. The previous cache file is left in place.
+
 Contributor install
 -------------------
 

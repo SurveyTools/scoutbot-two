@@ -5,6 +5,15 @@ Changelog
 Unreleased
 ----------
 
+* Removed the runtime ``dill`` dependency. The two bundled KAZA models were re-serialized with the
+  current Ultralytics/torch stack so they load without ``dill`` (weights unchanged — CPU inference
+  is bit-identical), re-hosted under date-tagged filenames
+  (``yolov8-onecls.kaza.20260729.pt`` / ``yolov8-cls.kaza.20260729.pt``), and their MD5 is now
+  pinned in ``scoutbot.model_store`` ``CONFIGS`` for stronger integrity and cache invalidation.
+  The download source order is now **GCS primary, Azure fallback** (previously Azure primary).
+  Upgrading clients automatically re-download the re-serialized models on next use. **Note:** the
+  Azure fallback objects are not yet uploaded (Azure storage was unavailable when this landed), so
+  GCS is the only live source until that is completed.
 * Upgraded the locked ML stack to ``torch==2.13.0`` / ``torchvision==0.28.0`` (with the
   attendant ``triton``, CUDA-runtime, and ``setuptools==83.0.0`` bumps) and removed the
   temporary ``uv audit`` ignores for the torch and setuptools advisories after the locked graph

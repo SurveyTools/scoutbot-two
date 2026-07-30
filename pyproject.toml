@@ -15,10 +15,6 @@ authors = [
 ]
 dependencies = [
     "click",
-    # Required to load KAZA .pt model files serialized with an older Ultralytics
-    # version that embedded dill pickle references. Remove once models are re-exported
-    # without dill serialization; see docs/roadmap.rst "Model re-export / dill removal".
-    "dill>=0.4.0",
     # >=2.1 required for Python 3.13: numpy 1.26.x has no stable 3.13 build and
     # its native init access-violates on the Windows 3.13 runner (windows-smoke).
     "numpy>=2.1",

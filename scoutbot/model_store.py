@@ -25,17 +25,18 @@ DEFAULT_CONFIG = os.getenv('LOC_CONFIG', os.getenv('CONFIG', 'v3')).strip().lowe
 
 CONFIGS = {
     'v3': {
-        'name': 'yolov8-onecls.kaza.pt',
+        'name': 'yolov8-onecls.kaza.20260729.pt',
+        'md5': 'c4954cd3957b286913c886c4219cd6c5',
         'sources': [
             {
-                'provider': 'azure',
-                'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt',
-                'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.pt.md5',
+                'provider': 'gcs',
+                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt',
+                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5',
             },
             {
-                'provider': 'gcs',
-                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.pt',
-                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.pt.md5',
+                'provider': 'azure',
+                'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.20260729.pt',
+                'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-onecls.kaza.20260729.pt.md5',
             },
         ],
         'thresh': 0.45,
@@ -47,17 +48,18 @@ CONFIGS = {
         'postprocess_class_agnostic': True,
     },
     'v3-cls': {
-        'name': 'yolov8-cls.kaza.pt',
+        'name': 'yolov8-cls.kaza.20260729.pt',
+        'md5': '6a1565be5460d88a0e2eea2a74e66863',
         'sources': [
             {
-                'provider': 'azure',
-                'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt',
-                'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.pt.md5',
+                'provider': 'gcs',
+                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt',
+                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5',
             },
             {
-                'provider': 'gcs',
-                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.pt',
-                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.pt.md5',
+                'provider': 'azure',
+                'url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.20260729.pt',
+                'md5_url': 'https://scoutmodels.blob.core.windows.net/localizer/yolov8-cls.kaza.20260729.pt.md5',
             },
         ],
         'thresh': 0.45,
@@ -205,10 +207,18 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
 
     from scoutbot import registry as _registry
 
+    # A pinned md5 in CONFIGS is authoritative: a cache registered under a
+    # different hash (e.g. a pre-migration artifact) must be re-fetched, not
+    # served, even though it still matches its own registry entry.
+    pinned_md5 = cfg.get('md5')
     entry = _registry.lookup(registry_name)
     if entry is not None:
         cached_path = Path(entry.path)
-        if cached_path.exists() and _md5(cached_path) == entry.md5:
+        if (
+            cached_path.exists()
+            and _md5(cached_path) == entry.md5
+            and (pinned_md5 is None or entry.md5 == pinned_md5)
+        ):
             log.debug(f'Model found in registry: {registry_name}')
             ended_ns = perf_counter_ns()
             emit(
@@ -250,6 +260,16 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
     if used_source is None:
         assert last_exc is not None
         raise RuntimeError(f'All sources failed for {cfg["name"]}') from last_exc
+
+    # Defense in depth: the hosted sidecar hash must equal the pinned md5, so a
+    # bad or partial re-upload fails loudly here instead of silently serving
+    # mismatched bytes. _download_from_source already verified the downloaded
+    # file against remote_md5; this ties remote_md5 to the code-pinned value.
+    if pinned_md5 is not None:
+        assert remote_md5 == pinned_md5, (
+            f'Pinned MD5 mismatch for {cfg["name"]}: hosted sidecar {remote_md5} '
+            f'!= pinned {pinned_md5}'
+        )
 
     ended_ns = perf_counter_ns()
 
@@ -299,7 +319,7 @@ def fetch(config=DEFAULT_CONFIG, observer=None) -> str:
                 'postprocess_class_agnostic': cfg['postprocess_class_agnostic'],
                 'confidence_threshold': cfg['thresh'],
             },
-            description=f'ScoutBot {config} model (KAZA)',
+            description=f'Scoutbot {config} model (KAZA)',
         )
     )
     log.info(f'Registered: {registry_name}')
