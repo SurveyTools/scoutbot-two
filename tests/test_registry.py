@@ -189,7 +189,7 @@ def test_registry_file_is_valid_schema(registry_path):
     registry.register(_make_entry('x'))
     with open(registry_path) as f:
         data = json.load(f)
-    assert data['schema'] == 'rw:local-model-cache:1.0'
+    assert data['schema'] == 'osw:local-model-cache:1.0'
     assert 'updated' in data
     assert 'x' in data['models']
 
@@ -211,3 +211,89 @@ def test_load_returns_raw_dict(registry_path):
     assert isinstance(raw, dict)
     assert 'models' in raw
     assert 'z' in raw['models']
+
+
+# --- schema-guard tests ---
+
+
+def _write_registry(registry_path, obj):
+    registry_path.write_text(obj if isinstance(obj, str) else json.dumps(obj))
+
+
+def test_guard_rejects_non_json(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, 'not json {{{')
+    with pytest.raises(registry.RegistrySchemaError, match='OSW_REGISTRY_PATH'):
+        registry.lookup('x')
+
+
+def test_guard_rejects_non_object(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, '[1, 2, 3]')
+    with pytest.raises(registry.RegistrySchemaError):
+        registry.lookup('x')
+
+
+def test_guard_rejects_missing_schema(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, {'models': {}})
+    with pytest.raises(registry.RegistrySchemaError):
+        registry.lookup('x')
+
+
+def test_guard_rejects_non_string_schema(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, {'schema': 123, 'models': {}})
+    with pytest.raises(registry.RegistrySchemaError):
+        registry.lookup('x')
+
+
+def test_guard_rejects_bare_family(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, {'schema': 'osw:local-model-cache', 'models': {}})
+    with pytest.raises(registry.RegistrySchemaError):
+        registry.lookup('x')
+
+
+def test_guard_rejects_old_rw_family(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, {'schema': 'rw:local-model-cache:1.0', 'models': {}})
+    with pytest.raises(registry.RegistrySchemaError):
+        registry.lookup('x')
+
+
+def test_guard_rejects_malformed_version(registry_path):
+    from scoutbot import registry
+
+    for bad in (
+        'osw:local-model-cache:1',
+        'osw:local-model-cache:1.x',
+        'osw:local-model-cache:1.2.3',
+    ):
+        _write_registry(registry_path, {'schema': bad, 'models': {}})
+        with pytest.raises(registry.RegistrySchemaError):
+            registry.lookup('x')
+
+
+def test_guard_rejects_incompatible_major(registry_path):
+    from scoutbot import registry
+
+    _write_registry(registry_path, {'schema': 'osw:local-model-cache:2.0', 'models': {}})
+    with pytest.raises(registry.RegistrySchemaError, match='major'):
+        registry.lookup('x')
+
+
+def test_guard_accepts_same_major_newer_minor(registry_path):
+    from scoutbot import registry
+
+    _write_registry(
+        registry_path,
+        {'schema': 'osw:local-model-cache:1.9', 'future_field': 'ignored', 'models': {}},
+    )
+    assert registry.lookup('missing') is None  # reads fine, ignores unknown field
