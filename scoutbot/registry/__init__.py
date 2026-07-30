@@ -9,7 +9,7 @@ from typing import Optional
 
 from scoutbot.registry.schema import ModelEntry
 
-SCHEMA_FAMILY = 'osw:local-model-cache'
+SCHEMA_FAMILY = 'osw:model-registry'
 SCHEMA_MAJOR = 1
 SCHEMA_ID = f'{SCHEMA_FAMILY}:{SCHEMA_MAJOR}.0'
 

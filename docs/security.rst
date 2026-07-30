@@ -41,9 +41,13 @@ locally from verified source ``.pt`` models and cached in ``~/.cache/scoutbot/``
 Registry schema versioning
 --------------------------
 
-Scoutbot's local model registry (``~/.osw/model-registry.json``, shared across the Overhead
-Survey Workflow ecosystem) carries a schema id ``osw:local-model-cache:MAJOR.MINOR``. All tools
-that share the registry are expected to honor this compatibility contract:
+Scoutbot's local model registry (``~/.osw/model-registry.json``) is the first implementation of
+the shared **OSW Model Registry** standard — an ecosystem-wide index of locally available models
+that allied apps and other Overhead Survey Workflow modules can share. Its default location honors
+the ecosystem toolchain-directory principle: the base is ``OSW_HOME`` (default ``~/.osw``), and the
+explicit ``OSW_REGISTRY_PATH`` overrides it. The registry carries a schema id
+``osw:model-registry:MAJOR.MINOR``. All tools that share the registry are expected to honor this
+compatibility contract:
 
 * **MINOR** bump (``1.0`` → ``1.1``): additive and backward-compatible — new *optional* fields
   only. Older readers ignore unknown fields and newer readers tolerate missing ones, so tools at
@@ -53,7 +57,7 @@ that share the registry are expected to honor this compatibility contract:
   risk misreading it; adopting a new major must be coordinated across the tools that share the
   registry.
 
-On read, Scoutbot enforces this with a schema-guard: it accepts the ``osw:local-model-cache``
+On read, Scoutbot enforces this with a schema-guard: it accepts the ``osw:model-registry``
 family at the supported major (any minor) and raises a clear ``RegistrySchemaError`` — naming the
 file and suggesting ``OSW_REGISTRY_PATH`` to relocate — for a foreign file, a malformed schema id,
 or an incompatible major version. The guard only reads and rejects; it never overwrites an

@@ -1,45 +1,64 @@
 # tests/test_registry.py
 import importlib
-import os
 from pathlib import Path
 
 
-def test_get_registry_path_default():
-    """Default registry path is under ~/.osw/."""
-    # Ensure env var is not set
-    os.environ.pop('OSW_REGISTRY_PATH', None)
+def test_get_registry_path_default(monkeypatch):
+    """Default registry path is under ~/.osw/ when no env overrides are set."""
+    monkeypatch.delenv('OSW_REGISTRY_PATH', raising=False)
+    monkeypatch.delenv('OSW_HOME', raising=False)
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
     assert p.get_registry_path() == Path.home() / '.osw' / 'model-registry.json'
 
 
-def test_get_registry_path_from_env(tmp_path):
-    """OSW_REGISTRY_PATH env var overrides default."""
+def test_get_registry_path_from_env(tmp_path, monkeypatch):
+    """OSW_REGISTRY_PATH overrides both OSW_HOME and the default."""
     custom = str(tmp_path / 'custom-registry.json')
-    os.environ['OSW_REGISTRY_PATH'] = custom
+    monkeypatch.setenv('OSW_REGISTRY_PATH', custom)
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'home'))  # explicit path must still win
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
     assert p.get_registry_path() == Path(custom)
-    os.environ.pop('OSW_REGISTRY_PATH')
 
 
-def test_get_models_dir_default():
-    os.environ.pop('OSW_MODELS_DIR', None)
+def test_get_registry_path_under_osw_home(tmp_path, monkeypatch):
+    """OSW_HOME relocates the base; the registry file lands under it (P13 compliance)."""
+    monkeypatch.delenv('OSW_REGISTRY_PATH', raising=False)
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+    import scoutbot.registry.paths as p
+
+    importlib.reload(p)
+    assert p.get_registry_path() == tmp_path / 'osw-home' / 'model-registry.json'
+
+
+def test_get_models_dir_default(monkeypatch):
+    monkeypatch.delenv('OSW_MODELS_DIR', raising=False)
+    monkeypatch.delenv('OSW_HOME', raising=False)
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
     assert p.get_models_dir() == Path.home() / '.osw' / 'models'
 
 
-def test_get_models_dir_from_env(tmp_path):
-    os.environ['OSW_MODELS_DIR'] = str(tmp_path / 'models')
+def test_get_models_dir_from_env(tmp_path, monkeypatch):
+    monkeypatch.setenv('OSW_MODELS_DIR', str(tmp_path / 'models'))
     import scoutbot.registry.paths as p
 
     importlib.reload(p)
     assert p.get_models_dir() == tmp_path / 'models'
-    os.environ.pop('OSW_MODELS_DIR')
+
+
+def test_get_models_dir_under_osw_home(tmp_path, monkeypatch):
+    """OSW_HOME relocates the base; the models dir lands under it (P13 compliance)."""
+    monkeypatch.delenv('OSW_MODELS_DIR', raising=False)
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+    import scoutbot.registry.paths as p
+
+    importlib.reload(p)
+    assert p.get_models_dir() == tmp_path / 'osw-home' / 'models'
 
 
 # --- schema tests ---
@@ -189,7 +208,7 @@ def test_registry_file_is_valid_schema(registry_path):
     registry.register(_make_entry('x'))
     with open(registry_path) as f:
         data = json.load(f)
-    assert data['schema'] == 'osw:local-model-cache:1.0'
+    assert data['schema'] == 'osw:model-registry:1.0'
     assert 'updated' in data
     assert 'x' in data['models']
 
@@ -255,7 +274,7 @@ def test_guard_rejects_non_string_schema(registry_path):
 def test_guard_rejects_bare_family(registry_path):
     from scoutbot import registry
 
-    _write_registry(registry_path, {'schema': 'osw:local-model-cache', 'models': {}})
+    _write_registry(registry_path, {'schema': 'osw:model-registry', 'models': {}})
     with pytest.raises(registry.RegistrySchemaError):
         registry.lookup('x')
 
@@ -268,13 +287,22 @@ def test_guard_rejects_old_rw_family(registry_path):
         registry.lookup('x')
 
 
+def test_guard_rejects_interim_local_model_cache_family(registry_path):
+    """The interim osw:local-model-cache family (superseded by osw:model-registry) is rejected."""
+    from scoutbot import registry
+
+    _write_registry(registry_path, {'schema': 'osw:local-model-cache:1.0', 'models': {}})
+    with pytest.raises(registry.RegistrySchemaError):
+        registry.lookup('x')
+
+
 def test_guard_rejects_malformed_version(registry_path):
     from scoutbot import registry
 
     for bad in (
-        'osw:local-model-cache:1',
-        'osw:local-model-cache:1.x',
-        'osw:local-model-cache:1.2.3',
+        'osw:model-registry:1',
+        'osw:model-registry:1.x',
+        'osw:model-registry:1.2.3',
     ):
         _write_registry(registry_path, {'schema': bad, 'models': {}})
         with pytest.raises(registry.RegistrySchemaError):
@@ -284,7 +312,7 @@ def test_guard_rejects_malformed_version(registry_path):
 def test_guard_rejects_incompatible_major(registry_path):
     from scoutbot import registry
 
-    _write_registry(registry_path, {'schema': 'osw:local-model-cache:2.0', 'models': {}})
+    _write_registry(registry_path, {'schema': 'osw:model-registry:2.0', 'models': {}})
     with pytest.raises(registry.RegistrySchemaError, match='major'):
         registry.lookup('x')
 
@@ -294,6 +322,6 @@ def test_guard_accepts_same_major_newer_minor(registry_path):
 
     _write_registry(
         registry_path,
-        {'schema': 'osw:local-model-cache:1.9', 'future_field': 'ignored', 'models': {}},
+        {'schema': 'osw:model-registry:1.9', 'future_field': 'ignored', 'models': {}},
     )
     assert registry.lookup('missing') is None  # reads fine, ignores unknown field

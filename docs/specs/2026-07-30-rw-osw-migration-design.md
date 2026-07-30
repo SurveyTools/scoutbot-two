@@ -276,3 +276,31 @@ populates `~/.osw` on first fetch.
   schema id, GCS bucket, clean break, schema-guard). After this, the **Audit scope** grep must
   return zero for `CHANGELOG.rst`. (The unrelated historical `[tool.uv.audit]` wording is
   reconciled separately in the release-notes consolidation, not here.)
+
+## Addendum (2026-07-30): OSW_HOME compliance and the OSW Model Registry name
+
+Two refinements adopted after reviewing pipeline-design's ``design-principles.md`` (P13) and
+``schema-family.md``:
+
+**D1 — Honor ``OSW_HOME`` (P13 compliance).** P13 requires per-tool override vars to default to
+sub-paths *under* the ecosystem home var. ``scoutbot/registry/paths.py`` now resolves an
+``OSW_HOME`` base (default ``~/.osw``):
+
+- ``get_registry_path()`` = ``OSW_REGISTRY_PATH`` if set, else ``${OSW_HOME:-~/.osw}/model-registry.json``.
+- ``get_models_dir()`` = ``OSW_MODELS_DIR`` if set, else ``${OSW_HOME:-~/.osw}/models``.
+
+Precedence: the explicit per-path var wins; otherwise ``OSW_HOME``; otherwise ``~/.osw``. Model
+*files* remain in ``~/.cache/scoutbot/`` (the documented P13 dot-directory exception).
+
+**D2 — Adopt the ``osw:model-registry`` schema id (the shared OSW Model Registry standard).**
+Scoutbot's local registry is the first implementation of the ecosystem-shared **OSW Model
+Registry**, not a scoutbot-private cache. Its schema id therefore moves from the interim
+``osw:local-model-cache:1.0`` to **``osw:model-registry:1.0``** (family ``osw:model-registry``);
+the on-disk filename stays ``model-registry.json``. The guard family constant changes
+accordingly, so a registry written under any other family (old ``rw:*``, or the interim
+``osw:local-model-cache``) is rejected.
+
+This is coordinated with a pipeline-design rename: the pre-existing survey-level
+``osw:model-registry:1.0`` (survey AI-model *provenance*, ``model_registry.json``) moves to a
+provenance/manifest id so the bare ``osw:model-registry`` name belongs to the shared registry.
+See the pipeline-design spec feedback for that side.

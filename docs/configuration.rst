@@ -66,6 +66,17 @@ Environment variables
        ``--processes N`` when ``N`` > 1. A worker that does not return a result within
        this many seconds is treated as dead, which aborts the run fail-fast (see
        `Parallel execution`_). Re-running the same command resumes the remaining work.
+   * - ``OSW_HOME``
+     - ``~/.osw``
+     - Shared Overhead Survey Workflow toolchain directory. The model registry and per-tool
+       registry paths default to sub-directories under it.
+   * - ``OSW_REGISTRY_PATH``
+     - ``$OSW_HOME/model-registry.json``
+     - Full path to the OSW Model Registry file. Overrides ``OSW_HOME`` for the registry location.
+   * - ``OSW_MODELS_DIR``
+     - ``$OSW_HOME/models``
+     - Registry models directory. Overrides ``OSW_HOME`` for the models location. (Model *files*
+       fetched by Scoutbot are cached separately under ``~/.cache/scoutbot/``.)
 
 Device guidance
 ---------------
