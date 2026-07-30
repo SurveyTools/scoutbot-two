@@ -75,8 +75,8 @@ Environment variables
      - Full path to the OSW Model Registry file. Overrides ``OSW_HOME`` for the registry location.
    * - ``OSW_MODELS_DIR``
      - ``$OSW_HOME/models``
-     - Registry models directory. Overrides ``OSW_HOME`` for the models location. (Model *files*
-       fetched by Scoutbot are cached separately under ``~/.cache/scoutbot/``.)
+     - Directory holding the downloaded model files and on-demand Core ML exports. Overrides
+       ``OSW_HOME`` for the models location.
 
 Device guidance
 ---------------
@@ -111,8 +111,9 @@ detections across slice boundaries with class-agnostic NMS.
 Cache location
 --------------
 
-Models are cached at ``~/.cache/scoutbot/``. On Windows, this resolves under the user's home
-directory, for example ``C:\Users\<user>\.cache\scoutbot\``.
+Models are cached in the OSW models directory — ``OSW_MODELS_DIR`` (default ``~/.osw/models/``,
+under ``OSW_HOME``; see `Environment variables`_). On Windows this resolves under the user's home
+directory, for example ``C:\Users\<user>\.osw\models\``.
 
 PyTorch ``.pt`` models are downloaded and verified with MD5 sidecars. Core ML ``.mlpackage``
 bundles are exported locally from the verified source ``.pt`` model and cached in the same

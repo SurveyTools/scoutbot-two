@@ -10,9 +10,11 @@ Unreleased
   registry directory ``~/.osw``, and the public model bucket ``osw-public-models``. The local
   model registry is now the first implementation of the shared **OSW Model Registry** standard
   with schema id ``osw:model-registry:1.0``; its default location honors ``OSW_HOME`` (default
-  ``~/.osw``) per the ecosystem toolchain-directory principle. This is a clean break with no
-  ``rw`` compatibility aliases; existing ``~/.rebel-workflow`` registries are orphaned and rebuilt
-  on next fetch. A registry schema-guard now rejects foreign or incompatible-major registry files
+  ``~/.osw``) per the ecosystem toolchain-directory principle. Downloaded model files and Core ML
+  exports now cache under the OSW models directory (``OSW_MODELS_DIR``, default ``~/.osw/models``)
+  instead of ``~/.cache/scoutbot``, keeping the whole toolchain footprint under one home. This is
+  a clean break with no ``rw`` compatibility aliases; existing ``~/.rebel-workflow`` registries
+  and ``~/.cache/scoutbot`` model files are orphaned and rebuilt on next fetch. A registry schema-guard now rejects foreign or incompatible-major registry files
   (including the pre-release ``rw`` and interim ``osw:local-model-cache`` families) with a clear,
   actionable ``RegistrySchemaError`` (surfaced as a clean CLI error) instead of failing
   cryptically.

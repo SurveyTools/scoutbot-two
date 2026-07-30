@@ -2,7 +2,7 @@ Models
 ------
 
 Scoutbot v3 uses YOLOv8 models trained on KAZA aerial survey data. PyTorch ``.pt`` models are
-downloaded automatically on first use and cached at ``~/.cache/scoutbot/``. Core ML
+downloaded automatically on first use and cached at ``~/.osw/models/``. Core ML
 ``.mlpackage`` bundles are exported locally from those source ``.pt`` models.
 
 Model configs
@@ -80,7 +80,7 @@ not part of this catalog and are unaffected by the ``dill`` re-serialization: th
 through the PyTorch pickle path and keep their existing names and URLs.
 
 Core ML configs do not have hosted ``.mlpackage`` artifacts. Scoutbot exports them on demand from
-the verified source ``.pt`` model and stores the resulting bundle in ``~/.cache/scoutbot/``.
+the verified source ``.pt`` model and stores the resulting bundle in ``~/.osw/models/``.
 
 Integrity verification
 ~~~~~~~~~~~~~~~~~~~~~~

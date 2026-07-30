@@ -437,7 +437,7 @@ a re-fetch today, a user must manually delete the cached file and the registry e
 
 .. code-block:: bash
 
-   rm ~/.cache/scoutbot/<model-name>.pt
+   rm ~/.osw/models/<model-name>.pt
    rm ~/.osw/model-registry.json   # or edit the JSON to remove one entry
 
 The cache also contains Core ML ``.mlpackage`` bundles (directory trees, not single files),
@@ -445,7 +445,7 @@ which require ``rm -rf`` rather than ``rm``:
 
 .. code-block:: bash
 
-   rm -rf ~/.cache/scoutbot/<model-name>.mlpackage
+   rm -rf ~/.osw/models/<model-name>.mlpackage
 
 Two commands should be added:
 

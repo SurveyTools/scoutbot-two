@@ -22,7 +22,7 @@ uv run scoutbot fetch --config v3
 uv run scoutbot pipeline /path/to/image.jpg --config v3 --device mps
 ```
 
-Scoutbot downloads models on first use and caches them in `~/.cache/scoutbot/`.
+Scoutbot downloads models on first use and caches them in `~/.osw/models/`.
 
 ## Where to Go Next
 
@@ -43,7 +43,7 @@ uv sync --extra coreml
 uv run scoutbot pipeline image.jpg --config v3-coreml
 ```
 
-The `.mlpackage` bundle is exported on first use and cached at `~/.cache/scoutbot/`.
+The `.mlpackage` bundle is exported on first use and cached at `~/.osw/models/`.
 See [Core ML](https://surveytools.github.io/scoutbot-2026/coreml.html) and [Performance](https://surveytools.github.io/scoutbot-2026/performance.html) for backend details and benchmark caveats.
 
 ## Documentation

@@ -34,7 +34,7 @@ Exporting the bundles
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Unlike the ``.pt`` models, the Core ML bundles are **not hosted** — they are exported on demand
-from their source ``.pt`` model and cached at ``~/.cache/scoutbot/``. The first time a Core ML
+from their source ``.pt`` model and cached at ``~/.osw/models/``. The first time a Core ML
 config is used, ``scoutbot.model_store.fetch()`` fetches the source ``.pt`` (downloading it if
 needed) and converts it; subsequent runs reuse the cached bundle. Nothing extra is required to use
 a Core ML config — the export happens transparently.

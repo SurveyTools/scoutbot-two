@@ -85,7 +85,7 @@ an empty result:
 ```bash
 grep -rniE "RW_|rebel[ _-]workflow|rebel-pipeline|\brw:" \
   scoutbot/ tests/ docs/*.rst README.md CONTRIBUTING.md CHANGELOG.rst pyproject.toml docs/conf.py \
-  | grep -vE "test_guard_rejects_old_rw_family|schema.{0,4}rw:local-model-cache|not in gcs\['url'\]|Rebel Workflow|~/\.rebel-workflow.* orphaned"
+  | grep -vE "test_guard_rejects_old_rw_family|schema.{0,4}rw:local-model-cache|not in gcs\['url'\]|Rebel Workflow|~/\.rebel-workflow"
 ```
 
 The `rebel[ _-]workflow` class matches the spaced "Rebel Workflow" prose form (e.g. the
@@ -252,11 +252,11 @@ populates `~/.osw` on first fetch.
 - Post-change, run a clean-room fetch (isolated `OSW_REGISTRY_PATH` + `CACHE_DIR`, both configs)
   asserting the model resolves from `osw-public-models` (GCS primary) and the pinned hashes
   verify.
-- `OSW_MODELS_DIR` / `get_models_dir()` is **API-only**: it belongs to the registry path API and
-  is covered by `test_registry.py`, but the model-fetch path does not consume it (models cache
-  under `~/.cache/scoutbot/`, and the registry stores absolute model paths). The clean-room fetch
-  validation therefore exercises `OSW_REGISTRY_PATH` only; `OSW_MODELS_DIR` is validated by unit
-  tests, not the fetch flow.
+- `OSW_MODELS_DIR` / `get_models_dir()` was API-only when this section was first written.
+  **As of the OSW_HOME addendum below, `model_store.CACHE_DIR` derives from `get_models_dir()`**,
+  so the model-fetch path now caches downloaded models and Core ML exports under
+  `${OSW_HOME:-~/.osw}/models`. It is covered by `test_registry.py`, and the clean-room fetch
+  exercises `OSW_REGISTRY_PATH` plus (via `CACHE_DIR`) the models directory.
 - Run the full gate: `ruff format --check` / `ruff check` / `mypy scoutbot tools/visualise.py` /
   `uv audit --locked` / `bandit` / `pytest -m "not slow"` (+ slow where feasible).
 
@@ -289,8 +289,16 @@ sub-paths *under* the ecosystem home var. ``scoutbot/registry/paths.py`` now res
 - ``get_registry_path()`` = ``OSW_REGISTRY_PATH`` if set, else ``${OSW_HOME:-~/.osw}/model-registry.json``.
 - ``get_models_dir()`` = ``OSW_MODELS_DIR`` if set, else ``${OSW_HOME:-~/.osw}/models``.
 
-Precedence: the explicit per-path var wins; otherwise ``OSW_HOME``; otherwise ``~/.osw``. Model
-*files* remain in ``~/.cache/scoutbot/`` (the documented P13 dot-directory exception).
+Precedence: the explicit per-path var wins; otherwise ``OSW_HOME``; otherwise ``~/.osw``.
+
+**Model files come home too.** ``scoutbot/model_store.py`` ``CACHE_DIR`` was a hardcoded
+``~/.cache/scoutbot`` that also left ``get_models_dir()`` / ``OSW_MODELS_DIR`` dead (no caller).
+``CACHE_DIR`` now derives from ``get_models_dir()`` (default ``${OSW_HOME:-~/.osw}/models``), so
+downloaded model files and on-demand Core ML exports live under the shared OSW models directory
+— no separate ``~/.cache`` dot-directory, no P13 carve-out, and ``OSW_MODELS_DIR`` becomes the
+real relocation knob. Clean break: any models cached under the old ``~/.cache/scoutbot`` are
+orphaned and re-downloaded on next fetch. This also enables shared model storage across OSW
+tools that point at the same ``~/.osw/models``.
 
 **D2 — Adopt the ``osw:model-registry`` schema id (the shared OSW Model Registry standard).**
 Scoutbot's local registry is the first implementation of the ecosystem-shared **OSW Model

@@ -307,3 +307,13 @@ def test_pt_configs_use_osw_bucket():
             'https://storage.googleapis.com/osw-public-models/scoutbot/'
         )
         assert 'rebel-pipeline-public-models' not in gcs['url']
+
+
+def test_cache_dir_is_the_osw_models_dir():
+    """Model files cache under the shared OSW models dir, not a hardcoded ~/.cache path."""
+    from scoutbot import model_store
+    from scoutbot.registry.paths import get_models_dir
+
+    assert model_store.CACHE_DIR == get_models_dir()
+    assert model_store.CACHE_DIR.name == 'models'
+    assert '.cache' not in model_store.CACHE_DIR.parts

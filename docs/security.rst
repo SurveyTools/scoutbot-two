@@ -36,7 +36,7 @@ passes verification is registered in the local registry; subsequent runs resolve
 no network access.
 
 Core ML ``.mlpackage`` bundles are not hosted as separate remote artifacts. They are exported
-locally from verified source ``.pt`` models and cached in ``~/.cache/scoutbot/``.
+locally from verified source ``.pt`` models and cached in ``~/.osw/models/``.
 
 Registry schema versioning
 --------------------------
@@ -67,7 +67,7 @@ Core ML artifacts
 -----------------
 
 Core ML ``.mlpackage`` bundles are not hosted as separate remote artifacts. They are exported
-locally from verified source ``.pt`` models and cached in ``~/.cache/scoutbot/``.
+locally from verified source ``.pt`` models and cached in ``~/.osw/models/``.
 
 Dependency and scanning posture
 -------------------------------
