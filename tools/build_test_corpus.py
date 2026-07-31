@@ -378,6 +378,37 @@ def build_corpus(
     return manifest
 
 
+# Keys that must match for an exact-equality baseline comparison to be authoritative. A different
+# OS/BLAS/wheel can shift the last ULP and masquerade as scoutbot drift, so any mismatch → skip.
+_GUARD_KEYS = (
+    'lockfile_sha256',
+    'torch',
+    'torchvision',
+    'ultralytics',
+    'sahi',
+    'numpy',
+    'python',
+    'platform_system',
+    'platform_machine',
+)
+
+
+def stack_matches(
+    manifest: dict, current_runtime: dict, current_model_md5: str
+) -> tuple[bool, str]:
+    """Return (ok, reason). ok=True means same model + same lock + compatible platform stack."""
+    if current_model_md5 != manifest['model']['md5']:
+        return False, 'model md5 differs'
+    recorded = manifest['runtime']
+    for key in _GUARD_KEYS:
+        if recorded.get(key) != current_runtime.get(key):
+            return (
+                False,
+                f'{key} differs (baseline {recorded.get(key)!r} != current {current_runtime.get(key)!r})',
+            )
+    return True, ''
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
         description='Build a scoutbot test corpus from Matetsi.'

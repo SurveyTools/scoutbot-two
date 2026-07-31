@@ -298,3 +298,41 @@ def test_build_corpus_refuses_nonempty_out_without_force(tmp_path, monkeypatch):
             per_tier=5,
             config='v3',
         )
+
+
+def _manifest_for_guard():
+    runtime = {
+        'lockfile_sha256': 'L',
+        'torch': '2.13.0',
+        'torchvision': '0.28.0',
+        'ultralytics': '8.4.0',
+        'sahi': '0.11.36',
+        'numpy': '2.0.0',
+        'python': '3.13.1',
+        'platform_system': 'Darwin',
+        'platform_machine': 'arm64',
+    }
+    return {'model': {'md5': 'M'}, 'runtime': runtime}, dict(runtime)
+
+
+def test_stack_matches_true_on_identical_stack():
+    manifest, current = _manifest_for_guard()
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='M')
+    assert ok and reason == ''
+
+
+def test_stack_matches_false_on_model_md5():
+    manifest, current = _manifest_for_guard()
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='OTHER')
+    assert not ok and 'model' in reason
+
+
+def test_stack_matches_false_on_lock_and_platform():
+    manifest, current = _manifest_for_guard()
+    current['lockfile_sha256'] = 'DIFFERENT'
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='M')
+    assert not ok and 'lockfile_sha256' in reason
+    manifest, current = _manifest_for_guard()
+    current['platform_machine'] = 'x86_64'
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='M')
+    assert not ok and 'platform_machine' in reason
