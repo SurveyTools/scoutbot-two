@@ -516,7 +516,7 @@ not just the local model cache. That contract should live in ``pipeline-design``
 * the split between survey-level registry facts and per-run provenance captured in detection
   outputs
 
-ScoutBot should continue to own the offline-first local registry, fetch plumbing, and CLI
+Scoutbot should continue to own the offline-first local registry, fetch plumbing, and CLI
 resolution. The survey-level artifact schema, validation rules, and stage-boundary semantics belong
 in ``pipeline-design`` so future model families can evolve without forcing another schema rewrite
 in this repository.

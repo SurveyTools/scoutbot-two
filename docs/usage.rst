@@ -246,7 +246,7 @@ Visualisation
 -------------
 
 A standalone visualisation tool is provided in ``tools/visualise.py``. It renders
-bounding boxes and confidence scores from ScoutBot JSON output onto the source image.
+bounding boxes and confidence scores from Scoutbot JSON output onto the source image.
 By default it hands the result to the OS default handler for the file URI (Preview on
 macOS, ``xdg-open`` on Linux); use ``--output`` with ``--no-display`` to save without
 opening anything.

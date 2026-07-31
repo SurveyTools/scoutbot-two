@@ -229,14 +229,6 @@ avoids building something that conflicts with the roadmap or that requires signi
 
 ---
 
-## Code of conduct
-
-This project follows the [Contributor Covenant](https://www.contributor-covenant.org/) code of
-conduct. Be respectful, constructive, and focused on the work. Maintainers reserve the right to
-remove contributions or participants that violate these standards.
-
----
-
 ## License
 
 Scoutbot is released under the [Apache-2.0 License](LICENSE). By submitting a pull request you

@@ -28,7 +28,8 @@ In scope (scoutbot-2026 only):
 
 - Env vars: `RW_REGISTRY_PATH` → `OSW_REGISTRY_PATH`, `RW_MODELS_DIR` → `OSW_MODELS_DIR`.
 - Registry directory default: `~/.rebel-workflow/` → `~/.osw/`.
-- Registry schema id: `rw:local-model-cache:1.0` → `osw:local-model-cache:1.0`.
+- Registry schema id: `rw:local-model-cache:1.0` → `osw:model-registry:1.0` (the shared OSW Model
+  Registry standard; see the **Addendum** — an interim `osw:local-model-cache` was superseded).
 - GCS bucket: `rebel-pipeline-public-models` → `osw-public-models` (path prefix `/scoutbot/`
   unchanged; the new bucket is already live and verified — see Validation).
 - **Public-release metadata**: the `authors` entry in `pyproject.toml` (`Rebel Workflow Team`)
@@ -107,7 +108,7 @@ The Wild Me / WildMeOrg attribution in `README.md` and `pyproject.toml` is unrel
   is <5 and directly reachable; the old registry is simply orphaned (models remain in
   `~/.cache/scoutbot/`, and the first fetch re-registers under `~/.osw/`).
 - Target names are fixed: dir `~/.osw`, env prefix `OSW_`, schema id family
-  `osw:local-model-cache`, bucket `osw-public-models`.
+  `osw:model-registry`, bucket `osw-public-models`.
 
 ## Locked decisions
 
@@ -116,7 +117,7 @@ The Wild Me / WildMeOrg attribution in `README.md` and `pyproject.toml` is unrel
    (`~/.cache/scoutbot`, `~/.rebel-workflow`), so `~/.osw` is a zero-behavior-change swap that is
    uniform on Windows and needs no new dependency or platform branching.
 2. **Clean break** — no compatibility shim, no old-registry migration.
-3. **Schema id** → `osw:local-model-cache:1.0`.
+3. **Schema id** → `osw:model-registry:1.0` (the shared OSW Model Registry standard; see Addendum).
 4. **Schema-guard** with **family match + major enforcement** (see below).
 5. **Bucket rename** folded into this spec (the `osw-public-models` bucket is already uploaded
    and hash-verified); Azure remains deferred.
@@ -125,14 +126,15 @@ The Wild Me / WildMeOrg attribution in `README.md` and `pyproject.toml` is unrel
 
 ### `scoutbot/registry/paths.py`
 
-Both functions rename the env var and the default directory:
+Both functions rename the env var; defaults resolve under the `OSW_HOME` base (default `~/.osw`;
+see Addendum):
 
-- `get_registry_path()`: `OSW_REGISTRY_PATH`, default `~/.osw/model-registry.json`.
-- `get_models_dir()`: `OSW_MODELS_DIR`, default `~/.osw/models`.
+- `get_registry_path()`: `OSW_REGISTRY_PATH`, else `${OSW_HOME:-~/.osw}/model-registry.json`.
+- `get_models_dir()`: `OSW_MODELS_DIR`, else `${OSW_HOME:-~/.osw}/models`.
 
 ### `scoutbot/registry/__init__.py`
 
-- `SCHEMA_ID = 'osw:local-model-cache:1.0'`.
+- `SCHEMA_ID = 'osw:model-registry:1.0'`.
 - Add the schema-guard to `_read_raw()` (see next section).
 
 ### `scoutbot/model_store.py`
@@ -162,14 +164,14 @@ here as the direct analog of the old name.)
 
 Constants in `scoutbot/registry/__init__.py`:
 
-- `SCHEMA_ID = 'osw:local-model-cache:1.0'`
-- `SCHEMA_FAMILY = 'osw:local-model-cache'`
+- `SCHEMA_ID = 'osw:model-registry:1.0'`
+- `SCHEMA_FAMILY = 'osw:model-registry'`
 - `SCHEMA_MAJOR = 1`
 
 Exception: a dedicated `class RegistrySchemaError(RuntimeError)` (defined in
 `scoutbot/registry/__init__.py`, exported so tests and callers can catch it). Every refusal
 raises `RegistrySchemaError`; every message names the registry path, the offending value, the
-expected `osw:local-model-cache:{SCHEMA_MAJOR}.*`, and the `OSW_REGISTRY_PATH` escape hatch.
+expected `osw:model-registry:{SCHEMA_MAJOR}.*`, and the `OSW_REGISTRY_PATH` escape hatch.
 
 A **missing** file returns a fresh `{'schema': SCHEMA_ID, 'models': {}}` as today (no guard). For
 an **existing** file, `_read_raw()` evaluates the following in order and raises
@@ -179,8 +181,8 @@ an **existing** file, `_read_raw()` evaluates the following in order and raises
 |---|---|---|
 | 1 | File is not valid JSON (`json.JSONDecodeError`) or not a JSON object (`dict`) | refuse — corrupt/foreign |
 | 2 | `schema` key missing, or its value is not a `str` | refuse — not an OSW registry |
-| 3 | `schema` does not split into exactly three `:`-separated parts (`family.head:family.tail:version`) — e.g. bare `osw:local-model-cache`, or extra colons | refuse — malformed schema id |
-| 4 | The family (first two parts joined, `osw:local-model-cache`) ≠ `SCHEMA_FAMILY` — includes any old `rw:*` id and any other family | refuse — wrong family |
+| 3 | `schema` does not split into exactly three `:`-separated parts (`family.head:family.tail:version`) — e.g. bare `osw:model-registry`, or extra colons | refuse — malformed schema id |
+| 4 | The family (first two parts joined, `osw:model-registry`) ≠ `SCHEMA_FAMILY` — includes any old `rw:*` id, the interim `osw:local-model-cache`, and any other family | refuse — wrong family |
 | 5 | The version part is not `MAJOR.MINOR` with **both** integers — e.g. `1` (no minor), `1.x`, `1.2.3`, empty | refuse — malformed version |
 | 6 | `MAJOR` ≠ `SCHEMA_MAJOR` (e.g. `2.0`) | refuse — incompatible major |
 | — | Otherwise (family match, integer `MAJOR == SCHEMA_MAJOR`, any `MINOR`) | **accept**; unknown top-level/entry fields are ignored |
@@ -191,14 +193,16 @@ never the directory as a whole.
 
 ### CLI surface
 
-The registry-backed CLI commands (`scoutbot fetch`, `scoutbot models`, `scoutbot models info`,
-`scoutbot register`) catch `RegistrySchemaError` at the command boundary and exit non-zero with
-the exception's message (no Python traceback), so a foreign/incompatible registry produces a
-clean, actionable CLI error rather than a stack dump.
+A custom root `click.Group` (`_ScoutbotGroup`) catches `RegistrySchemaError` from **every**
+subcommand — not only the registry-management commands, since inference commands (`pipeline` /
+`batch` / `batch-resumable` / `get_classes` / `export-coreml` / `example`) also reach the registry
+via `_resolve_model()` / `model_store.fetch()`. It exits non-zero with the exception's message (no
+Python traceback), so a foreign/incompatible registry produces a clean, actionable CLI error
+rather than a stack dump.
 
 ### Versioning contract (documented in `docs/security.rst`)
 
-The registry schema id is `osw:local-model-cache:MAJOR.MINOR`. The compatibility contract, which
+The registry schema id is `osw:model-registry:MAJOR.MINOR`. The compatibility contract, which
 all OSW ecosystem tools sharing the registry are expected to honor:
 
 - **MINOR bump** (`1.0` → `1.1`): additive and backward-compatible — new *optional* fields only.
@@ -233,10 +237,11 @@ populates `~/.osw` on first fetch.
     `test_get_models_dir_default` / `_from_env` tests keep `get_models_dir()` covered).
   - Schema-guard cases, each asserting `pytest.raises(RegistrySchemaError)` unless noted, mapping
     one-to-one to the guard table: non-JSON file; JSON that is not an object; missing `schema`;
-    non-string `schema`; malformed id (bare `osw:local-model-cache`); old `rw:local-model-cache:1.0`
-    (wrong family); malformed version (`...:1`, `...:1.x`); incompatible major (`...:2.0`); **plus
-    a passing** same-major newer-minor file (`...:1.9` with an extra unknown field) that reads and
-    ignores the unknown field; and a normal `1.0` round-trip.
+    non-string `schema`; malformed id (bare `osw:model-registry`); wrong family — both old
+    `rw:local-model-cache:1.0` and the interim `osw:local-model-cache:1.0`; malformed version
+    (`osw:model-registry:1` / `:1.x` / `:1.2.3`); incompatible major (`osw:model-registry:2.0`);
+    **plus a passing** same-major newer-minor file (`osw:model-registry:1.9` with an extra unknown
+    field) that reads and ignores the unknown field; and a normal `1.0` round-trip.
 - **`tests/test_loc.py`, `tests/test_model_store.py`, `tests/test_pipeline.py`,
   `tests/test_cli.py`**: swap all `RW_*` env-var references to `OSW_*` in isolation fixtures
   (~13 references, including the defensive `OSW_MODELS_DIR` set in `test_model_store.py`'s

@@ -5,6 +5,11 @@ Changelog
 Unreleased
 ----------
 
+No unreleased changes yet.
+
+0.5.0 (2026-07-30)
+------------------
+
 * Renamed the ecosystem namespace from ``rw`` ("Rebel Workflow") to ``osw`` ("Overhead Survey
   Workflow"): environment variables ``OSW_HOME`` / ``OSW_REGISTRY_PATH`` / ``OSW_MODELS_DIR``, the
   registry directory ``~/.osw``, and the public model bucket ``osw-public-models``. The local
@@ -53,11 +58,11 @@ Unreleased
   now requires ``coremltools>=9.0`` (the previous pin was unversioned). Two new transitive
   dependencies are added: ``polars>=0.20.0`` and ``nvidia-ml-py>=12.0.0``. A minor type-annotation
   fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
-* Model downloads now try multiple sources in order (Azure → GCS) and fall back automatically
-  if any source is unreachable or resets the connection mid-transfer. GCS
-  (``storage.googleapis.com/osw-public-models``) is the built-in fallback for all
-  ``.pt`` models. Registry provenance now records which provider delivered the file. Download
-  chunk size increased from 8 KB to 64 KB for better throughput on large model files.
+* Model downloads try multiple sources in order with automatic failover if any source is
+  unreachable or resets the connection mid-transfer. The built-in order is GCS primary
+  (``storage.googleapis.com/osw-public-models``), Azure fallback. Registry provenance records
+  which provider delivered the file. Download chunk size increased from 8 KB to 64 KB for better
+  throughput on large model files.
 * Added a local model registry backed by ``~/.osw/model-registry.json``.
   ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
   from the registry and skip the network. New CLI commands: ``scoutbot register``
@@ -85,9 +90,7 @@ Unreleased
   ``hashlib.md5()`` → ``hashlib.md5(usedforsecurity=False)`` to reflect its use as a file
   integrity check rather than a cryptographic hash.
 * Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.
-  Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215. Added
-  ``ignore-until-fixed`` in ``[tool.uv.audit]`` for GHSA-rrmf-rvhw-rf47 (``torch`` CVE,
-  no upstream fix available).
+  Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215.
 * The Core ML benchmark phase-total output now shows ``requested=<val> actual=<val>`` for
   Core ML variants (or ``actual=null`` when the runtime does not expose the actual compute
   unit). Non-Core ML variants (``pt-cpu``, ``pt-mps``) omit the suffix entirely instead of

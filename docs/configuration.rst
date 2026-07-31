@@ -122,7 +122,7 @@ directory.
 Model download sources
 ----------------------
 
-ScoutBot tries download sources in order and uses the first that succeeds.
+Scoutbot tries download sources in order and uses the first that succeeds.
 The built-in order is:
 
 1. **Google Cloud Storage** (``storage.googleapis.com/osw-public-models``) — primary
