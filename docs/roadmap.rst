@@ -356,7 +356,7 @@ Linux/CUDA concurrency tuning, and future agentic pipeline tuning.
 Benchmark corpus design
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-**Status:** planned
+**Status:** in-progress (density-tiered corpus builder specified)
 
 The current ``examples/`` corpus is useful for smoke tests but should not be assumed
 representative of production survey workloads. Define a small benchmark corpus with explicit
@@ -371,10 +371,29 @@ categories:
 The corpus metadata should make benchmark results comparable across machines and future model
 families without relying on informal memory of which images were used.
 
+A density-tiered corpus builder is now specified in
+``docs/specs/2026-07-31-scoutbot-test-corpus-builder-design.md``: it selects empty / typical /
+dense / extreme frames from the internal Matetsi survey using the scoutbot detection JSONL,
+GPS-strips them, and freezes CPU regression baselines — producing exactly these categories plus
+per-image tier metadata, consumed by a skip-if-absent regression test. Two follow-ups are gated on
+it:
+
+* **Test-corpus hosting + public clearance** *(high priority).* The corpus is Matetsi-derived and
+  internal-only; establishing imagery redistribution permission and a (private-then-public)
+  MD5-pinned fetch home is required before it can become a shared or CI asset. The gate is
+  permission clearance, not engineering.
+* **Human ground-truth annotation of a survey subset.** The frozen baselines are scoutbot's own CPU
+  output — a drift-regression anchor, not accuracy. An independent human-annotated Matetsi subset is
+  the prerequisite for any *accuracy* or bias claim, and feeds the pipeline-design DS-5 / Stage-8
+  bias work (see ``pipeline-design`` test-data catalog and fixture-provenance matrix).
+* Multi-model baselines (``v3-cls`` / Core ML) are a natural extension once the ``v3`` corpus lands;
+  Core ML needs strict-tolerance rather than exact comparison (MPS/ANE are not bit-reproducible).
+
 Relatedly, ``benchmarks/benchmark_coreml.py`` and ``benchmark_concurrency.py`` do not record the
 ML-stack versions (torch, torchvision, ultralytics, coremltools, numpy) in their
 ``--summary-json`` output, so a saved benchmark cannot be tied to the stack that produced it. Add
-version metadata to the summary schema alongside the corpus metadata.
+version metadata to the summary schema alongside the corpus metadata — and, once the corpus lands,
+record its per-tier metadata (from the corpus manifest) so runs are comparable per density tier.
 
 Linux / CUDA multiprocess batch mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
