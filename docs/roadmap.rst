@@ -401,6 +401,12 @@ deadline (``SCOUTBOT_MP_RESULT_TIMEOUT``), and re-running the same command resum
 work. Every run emits a machine-readable summary (``summary_json`` / ``--summary-json``) with
 worker-balance and phase-timing fields.
 
+A CI harness for this now exists: ``.github/workflows/cuda.yml`` runs the ``slow`` suite on
+``cuda:0``, a multiprocess ``batch-resumable --processes 2`` smoke, and
+``benchmark_concurrency.py`` on a self-hosted GPU runner (opt-in, on-demand / weekly). It is inert
+until a runner labelled ``self-hosted, linux, gpu`` is registered; once attached it provides the
+recurring real-GPU validation this item needs.
+
 Internal priorities:
 
 1. land the resume-safe implementation and summary JSON output -- done
