@@ -44,6 +44,8 @@ test = [
     "ruff==0.16.0",
     "mypy",
     "bandit",
+    # EXIF/GPS stripping + verification for the internal test-corpus builder (tools/).
+    "piexif",
 ]
 docs = [
     "Sphinx>=7,<9",

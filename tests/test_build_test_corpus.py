@@ -1,5 +1,10 @@
 import build_test_corpus as btc
+import piexif
 import pytest
+from PIL import Image
+
+import scoutbot
+from scoutbot.model_store import CONFIGS
 
 
 def test_resolve_local_full_suffix_ignores_basename_collisions(tmp_path):
@@ -86,3 +91,92 @@ def test_select_tiers_short_bucket_raises():
     )
     with pytest.raises(ValueError, match='empty'):
         btc.select_tiers(records, per_tier=5)  # only 1 empty available
+
+
+def _jpeg_with_gps(path, size=(64, 48)):
+    Image.new('RGB', size, (10, 20, 30)).save(path, 'JPEG')
+    exif = {
+        '0th': {piexif.ImageIFD.Make: b'TestCam'},
+        'GPS': {piexif.GPSIFD.GPSLatitudeRef: b'S'},
+        'Exif': {},
+        '1st': {},
+        'thumbnail': None,
+    }
+    piexif.insert(piexif.dump(exif), str(path))
+
+
+def test_strip_and_verify_removes_gps_and_keeps_dimensions(tmp_path):
+    src = tmp_path / 'src.jpg'
+    dst = tmp_path / 'dst.jpg'
+    _jpeg_with_gps(src, size=(64, 48))
+    # sanity: GPS present before strip
+    assert piexif.load(str(src))['GPS']
+
+    btc.strip_and_verify(src, dst)
+
+    after = piexif.load(str(dst))
+    assert not after['GPS'] and not after['0th']
+    with Image.open(dst) as im:
+        assert im.size == (64, 48)
+
+
+def test_strip_and_verify_on_clean_jpeg_is_ok(tmp_path):
+    src = tmp_path / 'clean.jpg'
+    dst = tmp_path / 'clean_out.jpg'
+    Image.new('RGB', (32, 32), (1, 2, 3)).save(src, 'JPEG')  # no EXIF
+    btc.strip_and_verify(src, dst)  # must not raise
+    assert dst.is_file()
+
+
+def test_run_config_for_maps_thresh_to_loc_thresh():
+    rc = btc.run_config_for('v3')
+    assert rc['backend_device'] == 'cpu'
+    assert rc['loc_thresh'] == CONFIGS['v3']['thresh']
+    assert rc['slice_height'] == CONFIGS['v3']['slice_height']
+    assert rc['postprocess_class_agnostic'] == CONFIGS['v3']['postprocess_class_agnostic']
+
+
+def test_collect_runtime_has_required_keys(tmp_path):
+    lock = tmp_path / 'uv.lock'
+    lock.write_bytes(b'lockdata')
+    rt = btc.collect_runtime(lock)
+    for k in (
+        'scoutbot_version',
+        'scoutbot_commit',
+        'python',
+        'platform',
+        'platform_system',
+        'platform_machine',
+        'torch',
+        'numpy',
+        'lockfile_sha256',
+    ):
+        assert k in rt
+    assert rt['scoutbot_version'] == scoutbot.__version__
+    assert len(rt['lockfile_sha256']) == 64  # sha256 hex
+
+
+def test_build_manifest_shape():
+    images = [
+        {
+            'name': 'dense_01.jpg',
+            'tier': 'dense',
+            'md5': 'a' * 32,
+            'source_density': 11,
+            'baseline_detection_count': 11,
+        },
+    ]
+    runtime = {'scoutbot_version': '0.5.0'}
+    m = btc.build_manifest('v3', 5, images, runtime, model_md5='b' * 32)
+    assert m['schema'] == 'scoutbot:test-corpus:1.0'
+    assert m['model'] == {'config': 'v3', 'name': CONFIGS['v3']['name'], 'md5': 'b' * 32}
+    assert m['run_config']['loc_thresh'] == CONFIGS['v3']['thresh']
+    assert m['runtime'] is runtime
+    assert m['images'][0]['baseline_detection_count'] == 11
+    assert m['per_tier'] == 5
+
+
+def test_assert_model_present_missing_raises(monkeypatch, tmp_path):
+    monkeypatch.setattr(btc, 'get_models_dir', lambda: tmp_path)  # empty dir
+    with pytest.raises(SystemExit, match='fetch'):
+        btc.assert_model_present('v3')
