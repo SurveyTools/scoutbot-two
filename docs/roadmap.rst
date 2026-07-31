@@ -356,7 +356,7 @@ Linux/CUDA concurrency tuning, and future agentic pipeline tuning.
 Benchmark corpus design
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-**Status:** in-progress (density-tiered corpus builder specified)
+**Status:** in-progress (density-tiered corpus builder implemented; hosting/clearance pending)
 
 The current ``examples/`` corpus is useful for smoke tests but should not be assumed
 representative of production survey workloads. Define a small benchmark corpus with explicit
@@ -371,12 +371,12 @@ categories:
 The corpus metadata should make benchmark results comparable across machines and future model
 families without relying on informal memory of which images were used.
 
-A density-tiered corpus builder is now specified in
-``docs/specs/2026-07-31-scoutbot-test-corpus-builder-design.md``: it selects empty / typical /
+A density-tiered corpus builder is now implemented as ``tools/build_test_corpus.py`` (spec:
+``docs/specs/2026-07-31-scoutbot-test-corpus-builder-design.md``): it selects empty / typical /
 dense / extreme frames from the internal Matetsi survey using the scoutbot detection JSONL,
 GPS-strips them, and freezes CPU regression baselines — producing exactly these categories plus
-per-image tier metadata, consumed by a skip-if-absent regression test. Two follow-ups are gated on
-it:
+per-image tier metadata. A skip-if-absent regression test (``tests/test_corpus_regression.py``,
+gated on ``SCOUTBOT_TEST_CORPUS``) replays the frozen baselines. Two follow-ups are gated on it:
 
 * **Test-corpus hosting + public clearance** *(high priority).* The corpus is Matetsi-derived and
   internal-only; establishing imagery redistribution permission and a (private-then-public)

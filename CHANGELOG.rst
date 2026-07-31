@@ -5,6 +5,12 @@ Changelog
 Unreleased
 ----------
 
+* Added an internal test-corpus builder (``tools/build_test_corpus.py``) and an opt-in,
+  skip-if-absent CPU drift-regression test (``tests/test_corpus_regression.py``, gated on
+  ``SCOUTBOT_TEST_CORPUS``). The builder selects density-tiered frames from the internal Matetsi
+  survey, GPS/EXIF-strips them, and freezes CPU inference baselines with a pinned model + dependency
+  stack; the regression test replays them and asserts exact CPU parity when the stack matches. Adds
+  ``piexif`` to the ``test`` extra.
 * Removed the runtime ``dill`` dependency. The two bundled KAZA models were re-serialized with the
   current Ultralytics/torch stack so they load without ``dill`` (weights unchanged — CPU inference
   is bit-identical), re-hosted under date-tagged filenames
