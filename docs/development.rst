@@ -128,12 +128,24 @@ CI workflows
    locked-graph dependency audit (``uv audit --locked``), and a Bandit source-code security
    scan (``scoutbot/``, ``benchmarks/``, ``tools/``).
 
+``.github/workflows/cuda.yml``
+   Real-GPU validation that GitHub-hosted runners cannot provide. It targets a **self-hosted**
+   runner labelled ``self-hosted, linux, gpu`` and runs **on demand**
+   (``workflow_dispatch``) and weekly (Monday 06:00 UTC) rather than on every push/PR, to keep
+   GPU time bounded. The job asserts a CUDA device is visible (failing fast otherwise), then runs
+   the ``slow`` suite with ``SCOUTBOT_DEVICE=cuda:0`` (real ``cuda:0`` inference), a multiprocess
+   ``scoutbot batch-resumable --processes 2`` smoke, and ``benchmarks/benchmark_concurrency.py``,
+   publishing the run summaries to the job summary. It is inert until a matching GPU runner is
+   registered.
+
 GPU and CUDA
 ~~~~~~~~~~~~
 
-CUDA is not required in CI and is not tested there. For local contributors with NVIDIA hardware,
-CUDA support is best-effort: the package runs correctly on CPU without any GPU present. If you
-are testing on a GPU-enabled Windows machine, run the verification command in
+The default GitHub-hosted CI (``testing.yml`` / ``quality.yml``) has no GPU, so CUDA is not
+exercised there; the package runs correctly on CPU without any GPU present. Real-GPU coverage is
+provided separately by ``cuda.yml`` on a self-hosted GPU runner (see above), which is opt-in and
+runs on demand / weekly. For local contributors with NVIDIA hardware, CUDA support is best-effort.
+If you are testing on a GPU-enabled Windows machine, run the verification command in
 :doc:`installation` (Windows NVIDIA section) to confirm PyTorch detects the GPU before filing
 bug reports related to GPU behavior.
 

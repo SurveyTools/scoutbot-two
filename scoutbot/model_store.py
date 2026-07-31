@@ -18,8 +18,12 @@ from tqdm import tqdm
 
 from scoutbot import log
 from scoutbot._observability import emit
+from scoutbot.registry.paths import get_models_dir
 
-CACHE_DIR = Path.home() / '.cache' / 'scoutbot'
+# Downloaded model files and on-demand Core ML exports live in the shared OSW Model Registry
+# models directory (OSW_MODELS_DIR, default ``${OSW_HOME:-~/.osw}/models``), so the whole
+# toolchain footprint stays under one home rather than a separate ``~/.cache`` dot-directory.
+CACHE_DIR = get_models_dir()
 
 DEFAULT_CONFIG = os.getenv('LOC_CONFIG', os.getenv('CONFIG', 'v3')).strip().lower()
 
@@ -30,8 +34,8 @@ CONFIGS = {
         'sources': [
             {
                 'provider': 'gcs',
-                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt',
-                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5',
+                'url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt',
+                'md5_url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5',
             },
             {
                 'provider': 'azure',
@@ -53,8 +57,8 @@ CONFIGS = {
         'sources': [
             {
                 'provider': 'gcs',
-                'url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt',
-                'md5_url': 'https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5',
+                'url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt',
+                'md5_url': 'https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5',
             },
             {
                 'provider': 'azure',

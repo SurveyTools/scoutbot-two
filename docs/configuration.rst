@@ -66,6 +66,17 @@ Environment variables
        ``--processes N`` when ``N`` > 1. A worker that does not return a result within
        this many seconds is treated as dead, which aborts the run fail-fast (see
        `Parallel execution`_). Re-running the same command resumes the remaining work.
+   * - ``OSW_HOME``
+     - ``~/.osw``
+     - Shared Overhead Survey Workflow toolchain directory. The model registry and per-tool
+       registry paths default to sub-directories under it.
+   * - ``OSW_REGISTRY_PATH``
+     - ``$OSW_HOME/model-registry.json``
+     - Full path to the OSW Model Registry file. Overrides ``OSW_HOME`` for the registry location.
+   * - ``OSW_MODELS_DIR``
+     - ``$OSW_HOME/models``
+     - Directory holding the downloaded model files and on-demand Core ML exports. Overrides
+       ``OSW_HOME`` for the models location.
 
 Device guidance
 ---------------
@@ -100,8 +111,9 @@ detections across slice boundaries with class-agnostic NMS.
 Cache location
 --------------
 
-Models are cached at ``~/.cache/scoutbot/``. On Windows, this resolves under the user's home
-directory, for example ``C:\Users\<user>\.cache\scoutbot\``.
+Models are cached in the OSW models directory — ``OSW_MODELS_DIR`` (default ``~/.osw/models/``,
+under ``OSW_HOME``; see `Environment variables`_). On Windows this resolves under the user's home
+directory, for example ``C:\Users\<user>\.osw\models\``.
 
 PyTorch ``.pt`` models are downloaded and verified with MD5 sidecars. Core ML ``.mlpackage``
 bundles are exported locally from the verified source ``.pt`` model and cached in the same
@@ -110,10 +122,10 @@ directory.
 Model download sources
 ----------------------
 
-ScoutBot tries download sources in order and uses the first that succeeds.
+Scoutbot tries download sources in order and uses the first that succeeds.
 The built-in order is:
 
-1. **Google Cloud Storage** (``storage.googleapis.com/rebel-pipeline-public-models``) — primary
+1. **Google Cloud Storage** (``storage.googleapis.com/osw-public-models``) — primary
 2. **Azure Blob Storage** (``scoutmodels.blob.core.windows.net``) — fallback
 
 If GCS is unreachable or resets the connection mid-transfer, the download automatically retries

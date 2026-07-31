@@ -401,6 +401,12 @@ deadline (``SCOUTBOT_MP_RESULT_TIMEOUT``), and re-running the same command resum
 work. Every run emits a machine-readable summary (``summary_json`` / ``--summary-json``) with
 worker-balance and phase-timing fields.
 
+A CI harness for this now exists: ``.github/workflows/cuda.yml`` runs the ``slow`` suite on
+``cuda:0``, a multiprocess ``batch-resumable --processes 2`` smoke, and
+``benchmark_concurrency.py`` on a self-hosted GPU runner (opt-in, on-demand / weekly). It is inert
+until a runner labelled ``self-hosted, linux, gpu`` is registered; once attached it provides the
+recurring real-GPU validation this item needs.
+
 Internal priorities:
 
 1. land the resume-safe implementation and summary JSON output -- done
@@ -437,15 +443,15 @@ a re-fetch today, a user must manually delete the cached file and the registry e
 
 .. code-block:: bash
 
-   rm ~/.cache/scoutbot/<model-name>.pt
-   rm ~/.rebel-workflow/model-registry.json   # or edit the JSON to remove one entry
+   rm ~/.osw/models/<model-name>.pt
+   rm ~/.osw/model-registry.json   # or edit the JSON to remove one entry
 
 The cache also contains Core ML ``.mlpackage`` bundles (directory trees, not single files),
 which require ``rm -rf`` rather than ``rm``:
 
 .. code-block:: bash
 
-   rm -rf ~/.cache/scoutbot/<model-name>.mlpackage
+   rm -rf ~/.osw/models/<model-name>.mlpackage
 
 Two commands should be added:
 
@@ -479,6 +485,19 @@ The staged cleanup should:
 This cleanup should stay coupled to the broader registry/model-store work so the eventual
 deprecation does not break the offline-first model path or the existing test surface prematurely.
 
+Consolidate model resolution
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** planned
+
+Registry-backed model resolution is currently reachable through multiple paths —
+``scoutbot._resolve_model()``, ``scoutbot.model_store.fetch()``, and direct calls from several
+CLI commands (``pipeline`` / ``batch`` / ``batch-resumable`` each call ``_resolve_model`` and
+also fetch). This scattering is why registry error handling had to be centralized at the CLI
+group level (``_ScoutbotGroup``) rather than at the resolution boundary. Consolidate resolution
+behind a single well-defined entry point so registry access, ``--model`` / ``--config``
+resolution, provenance, and error handling live in one place.
+
 Model registry evolution / model-family lineage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -503,7 +522,7 @@ not just the local model cache. That contract should live in ``pipeline-design``
 * the split between survey-level registry facts and per-run provenance captured in detection
   outputs
 
-ScoutBot should continue to own the offline-first local registry, fetch plumbing, and CLI
+Scoutbot should continue to own the offline-first local registry, fetch plumbing, and CLI
 resolution. The survey-level artifact schema, validation rules, and stage-boundary semantics belong
 in ``pipeline-design`` so future model families can evolve without forcing another schema rewrite
 in this repository.

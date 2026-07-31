@@ -349,7 +349,7 @@ import pytest
 
 @pytest.fixture
 def isolated_registry_cli(tmp_path, monkeypatch):
-    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
     return tmp_path
 
 
@@ -624,3 +624,42 @@ def test_batch_resumable_cli_rejects_zero_processes(tmp_path):
         )
     assert result.exit_code != 0  # IntRange(min=1) rejects 0
     assert not mock_br.called
+
+
+@pytest.mark.parametrize(
+    'args',
+    [
+        ['models'],
+        ['fetch', '--config', 'v3'],
+        # --model forces _resolve_model() (scoutbot.py:127) — which reads the registry — to run
+        # BEFORE any image work, so the guard fires deterministically regardless of the image.
+        ['pipeline', '--model', 'unregistered', '__IMG__'],
+    ],
+)
+def test_cli_reports_incompatible_registry_cleanly(args, tmp_path, monkeypatch):
+    """A foreign/incompatible registry yields a clean non-zero CLI error, not a traceback."""
+    from scoutbot.registry import RegistrySchemaError
+    from scoutbot.scoutbot import cli
+
+    reg = tmp_path / 'registry.json'
+    reg.write_text('{"schema": "rw:local-model-cache:1.0", "models": {}}')
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(reg))
+    # Isolate the model cache too: model_store.fetch() creates CACHE_DIR (default
+    # ~/.cache/scoutbot) before it reads the registry, so without this the `fetch` case would
+    # touch the real user cache during the test.
+    from scoutbot import model_store
+
+    monkeypatch.setattr(model_store, 'CACHE_DIR', tmp_path / 'cache')
+
+    if args[-1] == '__IMG__':
+        img = tmp_path / 'img.jpg'
+        img.write_bytes(
+            b''
+        )  # exists → passes the filepath validator; not decoded (registry raises first)
+        args = args[:-1] + [str(img)]
+
+    result = CliRunner().invoke(cli, args)
+    assert result.exit_code != 0
+    # Handled as a clean Click error, not leaked as an unhandled RegistrySchemaError traceback:
+    assert not isinstance(result.exception, RegistrySchemaError)
+    assert 'OSW_REGISTRY_PATH' in result.output

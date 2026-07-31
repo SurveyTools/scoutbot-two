@@ -9,7 +9,13 @@ from typing import Optional
 
 from scoutbot.registry.schema import ModelEntry
 
-SCHEMA_ID = 'rw:local-model-cache:1.0'
+SCHEMA_FAMILY = 'osw:model-registry'
+SCHEMA_MAJOR = 1
+SCHEMA_ID = f'{SCHEMA_FAMILY}:{SCHEMA_MAJOR}.0'
+
+
+class RegistrySchemaError(RuntimeError):
+    """Raised when the registry file is not a compatible osw:local-model-cache registry."""
 
 
 def _registry_path() -> Path:
@@ -18,12 +24,46 @@ def _registry_path() -> Path:
     return get_registry_path()
 
 
+def _schema_error(path: Path, detail: str) -> str:
+    return (
+        f'{path} is not a compatible {SCHEMA_FAMILY}:{SCHEMA_MAJOR}.* registry ({detail}). '
+        f'Set OSW_REGISTRY_PATH to point scoutbot at a different registry file.'
+    )
+
+
+def _check_schema(path: Path, schema: object) -> None:
+    if not isinstance(schema, str):
+        raise RegistrySchemaError(
+            _schema_error(path, f'missing or non-string "schema": {schema!r}')
+        )
+    parts = schema.split(':')
+    if len(parts) != 3:
+        raise RegistrySchemaError(_schema_error(path, f'malformed schema id {schema!r}'))
+    family = ':'.join(parts[:2])
+    if family != SCHEMA_FAMILY:
+        raise RegistrySchemaError(_schema_error(path, f'wrong schema family {family!r}'))
+    version = parts[2].split('.')
+    if len(version) != 2 or not all(v.isdigit() for v in version):
+        raise RegistrySchemaError(_schema_error(path, f'malformed version {parts[2]!r}'))
+    if int(version[0]) != SCHEMA_MAJOR:
+        raise RegistrySchemaError(
+            _schema_error(path, f'incompatible major schema version {schema!r}')
+        )
+
+
 def _read_raw() -> dict:
     path = _registry_path()
     if not path.exists():
         return {'schema': SCHEMA_ID, 'models': {}}
-    with open(path, 'r') as f:
-        return json.load(f)
+    try:
+        with open(path, 'r') as f:
+            data = json.load(f)
+    except json.JSONDecodeError as exc:
+        raise RegistrySchemaError(_schema_error(path, f'not valid JSON: {exc}')) from exc
+    if not isinstance(data, dict):
+        raise RegistrySchemaError(_schema_error(path, 'top-level JSON is not an object'))
+    _check_schema(path, data.get('schema'))
+    return data
 
 
 def _write_raw(data: dict) -> None:

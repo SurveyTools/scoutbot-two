@@ -14,6 +14,7 @@ import click
 
 import scoutbot
 from scoutbot import loc, log
+from scoutbot.registry import RegistrySchemaError
 
 
 def pipeline_filepath_validator(ctx, param, value):
@@ -435,7 +436,7 @@ def get_classes(config, output):
 def register_model(
     name, path, arch, description, threshold, slice_height, slice_width, overlap
 ):
-    """Register a local model file in the Rebel Workflow model registry."""
+    """Register a local model file in the Overhead Survey Workflow (OSW) model registry."""
     import sys
     from datetime import datetime, timezone
     from pathlib import Path as _Path
@@ -508,7 +509,18 @@ def models_info(name):
     print(json.dumps(entry.to_dict(), indent=2))
 
 
-@click.group()
+class _ScoutbotGroup(click.Group):
+    """Convert a RegistrySchemaError raised by any subcommand into a clean Click error
+    (message, non-zero exit, no traceback)."""
+
+    def invoke(self, ctx):
+        try:
+            return super().invoke(ctx)
+        except RegistrySchemaError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+
+@click.group(cls=_ScoutbotGroup)
 def cli():
     """
     ScoutBot CLI - YOLOv8-based wildlife detection in aerial imagery.

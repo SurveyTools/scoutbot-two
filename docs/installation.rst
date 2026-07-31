@@ -20,7 +20,7 @@ Use this when you want to run Scoutbot directly from a clone:
    cd scoutbot-2026
    uv pip install -e .
 
-Models are downloaded automatically on first use and cached at ``~/.cache/scoutbot/``. To fetch
+Models are downloaded automatically on first use and cached at ``~/.osw/models/``. To fetch
 models explicitly:
 
 .. code-block:: bash
@@ -75,7 +75,7 @@ Then use a Core ML config:
    uv run scoutbot batch *.jpg --config v3-coreml --no-progress
 
 The ``.mlpackage`` bundle is exported on first use from the source ``.pt`` model and cached at
-``~/.cache/scoutbot/``. Export can also be triggered explicitly:
+``~/.osw/models/``. Export can also be triggered explicitly:
 
 .. code-block:: bash
 

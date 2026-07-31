@@ -2,7 +2,7 @@ Models
 ------
 
 Scoutbot v3 uses YOLOv8 models trained on KAZA aerial survey data. PyTorch ``.pt`` models are
-downloaded automatically on first use and cached at ``~/.cache/scoutbot/``. Core ML
+downloaded automatically on first use and cached at ``~/.osw/models/``. Core ML
 ``.mlpackage`` bundles are exported locally from those source ``.pt`` models.
 
 Model configs
@@ -49,8 +49,8 @@ which these do not — so the filenames carry a ``20260729`` build tag.
 
   *GCS (primary)*
 
-  * Model: https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt
-  * MD5:   https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5
+  * Model: https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt
+  * MD5:   https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-onecls.kaza.20260729.pt.md5
 
   *Azure (fallback)*
 
@@ -61,8 +61,8 @@ which these do not — so the filenames carry a ``20260729`` build tag.
 
   *GCS (primary)*
 
-  * Model: https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt
-  * MD5:   https://storage.googleapis.com/rebel-pipeline-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5
+  * Model: https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt
+  * MD5:   https://storage.googleapis.com/osw-public-models/scoutbot/yolov8-cls.kaza.20260729.pt.md5
 
   *Azure (fallback)*
 
@@ -80,7 +80,7 @@ not part of this catalog and are unaffected by the ``dill`` re-serialization: th
 through the PyTorch pickle path and keep their existing names and URLs.
 
 Core ML configs do not have hosted ``.mlpackage`` artifacts. Scoutbot exports them on demand from
-the verified source ``.pt`` model and stores the resulting bundle in ``~/.cache/scoutbot/``.
+the verified source ``.pt`` model and stores the resulting bundle in ``~/.osw/models/``.
 
 Integrity verification
 ~~~~~~~~~~~~~~~~~~~~~~

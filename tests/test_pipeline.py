@@ -305,7 +305,7 @@ import pytest
 
 @pytest.fixture
 def registry_with_model(tmp_path, monkeypatch):
-    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(tmp_path / 'registry.json'))
     model_file = tmp_path / 'model.pt'
     model_file.write_bytes(b'fake')
     from scoutbot import registry
@@ -360,7 +360,7 @@ def test_resolve_model_override_threshold(registry_with_model):
 
 
 def test_resolve_model_raises_when_not_registered(tmp_path, monkeypatch):
-    monkeypatch.setenv('RW_REGISTRY_PATH', str(tmp_path / 'empty.json'))
+    monkeypatch.setenv('OSW_REGISTRY_PATH', str(tmp_path / 'empty.json'))
     from scoutbot import _resolve_model
 
     with pytest.raises(RuntimeError, match='not found in registry'):
