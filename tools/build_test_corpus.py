@@ -227,3 +227,40 @@ def build_manifest(
         'runtime': runtime,
         'images': images,
     }
+
+
+_EMITTED_FILES = ('manifest.json', 'baselines.jsonl', 'README.md')
+
+
+def source_segments(
+    records: list[dict], jsonl_source_root: str, matetsi_root: Path
+) -> set[str]:
+    """Forbidden source-derived tokens: the roots plus every selected record's path parts + basename.
+
+    Deliberately does NOT include the bare '/' — the README carries commands and corpus-relative
+    paths — so the scan targets source tokens, not path separators. Tier labels are excluded because
+    they are legitimate emitted vocabulary (opaque names, manifest 'tier').
+    """
+    forbidden: set[str] = {
+        jsonl_source_root,
+        jsonl_source_root.rstrip('/'),
+        str(matetsi_root),
+    }
+    for r in records:
+        parts = [p for p in r['filepath'].split('/') if p]
+        forbidden.update(parts)
+        if parts:
+            forbidden.add(Path(parts[-1]).stem)  # basename without extension
+    return {f for f in forbidden if f} - set(TIERS)
+
+
+def assert_no_source_identifiers(corpus_dir: Path, forbidden: set[str]) -> None:
+    """Fail the build if any emitted file leaks a source-derived token (governance-critical)."""
+    for name in _EMITTED_FILES:
+        path = corpus_dir / name
+        if not path.exists():
+            continue
+        text = path.read_text()
+        for token in forbidden:
+            if token and token in text:
+                raise AssertionError(f'Source identifier {token!r} leaked into {name}')

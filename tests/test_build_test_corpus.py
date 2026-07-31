@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import build_test_corpus as btc
 import piexif
 import pytest
@@ -180,3 +182,43 @@ def test_assert_model_present_missing_raises(monkeypatch, tmp_path):
     monkeypatch.setattr(btc, 'get_models_dir', lambda: tmp_path)  # empty dir
     with pytest.raises(SystemExit, match='fetch'):
         btc.assert_model_present('v3')
+
+
+def test_source_segments_collects_path_parts_and_basenames():
+    records = [
+        {'filepath': '/home/brandon/matetsi_images/141025_day1/flight1/left/BCK_0001.JPG'}
+    ]
+    segs = btc.source_segments(
+        records, '/home/brandon/matetsi_images', Path('/vol/matetsi/images')
+    )
+    assert '/home/brandon/matetsi_images' in segs
+    assert '/vol/matetsi/images' in segs
+    assert '141025_day1' in segs
+    assert 'left' in segs
+    assert 'BCK_0001.JPG' in segs
+    assert 'BCK_0001' in segs  # stem too
+
+
+def test_source_segments_excludes_tier_labels():
+    # A source dir that happens to equal a tier name must NOT become a forbidden token — tier
+    # labels are legitimate emitted vocabulary.
+    records = [{'filepath': '/home/brandon/matetsi_images/dense/left/CAM_0001.JPG'}]
+    segs = btc.source_segments(records, '/home/brandon/matetsi_images', Path('/vol/x'))
+    assert 'dense' not in segs
+    assert 'CAM_0001' in segs
+
+
+def test_assert_no_source_identifiers_flags_leak(tmp_path):
+    (tmp_path / 'manifest.json').write_text('{"note": "from 141025_day1/left"}')
+    with pytest.raises(AssertionError, match='141025_day1'):
+        btc.assert_no_source_identifiers(tmp_path, {'141025_day1'})
+
+
+def test_assert_no_source_identifiers_allows_readme_paths(tmp_path):
+    # README legitimately carries commands, env vars, and corpus-relative paths — '/' is fine.
+    (tmp_path / 'README.md').write_text(
+        'Set `SCOUTBOT_TEST_CORPUS=/path/to/corpus` and run `uv run pytest tests/`.\n'
+    )
+    btc.assert_no_source_identifiers(
+        tmp_path, {'141025_day1', 'BCK_0001'}
+    )  # must not raise
