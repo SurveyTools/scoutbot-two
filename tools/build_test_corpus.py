@@ -8,10 +8,12 @@ network I/O; the model must already be present locally.
 
 from __future__ import annotations
 
+import argparse
 import hashlib
+import json
 import platform
 import shutil
-import subprocess
+import subprocess  # nosec B404: used only for `git rev-parse` provenance (fixed argv, no shell)
 from datetime import datetime, timezone
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
@@ -264,3 +266,143 @@ def assert_no_source_identifiers(corpus_dir: Path, forbidden: set[str]) -> None:
         for token in forbidden:
             if token and token in text:
                 raise AssertionError(f'Source identifier {token!r} leaked into {name}')
+
+
+def render_readme(config: str, per_tier: int) -> str:
+    """Provenance/governance note. Opaque IDs only — no source filenames or paths."""
+    return (
+        '# Scoutbot Test Corpus (internal)\n\n'
+        'Density-tiered scoutbot regression/benchmark corpus derived from an **internal** survey.\n\n'
+        '> INTERNAL USE ONLY — GPS/EXIF-stripped, opaque IDs. **Not cleared for public '
+        'distribution** until redistribution permission is established.\n\n'
+        f'- Model config: `{config}`\n'
+        f'- Images per tier: {per_tier} (tiers: empty, typical, dense, extreme)\n'
+        '- Baselines: frozen scoutbot CPU output (`baselines.jsonl`); a drift-regression anchor, '
+        'not human ground truth.\n\n'
+        '## Consuming it\n\n'
+        'Point the regression test at this directory:\n\n'
+        '```\n'
+        'SCOUTBOT_TEST_CORPUS=/path/to/this/corpus uv run pytest tests/test_corpus_regression.py\n'
+        '```\n'
+    )
+
+
+def build_corpus(
+    matetsi_jsonl: Path,
+    jsonl_source_root: str,
+    matetsi_root: Path,
+    out_dir: Path,
+    per_tier: int,
+    config: str,
+    force: bool = False,
+) -> dict:
+    """Select → resolve → strip → freeze → write corpus. No network I/O; model must be local."""
+    images_dir = out_dir / 'images'
+    # WHY: fail fast before any expensive work. Refuse ANY non-empty output dir unless --force —
+    # stale images, or a stale manifest/baselines/README left by a rebuild that failed midway, would
+    # silently corrupt the corpus. With --force we clear the whole output dir, not just images/.
+    if out_dir.exists() and any(out_dir.iterdir()):
+        if not force:
+            raise SystemExit(
+                f'Output dir {out_dir} is non-empty; pass --force to overwrite.'
+            )
+        shutil.rmtree(out_dir)
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    model_path = assert_model_present(config)
+    model_md5 = model_store._md5(model_path) if CONFIGS[config].get('md5') else 'unknown'
+
+    records = [
+        json.loads(line)
+        for line in matetsi_jsonl.read_text().splitlines()
+        if line.strip()
+    ]
+    selected = select_tiers(records, per_tier)
+    rc = run_config_for(config)
+
+    image_records: list[dict] = []
+    baselines: list[dict] = []
+    used_records: list[dict] = []
+    for tier in TIERS:
+        for idx, rec in enumerate(selected[tier], start=1):
+            used_records.append(rec)
+            name = f'{tier}_{idx:02d}.jpg'
+            dst = images_dir / name
+            strip_and_verify(
+                resolve_local(rec['filepath'], jsonl_source_root, matetsi_root), dst
+            )
+
+            wic, detections = scoutbot.pipeline(
+                str(dst),
+                config=config,
+                backend_device='cpu',
+                loc_thresh=rc['loc_thresh'],
+                slice_height=rc['slice_height'],
+                slice_width=rc['slice_width'],
+                overlap_height_ratio=rc['overlap_height_ratio'],
+                overlap_width_ratio=rc['overlap_width_ratio'],
+                perform_standard_pred=rc['perform_standard_pred'],
+                postprocess_class_agnostic=rc['postprocess_class_agnostic'],
+            )
+            baselines.append(
+                {
+                    'name': name,
+                    'tier': tier,
+                    'wic': wic,
+                    'detections': detections,
+                    'baseline_detection_count': len(detections),
+                }
+            )
+            image_records.append(
+                {
+                    'name': name,
+                    'tier': tier,
+                    'md5': model_store._md5(dst),
+                    'source_density': rec['_count'],
+                    'baseline_detection_count': len(detections),
+                }
+            )
+
+    (out_dir / 'baselines.jsonl').write_text(
+        ''.join(json.dumps(b) + '\n' for b in baselines)
+    )
+    runtime = collect_runtime(Path(__file__).resolve().parents[1] / 'uv.lock')
+    manifest = build_manifest(config, per_tier, image_records, runtime, model_md5)
+    (out_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+    (out_dir / 'README.md').write_text(render_readme(config, per_tier))
+
+    # Governance gate — fail the build if any source token leaked into an emitted file.
+    assert_no_source_identifiers(
+        out_dir, source_segments(used_records, jsonl_source_root, matetsi_root)
+    )
+    return manifest
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description='Build a scoutbot test corpus from Matetsi.'
+    )
+    parser.add_argument('--matetsi-jsonl', required=True, type=Path)
+    parser.add_argument('--jsonl-source-root', required=True)
+    parser.add_argument('--matetsi-root', required=True, type=Path)
+    parser.add_argument('-o', '--out', required=True, type=Path)
+    parser.add_argument('--per-tier', type=int, default=5)
+    parser.add_argument('--config', default='v3')
+    parser.add_argument(
+        '--force', action='store_true', help='overwrite a non-empty output images/ dir'
+    )
+    args = parser.parse_args(argv)
+    manifest = build_corpus(
+        args.matetsi_jsonl,
+        args.jsonl_source_root,
+        args.matetsi_root,
+        args.out,
+        args.per_tier,
+        args.config,
+        args.force,
+    )
+    print(f'Wrote corpus with {len(manifest["images"])} images to {args.out}')
+
+
+if __name__ == '__main__':
+    main()

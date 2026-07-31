@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import build_test_corpus as btc
@@ -222,3 +223,78 @@ def test_assert_no_source_identifiers_allows_readme_paths(tmp_path):
     btc.assert_no_source_identifiers(
         tmp_path, {'141025_day1', 'BCK_0001'}
     )  # must not raise
+
+
+def test_build_corpus_end_to_end(tmp_path, monkeypatch):
+    # 1 empty + 5 typical + 5 dense + 5 extreme synthetic source images with unique suffixes.
+    src_root = '/home/brandon/matetsi_images'
+    matetsi_root = tmp_path / 'images'
+    # Neutral Matetsi-like source paths — camera-native basenames, NO tier names in the path (a tier
+    # name as a source segment would otherwise be a legitimate emitted token, not a leak).
+    counts = [('A', 0, 5), ('B', 4, 5), ('C', 11, 5), ('D', 50, 5)]
+    records = []
+    for cam, c, n in counts:
+        for i in range(n):
+            rel = f'day1/flight1/left/{cam}CK_{i:04d}.JPG'
+            local = matetsi_root / rel
+            local.parent.mkdir(parents=True, exist_ok=True)
+            _jpeg_with_gps(local, size=(48, 32))
+            records.append(
+                {'filepath': f'{src_root}/{rel}', 'detections': [{} for _ in range(c)]}
+            )
+    jsonl = tmp_path / 'results.jsonl'
+    jsonl.write_text(''.join(json.dumps(r) + '\n' for r in records))
+
+    # No model download, no real inference, no network — but the freeze still hashes the model file
+    # for the manifest, so point the (bypassed) preflight at a dummy local file that exists.
+    fake_model = tmp_path / 'fake.pt'
+    fake_model.write_bytes(b'model-bytes')
+    monkeypatch.setattr(btc, 'assert_model_present', lambda config: fake_model)
+
+    def fake_pipeline(img, config=None, **kw):
+        assert kw['backend_device'] == 'cpu'
+        return 0.5, [{'l': 'detection', 'c': 0.5, 'x': 1, 'y': 2, 'w': 3, 'h': 4}]
+
+    monkeypatch.setattr(btc.scoutbot, 'pipeline', fake_pipeline)
+
+    out = tmp_path / 'corpus'
+    manifest = btc.build_corpus(
+        matetsi_jsonl=jsonl,
+        jsonl_source_root=src_root,
+        matetsi_root=matetsi_root,
+        out_dir=out,
+        per_tier=5,
+        config='v3',
+    )
+
+    # Flat images/ dir, 20 opaque tier-prefixed images, all EXIF-clean.
+    imgs = sorted((out / 'images').glob('*.jpg'))
+    assert len(imgs) == 20
+    assert all(not piexif.load(str(p))['GPS'] for p in imgs)
+    assert (out / 'baselines.jsonl').exists()
+    assert (out / 'manifest.json').exists()
+    assert (out / 'README.md').exists()
+    # Baselines carry baseline_detection_count.
+    first = json.loads((out / 'baselines.jsonl').read_text().splitlines()[0])
+    assert first['baseline_detection_count'] == 1
+    # Governance: no source token leaked (would have raised inside build_corpus otherwise).
+    assert manifest['schema'] == 'scoutbot:test-corpus:1.0'
+    assert len(manifest['images']) == 20
+
+
+def test_build_corpus_refuses_nonempty_out_without_force(tmp_path, monkeypatch):
+    monkeypatch.setattr(btc, 'assert_model_present', lambda config: tmp_path / 'fake.pt')
+    jsonl = tmp_path / 'results.jsonl'
+    jsonl.write_text('')
+    out = tmp_path / 'corpus'
+    (out / 'images').mkdir(parents=True)
+    (out / 'images' / 'stale.jpg').write_bytes(b'old')
+    with pytest.raises(SystemExit, match='force'):
+        btc.build_corpus(
+            matetsi_jsonl=jsonl,
+            jsonl_source_root='/r',
+            matetsi_root=tmp_path,
+            out_dir=out,
+            per_tier=5,
+            config='v3',
+        )
