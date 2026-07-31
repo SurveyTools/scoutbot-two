@@ -37,3 +37,48 @@ def resolve_local(filepath: str, jsonl_source_root: str, matetsi_root: Path) -> 
     if not local.is_file():
         raise FileNotFoundError(f'Resolved local image does not exist: {local}')
     return local
+
+
+def _bucket(records: list[dict], lo: int, hi: int) -> list[dict]:
+    return [r for r in records if lo <= r['_count'] <= hi]
+
+
+def _evenly_spaced(items: list[dict], n: int) -> list[dict]:
+    """Pick ``n`` evenly-spaced items from a sorted list (not first-``n``, which clusters at an edge)."""
+    if n >= len(items):
+        return list(items)
+    if n == 1:
+        return [items[len(items) // 2]]
+    step = (len(items) - 1) / (n - 1)
+    return [items[round(i * step)] for i in range(n)]
+
+
+def select_tiers(records: list[dict], per_tier: int) -> dict[str, list[dict]]:
+    """Bucket JSONL records into density tiers and deterministically pick ``per_tier`` from each.
+
+    Selection is over records only — never a directory walk. Bands are exact inclusive integer
+    bounds derived from the Matetsi distribution. ``empty``/``typical``/``dense`` pick evenly-spaced
+    across the (count, filepath)-sorted bucket; ``extreme`` (count >= 14, disjoint from ``dense``)
+    takes the top-``per_tier`` descending so the global max is always included. The ``filepath``
+    tiebreak orders deterministically and is never emitted. Raises if a tier is short.
+    """
+    recs = [{**r, '_count': len(r.get('detections', []))} for r in records]
+    buckets = {
+        'empty': _bucket(recs, 0, 0),
+        'typical': _bucket(recs, 3, 6),
+        'dense': _bucket(recs, 9, 13),
+        'extreme': _bucket(recs, 14, 10**9),
+    }
+    out: dict[str, list[dict]] = {}
+    for tier in TIERS:
+        pool = sorted(buckets[tier], key=lambda r: (r['_count'], r['filepath']))
+        if tier == 'extreme':
+            picked = list(reversed(pool))[:per_tier]
+        else:
+            picked = _evenly_spaced(pool, per_tier)
+        if len(picked) < per_tier:
+            raise ValueError(
+                f'Tier {tier!r} has only {len(picked)} candidate(s) (< --per-tier {per_tier})'
+            )
+        out[tier] = picked
+    return out
