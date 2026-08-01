@@ -61,6 +61,31 @@ Run coverage on the fast suite:
 
    uv run pytest -m "not slow" --cov=scoutbot --cov-report=html
 
+Internal test corpus
+~~~~~~~~~~~~~~~~~~~~~
+
+``tools/build_test_corpus.py`` builds a density-tiered, GPS-stripped scoutbot test corpus from the
+internal Matetsi survey (maintainer-only; requires local Matetsi and a locally-present model — it
+performs no network I/O). It freezes CPU inference baselines a regression test replays.
+
+.. code-block:: bash
+
+   uv run python tools/build_test_corpus.py \
+     --matetsi-jsonl <scoutbot_results.jsonl> \
+     --jsonl-source-root /home/brandon/matetsi_images \
+     --matetsi-root <local>/matetsi/images \
+     -o <corpus-dir> [--per-tier 5] [--config v3]
+
+The regression test is slow and opt-in — it is skipped unless ``SCOUTBOT_TEST_CORPUS`` points at a
+corpus directory, so public CI is unaffected:
+
+.. code-block:: bash
+
+   SCOUTBOT_TEST_CORPUS=<corpus-dir> uv run pytest tests/test_corpus_regression.py
+
+It asserts exact CPU parity to the frozen baselines only when the model, ``uv.lock``, key library
+versions, and platform match the manifest; otherwise it skips (re-run the builder to re-freeze).
+
 Testing philosophy
 ~~~~~~~~~~~~~~~~~~
 

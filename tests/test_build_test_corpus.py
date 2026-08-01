@@ -1,0 +1,339 @@
+import json
+from pathlib import Path
+
+import build_test_corpus as btc
+import piexif
+import pytest
+from PIL import Image
+
+import scoutbot
+from scoutbot.model_store import CONFIGS
+
+
+def test_resolve_local_full_suffix_ignores_basename_collisions(tmp_path):
+    # Two sibling dirs hold the SAME basename; full-suffix resolution must land on the right file.
+    src_root = '/home/brandon/matetsi_images'
+    left = tmp_path / 'day1' / 'flight1' / 'left'
+    right = tmp_path / 'day1' / 'flight1' / 'right'
+    left.mkdir(parents=True)
+    right.mkdir(parents=True)
+    (left / 'BCK_0001.JPG').write_bytes(b'L')
+    (right / 'BCK_0001.JPG').write_bytes(b'R')
+
+    got = btc.resolve_local(
+        f'{src_root}/day1/flight1/right/BCK_0001.JPG', src_root, tmp_path
+    )
+    assert got == right / 'BCK_0001.JPG'
+    assert got.read_bytes() == b'R'
+
+
+def test_resolve_local_missing_file_raises(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        btc.resolve_local(
+            '/home/brandon/matetsi_images/day1/nope.JPG',
+            '/home/brandon/matetsi_images',
+            tmp_path,
+        )
+
+
+def test_resolve_local_foreign_prefix_raises(tmp_path):
+    with pytest.raises(ValueError):
+        btc.resolve_local('/mnt/e/other/x.JPG', '/home/brandon/matetsi_images', tmp_path)
+
+
+def test_resolve_local_rejects_traversal(tmp_path):
+    # Maintainer tool consuming path strings from a JSONL — refuse '..' escaping the root.
+    with pytest.raises(ValueError, match='traversal|escapes'):
+        btc.resolve_local(
+            '/home/brandon/matetsi_images/../../etc/passwd',
+            '/home/brandon/matetsi_images',
+            tmp_path,
+        )
+
+
+def _rec(fp, n):
+    return {'filepath': fp, 'detections': [{} for _ in range(n)]}
+
+
+def test_select_tiers_buckets_and_counts():
+    records = (
+        [_rec(f'/r/empty{i}.jpg', 0) for i in range(6)]
+        + [_rec(f'/r/typ{i}.jpg', c) for i, c in enumerate([3, 4, 5, 6, 4, 5])]
+        + [_rec(f'/r/den{i}.jpg', c) for i, c in enumerate([9, 10, 11, 12, 13, 10])]
+        + [_rec(f'/r/ext{i}.jpg', c) for i, c in enumerate([20, 40, 80, 175, 30, 14])]
+        # counts 1,2,7,8 fall in no tier and must be ignored:
+        + [_rec('/r/gap1.jpg', 1), _rec('/r/gap7.jpg', 7), _rec('/r/gap8.jpg', 8)]
+    )
+    picked = btc.select_tiers(records, per_tier=3)
+    assert set(picked) == set(btc.TIERS)
+    for tier in btc.TIERS:
+        assert len(picked[tier]) == 3
+    assert all(r['_count'] == 0 for r in picked['empty'])
+    assert all(3 <= r['_count'] <= 6 for r in picked['typical'])
+    assert all(9 <= r['_count'] <= 13 for r in picked['dense'])
+    assert all(r['_count'] >= 14 for r in picked['extreme'])
+    # extreme is top-N desc → always includes the global max (175)
+    assert max(r['_count'] for r in picked['extreme']) == 175
+
+
+def test_select_tiers_is_deterministic():
+    records = [_rec(f'/r/den{i}.jpg', c) for i, c in enumerate([9, 10, 11, 12, 13])] + [
+        _rec(f'/r/e{i}.jpg', c) for i, c in enumerate([0, 0, 0, 4, 5, 6, 20, 40, 60])
+    ]
+    a = btc.select_tiers(records, per_tier=2)
+    b = btc.select_tiers(records, per_tier=2)
+    assert [r['filepath'] for r in a['dense']] == [r['filepath'] for r in b['dense']]
+
+
+def test_select_tiers_short_bucket_raises():
+    records = (
+        [_rec('/r/e1.jpg', 0)]
+        + [_rec(f'/r/t{i}.jpg', 4) for i in range(5)]
+        + [_rec(f'/r/d{i}.jpg', 10) for i in range(5)]
+        + [_rec(f'/r/x{i}.jpg', 50) for i in range(5)]
+    )
+    with pytest.raises(ValueError, match='empty'):
+        btc.select_tiers(records, per_tier=5)  # only 1 empty available
+
+
+def _jpeg_with_gps(path, size=(64, 48)):
+    Image.new('RGB', size, (10, 20, 30)).save(path, 'JPEG')
+    exif = {
+        '0th': {piexif.ImageIFD.Make: b'TestCam'},
+        'GPS': {piexif.GPSIFD.GPSLatitudeRef: b'S'},
+        'Exif': {},
+        '1st': {},
+        'thumbnail': None,
+    }
+    piexif.insert(piexif.dump(exif), str(path))
+
+
+def test_strip_and_verify_removes_gps_and_keeps_dimensions(tmp_path):
+    src = tmp_path / 'src.jpg'
+    dst = tmp_path / 'dst.jpg'
+    _jpeg_with_gps(src, size=(64, 48))
+    # sanity: GPS present before strip
+    assert piexif.load(str(src))['GPS']
+
+    btc.strip_and_verify(src, dst)
+
+    after = piexif.load(str(dst))
+    assert not after['GPS'] and not after['0th']
+    with Image.open(dst) as im:
+        assert im.size == (64, 48)
+
+
+def test_strip_and_verify_on_clean_jpeg_is_ok(tmp_path):
+    src = tmp_path / 'clean.jpg'
+    dst = tmp_path / 'clean_out.jpg'
+    Image.new('RGB', (32, 32), (1, 2, 3)).save(src, 'JPEG')  # no EXIF
+    btc.strip_and_verify(src, dst)  # must not raise
+    assert dst.is_file()
+
+
+def test_run_config_for_maps_thresh_to_loc_thresh():
+    rc = btc.run_config_for('v3')
+    assert rc['backend_device'] == 'cpu'
+    assert rc['loc_thresh'] == CONFIGS['v3']['thresh']
+    assert rc['slice_height'] == CONFIGS['v3']['slice_height']
+    assert rc['postprocess_class_agnostic'] == CONFIGS['v3']['postprocess_class_agnostic']
+
+
+def test_collect_runtime_has_required_keys(tmp_path):
+    lock = tmp_path / 'uv.lock'
+    lock.write_bytes(b'lockdata')
+    rt = btc.collect_runtime(lock)
+    for k in (
+        'scoutbot_version',
+        'scoutbot_commit',
+        'python',
+        'platform',
+        'platform_system',
+        'platform_machine',
+        'torch',
+        'numpy',
+        'lockfile_sha256',
+    ):
+        assert k in rt
+    assert rt['scoutbot_version'] == scoutbot.__version__
+    assert len(rt['lockfile_sha256']) == 64  # sha256 hex
+
+
+def test_build_manifest_shape():
+    images = [
+        {
+            'name': 'dense_01.jpg',
+            'tier': 'dense',
+            'md5': 'a' * 32,
+            'source_density': 11,
+            'baseline_detection_count': 11,
+        },
+    ]
+    runtime = {'scoutbot_version': '0.5.0'}
+    m = btc.build_manifest('v3', 5, images, runtime, model_md5='b' * 32)
+    assert m['schema'] == 'scoutbot:test-corpus:1.0'
+    assert m['model'] == {'config': 'v3', 'name': CONFIGS['v3']['name'], 'md5': 'b' * 32}
+    assert m['run_config']['loc_thresh'] == CONFIGS['v3']['thresh']
+    assert m['runtime'] is runtime
+    assert m['images'][0]['baseline_detection_count'] == 11
+    assert m['per_tier'] == 5
+
+
+def test_assert_model_present_missing_raises(monkeypatch, tmp_path):
+    # Point model_store.CACHE_DIR (where the preflight looks) at an empty dir.
+    monkeypatch.setattr(btc.model_store, 'CACHE_DIR', tmp_path)
+    with pytest.raises(SystemExit, match='fetch'):
+        btc.assert_model_present('v3')
+
+
+def test_source_segments_collects_path_parts_and_basenames():
+    records = [
+        {'filepath': '/home/brandon/matetsi_images/141025_day1/flight1/left/BCK_0001.JPG'}
+    ]
+    segs = btc.source_segments(
+        records, '/home/brandon/matetsi_images', Path('/vol/matetsi/images')
+    )
+    assert '/home/brandon/matetsi_images' in segs
+    assert '/vol/matetsi/images' in segs
+    assert '141025_day1' in segs
+    assert 'left' in segs
+    assert 'BCK_0001.JPG' in segs
+    assert 'BCK_0001' in segs  # stem too
+
+
+def test_source_segments_excludes_tier_labels():
+    # A source dir that happens to equal a tier name must NOT become a forbidden token — tier
+    # labels are legitimate emitted vocabulary.
+    records = [{'filepath': '/home/brandon/matetsi_images/dense/left/CAM_0001.JPG'}]
+    segs = btc.source_segments(records, '/home/brandon/matetsi_images', Path('/vol/x'))
+    assert 'dense' not in segs
+    assert 'CAM_0001' in segs
+
+
+def test_assert_no_source_identifiers_flags_leak(tmp_path):
+    (tmp_path / 'manifest.json').write_text('{"note": "from 141025_day1/left"}')
+    with pytest.raises(AssertionError, match='141025_day1'):
+        btc.assert_no_source_identifiers(tmp_path, {'141025_day1'})
+
+
+def test_assert_no_source_identifiers_allows_readme_paths(tmp_path):
+    # README legitimately carries commands, env vars, and corpus-relative paths — '/' is fine.
+    (tmp_path / 'README.md').write_text(
+        'Set `SCOUTBOT_TEST_CORPUS=/path/to/corpus` and run `uv run pytest tests/`.\n'
+    )
+    btc.assert_no_source_identifiers(
+        tmp_path, {'141025_day1', 'BCK_0001'}
+    )  # must not raise
+
+
+def test_build_corpus_end_to_end(tmp_path, monkeypatch):
+    # 1 empty + 5 typical + 5 dense + 5 extreme synthetic source images with unique suffixes.
+    src_root = '/home/brandon/matetsi_images'
+    matetsi_root = tmp_path / 'images'
+    # Neutral Matetsi-like source paths — camera-native basenames, NO tier names in the path (a tier
+    # name as a source segment would otherwise be a legitimate emitted token, not a leak).
+    counts = [('A', 0, 5), ('B', 4, 5), ('C', 11, 5), ('D', 50, 5)]
+    records = []
+    for cam, c, n in counts:
+        for i in range(n):
+            rel = f'day1/flight1/left/{cam}CK_{i:04d}.JPG'
+            local = matetsi_root / rel
+            local.parent.mkdir(parents=True, exist_ok=True)
+            _jpeg_with_gps(local, size=(48, 32))
+            records.append(
+                {'filepath': f'{src_root}/{rel}', 'detections': [{} for _ in range(c)]}
+            )
+    jsonl = tmp_path / 'results.jsonl'
+    jsonl.write_text(''.join(json.dumps(r) + '\n' for r in records))
+
+    # No model download, no real inference, no network — but the freeze still hashes the model file
+    # for the manifest, so point the (bypassed) preflight at a dummy local file that exists.
+    fake_model = tmp_path / 'fake.pt'
+    fake_model.write_bytes(b'model-bytes')
+    monkeypatch.setattr(btc, 'assert_model_present', lambda config: fake_model)
+
+    def fake_pipeline(img, config=None, **kw):
+        assert kw['backend_device'] == 'cpu'
+        return 0.5, [{'l': 'detection', 'c': 0.5, 'x': 1, 'y': 2, 'w': 3, 'h': 4}]
+
+    monkeypatch.setattr(btc.scoutbot, 'pipeline', fake_pipeline)
+
+    out = tmp_path / 'corpus'
+    manifest = btc.build_corpus(
+        matetsi_jsonl=jsonl,
+        jsonl_source_root=src_root,
+        matetsi_root=matetsi_root,
+        out_dir=out,
+        per_tier=5,
+        config='v3',
+    )
+
+    # Flat images/ dir, 20 opaque tier-prefixed images, all EXIF-clean.
+    imgs = sorted((out / 'images').glob('*.jpg'))
+    assert len(imgs) == 20
+    assert all(not piexif.load(str(p))['GPS'] for p in imgs)
+    assert (out / 'baselines.jsonl').exists()
+    assert (out / 'manifest.json').exists()
+    assert (out / 'README.md').exists()
+    # Baselines carry baseline_detection_count.
+    first = json.loads((out / 'baselines.jsonl').read_text().splitlines()[0])
+    assert first['baseline_detection_count'] == 1
+    # Governance: no source token leaked (would have raised inside build_corpus otherwise).
+    assert manifest['schema'] == 'scoutbot:test-corpus:1.0'
+    assert len(manifest['images']) == 20
+
+
+def test_build_corpus_refuses_nonempty_out_without_force(tmp_path, monkeypatch):
+    monkeypatch.setattr(btc, 'assert_model_present', lambda config: tmp_path / 'fake.pt')
+    jsonl = tmp_path / 'results.jsonl'
+    jsonl.write_text('')
+    out = tmp_path / 'corpus'
+    (out / 'images').mkdir(parents=True)
+    (out / 'images' / 'stale.jpg').write_bytes(b'old')
+    with pytest.raises(SystemExit, match='force'):
+        btc.build_corpus(
+            matetsi_jsonl=jsonl,
+            jsonl_source_root='/r',
+            matetsi_root=tmp_path,
+            out_dir=out,
+            per_tier=5,
+            config='v3',
+        )
+
+
+def _manifest_for_guard():
+    runtime = {
+        'lockfile_sha256': 'L',
+        'torch': '2.13.0',
+        'torchvision': '0.28.0',
+        'ultralytics': '8.4.0',
+        'sahi': '0.11.36',
+        'numpy': '2.0.0',
+        'python': '3.13.1',
+        'platform_system': 'Darwin',
+        'platform_machine': 'arm64',
+    }
+    return {'model': {'md5': 'M'}, 'runtime': runtime}, dict(runtime)
+
+
+def test_stack_matches_true_on_identical_stack():
+    manifest, current = _manifest_for_guard()
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='M')
+    assert ok and reason == ''
+
+
+def test_stack_matches_false_on_model_md5():
+    manifest, current = _manifest_for_guard()
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='OTHER')
+    assert not ok and 'model' in reason
+
+
+def test_stack_matches_false_on_lock_and_platform():
+    manifest, current = _manifest_for_guard()
+    current['lockfile_sha256'] = 'DIFFERENT'
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='M')
+    assert not ok and 'lockfile_sha256' in reason
+    manifest, current = _manifest_for_guard()
+    current['platform_machine'] = 'x86_64'
+    ok, reason = btc.stack_matches(manifest, current, current_model_md5='M')
+    assert not ok and 'platform_machine' in reason

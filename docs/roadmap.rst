@@ -263,6 +263,22 @@ Remaining v2 work:
 The quality work and the dependency currency policy above should stay aligned so breaking
 dependency upgrades are caught in CI instead of surfacing in release work.
 
+Package version source
+----------------------
+
+**Status:** planned
+
+``scoutbot.__version__`` is hardcoded in ``scoutbot/__init__.py`` (``VERSION = '0.2.0'``) and has
+drifted out of sync with the packaging metadata (``pyproject.toml`` declares ``0.5.0``). Anything
+that reports the runtime version therefore records the wrong value — most visibly, the legacy
+test-corpus manifest froze ``runtime.scoutbot_version = "0.2.0"`` while the real version is ``0.5.0``
+(the ``scoutbot_commit`` field remains an accurate provenance anchor, and the drift does not affect
+the corpus stack-guard, which keys on the lockfile hash and library versions).
+
+Fix direction: make ``pyproject.toml`` the single source of truth and derive ``__version__`` from
+installed package metadata (``importlib.metadata.version('scoutbot')``), removing the hardcoded
+string. Small, self-contained; address in the next batch or file as a GitHub issue.
+
 Documentation reorganization
 ----------------------------
 
@@ -356,7 +372,7 @@ Linux/CUDA concurrency tuning, and future agentic pipeline tuning.
 Benchmark corpus design
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-**Status:** planned
+**Status:** in-progress (density-tiered corpus builder implemented; hosting/clearance pending)
 
 The current ``examples/`` corpus is useful for smoke tests but should not be assumed
 representative of production survey workloads. Define a small benchmark corpus with explicit
@@ -371,10 +387,29 @@ categories:
 The corpus metadata should make benchmark results comparable across machines and future model
 families without relying on informal memory of which images were used.
 
+A density-tiered corpus builder is now implemented as ``tools/build_test_corpus.py`` (spec:
+``docs/specs/2026-07-31-scoutbot-test-corpus-builder-design.md``): it selects empty / typical /
+dense / extreme frames from the internal Matetsi survey using the scoutbot detection JSONL,
+GPS-strips them, and freezes CPU regression baselines — producing exactly these categories plus
+per-image tier metadata. A skip-if-absent regression test (``tests/test_corpus_regression.py``,
+gated on ``SCOUTBOT_TEST_CORPUS``) replays the frozen baselines. Two follow-ups are gated on it:
+
+* **Test-corpus hosting + public clearance** *(high priority).* The corpus is Matetsi-derived and
+  internal-only; establishing imagery redistribution permission and a (private-then-public)
+  MD5-pinned fetch home is required before it can become a shared or CI asset. The gate is
+  permission clearance, not engineering.
+* **Human ground-truth annotation of a survey subset.** The frozen baselines are scoutbot's own CPU
+  output — a drift-regression anchor, not accuracy. An independent human-annotated Matetsi subset is
+  the prerequisite for any *accuracy* or bias claim, and feeds the pipeline-design DS-5 / Stage-8
+  bias work (see ``pipeline-design`` test-data catalog and fixture-provenance matrix).
+* Multi-model baselines (``v3-cls`` / Core ML) are a natural extension once the ``v3`` corpus lands;
+  Core ML needs strict-tolerance rather than exact comparison (MPS/ANE are not bit-reproducible).
+
 Relatedly, ``benchmarks/benchmark_coreml.py`` and ``benchmark_concurrency.py`` do not record the
 ML-stack versions (torch, torchvision, ultralytics, coremltools, numpy) in their
 ``--summary-json`` output, so a saved benchmark cannot be tied to the stack that produced it. Add
-version metadata to the summary schema alongside the corpus metadata.
+version metadata to the summary schema alongside the corpus metadata — and, once the corpus lands,
+record its per-tier metadata (from the corpus manifest) so runs are comparable per density tier.
 
 Linux / CUDA multiprocess batch mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
