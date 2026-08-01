@@ -11,6 +11,23 @@ Unreleased
   survey, GPS/EXIF-strips them, and freezes CPU inference baselines with a pinned model + dependency
   stack; the regression test replays them and asserts exact CPU parity when the stack matches. Adds
   ``piexif`` to the ``test`` extra.
+
+0.5.0 (2026-07-30)
+------------------
+
+* Renamed the ecosystem namespace from ``rw`` ("Rebel Workflow") to ``osw`` ("Overhead Survey
+  Workflow"): environment variables ``OSW_HOME`` / ``OSW_REGISTRY_PATH`` / ``OSW_MODELS_DIR``, the
+  registry directory ``~/.osw``, and the public model bucket ``osw-public-models``. The local
+  model registry is now the first implementation of the shared **OSW Model Registry** standard
+  with schema id ``osw:model-registry:1.0``; its default location honors ``OSW_HOME`` (default
+  ``~/.osw``) per the ecosystem toolchain-directory principle. Downloaded model files and Core ML
+  exports now cache under the OSW models directory (``OSW_MODELS_DIR``, default ``~/.osw/models``)
+  instead of ``~/.cache/scoutbot``, keeping the whole toolchain footprint under one home. This is
+  a clean break with no ``rw`` compatibility aliases; existing ``~/.rebel-workflow`` registries
+  and ``~/.cache/scoutbot`` model files are orphaned and rebuilt on next fetch. A registry schema-guard now rejects foreign or incompatible-major registry files
+  (including the pre-release ``rw`` and interim ``osw:local-model-cache`` families) with a clear,
+  actionable ``RegistrySchemaError`` (surfaced as a clean CLI error) instead of failing
+  cryptically.
 * Removed the runtime ``dill`` dependency. The two bundled KAZA models were re-serialized with the
   current Ultralytics/torch stack so they load without ``dill`` (weights unchanged — CPU inference
   is bit-identical), re-hosted under date-tagged filenames
@@ -46,12 +63,12 @@ Unreleased
   now requires ``coremltools>=9.0`` (the previous pin was unversioned). Two new transitive
   dependencies are added: ``polars>=0.20.0`` and ``nvidia-ml-py>=12.0.0``. A minor type-annotation
   fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
-* Model downloads now try multiple sources in order (Azure → GCS) and fall back automatically
-  if any source is unreachable or resets the connection mid-transfer. GCS
-  (``storage.googleapis.com/rebel-pipeline-public-models``) is the built-in fallback for all
-  ``.pt`` models. Registry provenance now records which provider delivered the file. Download
-  chunk size increased from 8 KB to 64 KB for better throughput on large model files.
-* Added a local model registry backed by ``~/.rebel-workflow/model-registry.json``.
+* Model downloads try multiple sources in order with automatic failover if any source is
+  unreachable or resets the connection mid-transfer. The built-in order is GCS primary
+  (``storage.googleapis.com/osw-public-models``), Azure fallback. Registry provenance records
+  which provider delivered the file. Download chunk size increased from 8 KB to 64 KB for better
+  throughput on large model files.
+* Added a local model registry backed by ``~/.osw/model-registry.json``.
   ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
   from the registry and skip the network. New CLI commands: ``scoutbot register``
   registers any local ``.pt`` file; ``scoutbot models`` lists all registry entries;
@@ -78,9 +95,7 @@ Unreleased
   ``hashlib.md5()`` → ``hashlib.md5(usedforsecurity=False)`` to reflect its use as a file
   integrity check rather than a cryptographic hash.
 * Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.
-  Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215. Added
-  ``ignore-until-fixed`` in ``[tool.uv.audit]`` for GHSA-rrmf-rvhw-rf47 (``torch`` CVE,
-  no upstream fix available).
+  Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215.
 * The Core ML benchmark phase-total output now shows ``requested=<val> actual=<val>`` for
   Core ML variants (or ``actual=null`` when the runtime does not expose the actual compute
   unit). Non-Core ML variants (``pt-cpu``, ``pt-mps``) omit the suffix entirely instead of

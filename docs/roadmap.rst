@@ -263,6 +263,22 @@ Remaining v2 work:
 The quality work and the dependency currency policy above should stay aligned so breaking
 dependency upgrades are caught in CI instead of surfacing in release work.
 
+Package version source
+----------------------
+
+**Status:** planned
+
+``scoutbot.__version__`` is hardcoded in ``scoutbot/__init__.py`` (``VERSION = '0.2.0'``) and has
+drifted out of sync with the packaging metadata (``pyproject.toml`` declares ``0.5.0``). Anything
+that reports the runtime version therefore records the wrong value — most visibly, the legacy
+test-corpus manifest froze ``runtime.scoutbot_version = "0.2.0"`` while the real version is ``0.5.0``
+(the ``scoutbot_commit`` field remains an accurate provenance anchor, and the drift does not affect
+the corpus stack-guard, which keys on the lockfile hash and library versions).
+
+Fix direction: make ``pyproject.toml`` the single source of truth and derive ``__version__`` from
+installed package metadata (``importlib.metadata.version('scoutbot')``), removing the hardcoded
+string. Small, self-contained; address in the next batch or file as a GitHub issue.
+
 Documentation reorganization
 ----------------------------
 
