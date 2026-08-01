@@ -33,6 +33,8 @@ Example usage:
 
 import json
 import os
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _package_version
 from os.path import exists
 from pathlib import Path
 from time import perf_counter_ns
@@ -46,9 +48,15 @@ QUIET = not utils.VERBOSE
 
 from scoutbot import loc, model_store, tile_batched  # NOQA
 
-VERSION = '0.2.0'
-version = VERSION
-__version__ = VERSION
+# pyproject.toml is the single source of truth for the version; read it from the installed
+# package metadata rather than duplicating it here (a hardcoded copy silently drifted before).
+try:
+    __version__ = _package_version('scoutbot')
+except PackageNotFoundError:  # running from a source tree with no installed dist metadata
+    __version__ = '0.0.0+unknown'
+# Backwards-compatible aliases.
+VERSION = __version__
+version = __version__
 
 
 def _resolve_model(config=None, model_name=None, **overrides):

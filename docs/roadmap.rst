@@ -266,18 +266,14 @@ dependency upgrades are caught in CI instead of surfacing in release work.
 Package version source
 ----------------------
 
-**Status:** planned
+**Status:** done
 
-``scoutbot.__version__`` is hardcoded in ``scoutbot/__init__.py`` (``VERSION = '0.2.0'``) and has
-drifted out of sync with the packaging metadata (``pyproject.toml`` declares ``0.5.0``). Anything
-that reports the runtime version therefore records the wrong value — most visibly, the legacy
-test-corpus manifest froze ``runtime.scoutbot_version = "0.2.0"`` while the real version is ``0.5.0``
-(the ``scoutbot_commit`` field remains an accurate provenance anchor, and the drift does not affect
-the corpus stack-guard, which keys on the lockfile hash and library versions).
-
-Fix direction: make ``pyproject.toml`` the single source of truth and derive ``__version__`` from
-installed package metadata (``importlib.metadata.version('scoutbot')``), removing the hardcoded
-string. Small, self-contained; address in the next batch or file as a GitHub issue.
+``scoutbot.__version__`` was hardcoded in ``scoutbot/__init__.py`` (``VERSION = '0.2.0'``) and had
+drifted out of sync with the packaging metadata (``pyproject.toml`` declared ``0.5.0``), so anything
+reporting the runtime version recorded the wrong value. Resolved: ``__version__`` (and the
+``VERSION`` / ``version`` aliases) now derive from installed package metadata
+(``importlib.metadata.version('scoutbot')``), with ``pyproject.toml`` as the single source of truth;
+a regression test (``tests/test_version.py``) asserts they never drift again.
 
 Documentation reorganization
 ----------------------------
