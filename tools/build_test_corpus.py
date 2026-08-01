@@ -25,7 +25,6 @@ from PIL import Image
 import scoutbot
 from scoutbot import model_store
 from scoutbot.model_store import CONFIGS
-from scoutbot.registry.paths import get_models_dir
 
 TIERS = ('empty', 'typical', 'dense', 'extreme')
 
@@ -201,8 +200,11 @@ def assert_model_present(config: str) -> Path:
     pinned hash (e.g. Core ML bundles) fall back to a presence-only check.
     """
     cfg = CONFIGS[config]
-    model_path = get_models_dir() / str(cfg['name'])
-    hint = f'Run: uv run python -m scoutbot fetch --config {config}'
+    # Resolve the model where scoutbot's own fetch()/pipeline() resolve it (model_store.CACHE_DIR),
+    # NOT via registry.paths.get_models_dir — the two can differ, and the preflight must check the
+    # exact location pipeline() will load from so "present" means "pipeline won't hit the network".
+    model_path = model_store.CACHE_DIR / str(cfg['name'])
+    hint = f'Run: uv run python -c "import scoutbot; scoutbot.fetch(\'{config}\')"'
     if not model_path.exists():
         raise SystemExit(f'Model not present locally: {model_path}\n{hint}')
     pinned = cfg.get('md5')

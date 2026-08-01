@@ -13,7 +13,6 @@ import pytest
 
 import scoutbot
 from scoutbot import model_store
-from scoutbot.registry.paths import get_models_dir
 
 _CORPUS = os.getenv('SCOUTBOT_TEST_CORPUS')
 
@@ -41,10 +40,10 @@ def test_corpus_baselines_do_not_drift():
     manifest, baselines = _load(corpus)
     config = manifest['model']['config']
 
-    model_path = get_models_dir() / manifest['model']['name']
+    model_path = model_store.CACHE_DIR / manifest['model']['name']
     if not model_path.exists():
         pytest.skip(
-            f'model {model_path} absent; run: uv run python -m scoutbot fetch --config {config}'
+            f'model {model_path} absent; run: uv run python -c "import scoutbot; scoutbot.fetch(\'{config}\')"'
         )
     current_md5 = model_store._md5(model_path)
     current_runtime = btc.collect_runtime(Path(__file__).resolve().parents[1] / 'uv.lock')

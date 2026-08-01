@@ -180,7 +180,8 @@ def test_build_manifest_shape():
 
 
 def test_assert_model_present_missing_raises(monkeypatch, tmp_path):
-    monkeypatch.setattr(btc, 'get_models_dir', lambda: tmp_path)  # empty dir
+    # Point model_store.CACHE_DIR (where the preflight looks) at an empty dir.
+    monkeypatch.setattr(btc.model_store, 'CACHE_DIR', tmp_path)
     with pytest.raises(SystemExit, match='fetch'):
         btc.assert_model_present('v3')
 
