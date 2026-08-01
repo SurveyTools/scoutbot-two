@@ -5,6 +5,10 @@ Changelog
 Unreleased
 ----------
 
+* Fixed ``scoutbot.__version__`` reporting a stale hardcoded value (``0.2.0``) instead of the
+  packaged version. ``__version__`` (and the ``VERSION`` / ``version`` aliases) now derive from
+  installed package metadata (``importlib.metadata``), making ``pyproject.toml`` the single source
+  of truth; a regression test guards against future drift.
 * Added an internal test-corpus builder (``tools/build_test_corpus.py``) and an opt-in,
   skip-if-absent CPU drift-regression test (``tests/test_corpus_regression.py``, gated on
   ``SCOUTBOT_TEST_CORPUS``). The builder selects density-tiered frames from the internal Matetsi
