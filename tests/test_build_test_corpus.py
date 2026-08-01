@@ -190,11 +190,12 @@ def test_source_segments_collects_path_parts_and_basenames():
     records = [
         {'filepath': '/home/brandon/matetsi_images/141025_day1/flight1/left/BCK_0001.JPG'}
     ]
-    segs = btc.source_segments(
-        records, '/home/brandon/matetsi_images', Path('/vol/matetsi/images')
-    )
+    # matetsi_root is added to the forbidden set as str(Path(...)); render it the same way the code
+    # does so the assertion is portable (Windows renders WindowsPath with backslashes).
+    matetsi_root = Path('/vol/matetsi/images')
+    segs = btc.source_segments(records, '/home/brandon/matetsi_images', matetsi_root)
     assert '/home/brandon/matetsi_images' in segs
-    assert '/vol/matetsi/images' in segs
+    assert str(matetsi_root) in segs
     assert '141025_day1' in segs
     assert 'left' in segs
     assert 'BCK_0001.JPG' in segs
