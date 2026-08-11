@@ -18,7 +18,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'Scoutbot 2026'
+project = 'Scoutbot'
 copyright = '2026'
 author = 'Overhead Survey Workflow Team'
 

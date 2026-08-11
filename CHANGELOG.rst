@@ -2,41 +2,10 @@
 Changelog
 =========
 
-0.5.0 (unreleased)
+0.5.0 (2026-08-11)
 ------------------
 
-* Renamed the GitHub repository and local project directory from ``scoutbot-2026`` to
-  ``scoutbot-two`` and updated project URLs (repository, docs, CI badges). The Python package name
-  (``scoutbot``) is unchanged, so imports and installs are unaffected.
-* ``scoutbot.example()`` now downloads its demo image from the OSW public bucket
-  (``osw-public-data/scoutbot/examples/scout.example.jpg``) instead of the retired Wild Me Azure
-  CDN. The image bytes and pinned SHA-256 are unchanged.
-* ``scoutbot.example()`` now prints the WIC score and detection count (not just the raw detection
-  list), returns ``(wic_score, detections)`` instead of ``None``, and points to the docs for batch /
-  multi-class / Core ML usage. It remains a single-image install smoke check, not an API tour.
-* ``scoutbot.example()`` now caches its demo image under the OSW home
-  (``${OSW_HOME:-~/.osw}/examples`` via a new ``get_examples_dir()`` resolver) instead of recreating
-  the legacy ``~/.cache/scoutbot`` directory. This completes the move off ``~/.cache/scoutbot``
-  begun in 0.5.0 for model files.
-* Corrected the Windows NVIDIA GPU install docs: the pinned ``torch`` (2.13.0) is published under the
-  ``cu130`` PyTorch index, not the stale ``cu124`` the docs previously showed (nor ``cu128``). Added
-  guidance to match the CUDA index to the pinned Torch version so it does not silently install a
-  CPU-only build.
-* ``batch_resumable(processes=N)`` / ``--processes N`` now falls back to the sequential path with a
-  warning on platforms without a ``forkserver`` start method (e.g. Windows, which offers only
-  ``spawn``), instead of crashing with ``ValueError: cannot find context for 'forkserver'``.
-  Callers that always set ``N`` (e.g. Habitat Hub) run single-process there rather than failing
-  every batch.
-* Fixed ``scoutbot.__version__`` reporting a stale hardcoded value (``0.2.0``) instead of the
-  packaged version. ``__version__`` (and the ``VERSION`` / ``version`` aliases) now derive from
-  installed package metadata (``importlib.metadata``), making ``pyproject.toml`` the single source
-  of truth; a regression test guards against future drift.
-* Added an internal test-corpus builder (``tools/build_test_corpus.py``) and an opt-in,
-  skip-if-absent CPU drift-regression test (``tests/test_corpus_regression.py``, gated on
-  ``SCOUTBOT_TEST_CORPUS``). The builder selects density-tiered frames from the internal Matetsi
-  survey, GPS/EXIF-strips them, and freezes CPU inference baselines with a pinned model + dependency
-  stack; the regression test replays them and asserts exact CPU parity when the stack matches. Adds
-  ``piexif`` to the ``test`` extra.
+**Breaking changes and compatibility**
 
 * Renamed the ecosystem namespace from ``rw`` ("Rebel Workflow") to ``osw`` ("Overhead Survey
   Workflow"): environment variables ``OSW_HOME`` / ``OSW_REGISTRY_PATH`` / ``OSW_MODELS_DIR``, the
@@ -65,6 +34,30 @@ Changelog
   temporary ``uv audit`` ignores for the torch and setuptools advisories after the locked graph
   audited cleanly. **Platform change:** torch 2.13 ships only ``macosx_14_0_arm64`` wheels, so
   Apple Silicon now requires macOS 14 or newer.
+* Upgraded ``ultralytics`` from ``==8.2.103`` to ``>=8.3,<9`` (currently resolves to 8.4.89).
+  The 8.3+ series removes the ``numpy<2.0`` restriction for standard inference, which was
+  previously forcing a source-built numpy on Python 3.13 / Windows and causing a fatal access
+  violation during test collection. numpy 2.x is now the default for Python 3.13. Core ML export
+  now requires ``coremltools>=9.0`` (the previous pin was unversioned). Two new transitive
+  dependencies are added: ``polars>=0.20.0`` and ``nvidia-ml-py>=12.0.0``. A minor type-annotation
+  fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
+* Raised declared Python support to ``>=3.10,<3.14`` and added Python 3.13 to the supported
+  target matrix.
+* Renamed the GitHub repository and local project directory from ``scoutbot-2026`` to
+  ``scoutbot-two`` and updated project URLs (repository, docs, CI badges). The Python package name
+  (``scoutbot``) is unchanged, so imports and installs are unaffected.
+
+**New features**
+
+* Added a local model registry backed by ``~/.osw/model-registry.json``.
+  ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
+  from the registry and skip the network. New CLI commands: ``scoutbot register``
+  registers any local ``.pt`` file; ``scoutbot models`` lists all registry entries;
+  ``scoutbot models info NAME`` prints a model's full entry as JSON. All inference
+  commands (``pipeline``, ``batch``, ``batch-resumable``) now accept a ``--model NAME``
+  flag as an alternative to ``--config``; the two flags are mutually exclusive.
+  JSONL output from ``batch-resumable`` gains a ``model`` block recording the
+  registry name, MD5, framework, and SAHI run config used for each image.
 * Added an opt-in multiprocess batch mode: ``batch_resumable(processes=N)`` /
   ``scoutbot batch-resumable --processes N`` (Linux/CUDA-first, default ``processes=1`` unchanged).
   Each of the ``N`` worker processes is launched via ``forkserver`` and loads its own model copy;
@@ -79,70 +72,93 @@ Changelog
   event now reports ``wall_ns`` plus these enriched fields instead of the previous
   ``started_ns`` / ``ended_ns`` / ``duration_ns``; external consumers of that event should switch
   to ``wall_ns``.
-* Upgraded ``ultralytics`` from ``==8.2.103`` to ``>=8.3,<9`` (currently resolves to 8.4.89).
-  The 8.3+ series removes the ``numpy<2.0`` restriction for standard inference, which was
-  previously forcing a source-built numpy on Python 3.13 / Windows and causing a fatal access
-  violation during test collection. numpy 2.x is now the default for Python 3.13. Core ML export
-  now requires ``coremltools>=9.0`` (the previous pin was unversioned). Two new transitive
-  dependencies are added: ``polars>=0.20.0`` and ``nvidia-ml-py>=12.0.0``. A minor type-annotation
-  fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
+* Added an internal test-corpus builder (``tools/build_test_corpus.py``) and an opt-in,
+  skip-if-absent CPU drift-regression test (``tests/test_corpus_regression.py``, gated on
+  ``SCOUTBOT_TEST_CORPUS``). The builder selects density-tiered frames from the internal Matetsi
+  survey, GPS/EXIF-strips them, and freezes CPU inference baselines with a pinned model + dependency
+  stack; the regression test replays them and asserts exact CPU parity when the stack matches. Adds
+  ``piexif`` to the ``test`` extra.
+
+**Models, downloads, and examples**
+
 * Model downloads try multiple sources in order with automatic failover if any source is
   unreachable or resets the connection mid-transfer. The built-in order is GCS primary
   (``storage.googleapis.com/osw-public-models``), Azure fallback. Registry provenance records
   which provider delivered the file. Download chunk size increased from 8 KB to 64 KB for better
   throughput on large model files.
-* Added a local model registry backed by ``~/.osw/model-registry.json``.
-  ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
-  from the registry and skip the network. New CLI commands: ``scoutbot register``
-  registers any local ``.pt`` file; ``scoutbot models`` lists all registry entries;
-  ``scoutbot models info NAME`` prints a model's full entry as JSON. All inference
-  commands (``pipeline``, ``batch``, ``batch-resumable``) now accept a ``--model NAME``
-  flag as an alternative to ``--config``; the two flags are mutually exclusive.
-  JSONL output from ``batch-resumable`` gains a ``model`` block recording the
-  registry name, MD5, framework, and SAHI run config used for each image.
+* ``scoutbot.example()`` now downloads its demo image from the OSW public bucket
+  (``osw-public-data/scoutbot/examples/scout.example.jpg``) instead of the retired Wild Me Azure
+  CDN. The image bytes and pinned SHA-256 are unchanged.
+* ``scoutbot.example()`` now caches its demo image under the OSW home
+  (``${OSW_HOME:-~/.osw}/examples`` via a new ``get_examples_dir()`` resolver) instead of recreating
+  the legacy ``~/.cache/scoutbot`` directory. This completes the move off ``~/.cache/scoutbot``
+  begun in this release for model files.
+* ``scoutbot.example()`` now prints the WIC score and detection count (not just the raw detection
+  list), returns ``(wic_score, detections)`` instead of ``None``, and points to the docs for batch /
+  multi-class / Core ML usage. It remains a single-image install smoke check, not an API tour.
+
+**Documentation**
+
+* Published rendered docs to GitHub Pages and retired Read the Docs so the README routes
+  readers to HTML instead of raw ``.rst`` sources.
+* Reorganized documentation around reader roles, with separate installation, usage,
+  configuration, model, performance, development, security, roadmap, API, and CLI pages.
+* Added Core ML documentation for ``v3-coreml`` and ``v3-cls-coreml`` configs, export behavior,
+  parity caveats, and Apple Silicon benchmark interpretation.
+* Corrected the Windows NVIDIA GPU install docs: the pinned ``torch`` (2.13.0) is published under the
+  ``cu130`` PyTorch index, not the stale ``cu124`` the docs previously showed (nor ``cu128``). Added
+  guidance to match the CUDA index to the pinned Torch version so it does not silently install a
+  CPU-only build.
 * Added CUDA support clarification for NVIDIA systems: best-effort Windows support (not CI-tested),
   installation guide with GPU detection verification command (``torch.cuda.is_available()``), and
   development guidance for contributors testing on GPU hardware. CUDA is not required and the
   package runs normally on CPU-only machines.
+
+**Quality, CI, and security**
+
 * Added a ``windows-smoke`` CI job to ``.github/workflows/testing.yml`` that runs the fast/offline
   test suite on Python 3.13 under Windows. This provides basic cross-platform coverage for non-Core ML
   code without claiming full Windows parity; Core ML configs remain macOS-only.
-* Moved ``visualise.py`` from the repo root to ``tools/visualise.py`` and included it
-  in all quality gates (ruff, mypy, bandit). Rewrote the script: replaced
-  ``cv2.imshow`` (incompatible with the headless OpenCV build) with ``webbrowser``
-  for display; added ``--no-display`` and ``--image-key`` flags; fixed label rendering
-  near the top edge of the image; removed the ``numpy`` dependency; added per-class
-  box colours; added a test suite in ``tests/test_visualise.py``.
 * Added Bandit source-code security scanning to the quality workflow (``bandit -c pyproject.toml
   -r scoutbot/ benchmarks/ tools/``). B101 (assert-used) is skipped; ``tests/`` is excluded. Fixed
   ``hashlib.md5()`` → ``hashlib.md5(usedforsecurity=False)`` to reflect its use as a file
   integrity check rather than a cryptographic hash.
 * Added ``uv audit --locked`` to the quality workflow as a required dependency-scanning gate.
   Upgraded ``idna`` 3.13 → 3.18 to resolve GHSA-65pc-fj4g-8rjx / PYSEC-2026-215.
+* Applied Ruff formatting and lint fixes as part of the quality-tool migration.
+* Removed the stale CodeQL workflow and documented the replacement quality gates:
+  ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
+* Raised fast-suite test coverage from 58% to 92%+ by adding unit tests with mocked
+  SAHI, requests, and coremltools dependencies.
+
+**Fixes and internals**
+
+* ``batch_resumable(processes=N)`` / ``--processes N`` now falls back to the sequential path with a
+  warning on platforms without a ``forkserver`` start method (e.g. Windows, which offers only
+  ``spawn``), instead of crashing with ``ValueError: cannot find context for 'forkserver'``.
+  Callers that always set ``N`` (e.g. Habitat Hub) run single-process there rather than failing
+  every batch.
+* Fixed ``scoutbot.__version__`` reporting a stale hardcoded value (``0.2.0``) instead of the
+  packaged version. ``__version__`` (and the ``VERSION`` / ``version`` aliases) now derive from
+  installed package metadata (``importlib.metadata``), making ``pyproject.toml`` the single source
+  of truth; a regression test guards against future drift.
+* Fixed Core ML and YOLO loading correctness issues: macOS-only ``.mlpackage`` loading is now
+  guarded, YOLO models are loaded with ``task='detect'`` to avoid classifier misidentification,
+  and empty/``None`` detection boxes return an empty prediction list instead of crashing.
+* Fixed type-checking issues in model fetch/export code by normalizing model config values before
+  path, URL, and progress-bar use.
 * The Core ML benchmark phase-total output now shows ``requested=<val> actual=<val>`` for
   Core ML variants (or ``actual=null`` when the runtime does not expose the actual compute
   unit). Non-Core ML variants (``pt-cpu``, ``pt-mps``) omit the suffix entirely instead of
   printing ``requested=unknown actual=unknown``.
 * Added private runtime observability hooks and a structured Core ML benchmark summary so
   performance investigations can separate phase timing from serial SAHI overhead.
-* Added Core ML documentation for ``v3-coreml`` and ``v3-cls-coreml`` configs, export behavior,
-  parity caveats, and Apple Silicon benchmark interpretation.
-* Fixed Core ML and YOLO loading correctness issues: macOS-only ``.mlpackage`` loading is now
-  guarded, YOLO models are loaded with ``task='detect'`` to avoid classifier misidentification,
-  and empty/``None`` detection boxes return an empty prediction list instead of crashing.
-* Fixed type-checking issues in model fetch/export code by normalizing model config values before
-  path, URL, and progress-bar use.
-* Applied Ruff formatting and lint fixes as part of the quality-tool migration.
-* Removed the stale CodeQL workflow and documented the replacement quality gates:
-  ``testing.yml`` for fast/offline pytest coverage and ``quality.yml`` for Ruff and scoped mypy.
-* Published rendered docs to GitHub Pages and retired Read the Docs so the README routes
-  readers to HTML instead of raw ``.rst`` sources.
-* Raised declared Python support to ``>=3.10,<3.14`` and added Python 3.13 to the supported
-  target matrix.
-* Reorganized documentation around reader roles, with separate installation, usage,
-  configuration, model, performance, development, security, roadmap, API, and CLI pages.
-* Raised fast-suite test coverage from 58% to 92%+ by adding unit tests with mocked
-  SAHI, requests, and coremltools dependencies.
+* Moved ``visualise.py`` from the repo root to ``tools/visualise.py`` and included it
+  in all quality gates (ruff, mypy, bandit). Rewrote the script: replaced
+  ``cv2.imshow`` (incompatible with the headless OpenCV build) with ``webbrowser``
+  for display; added ``--no-display`` and ``--image-key`` flags; fixed label rendering
+  near the top edge of the image; removed the ``numpy`` dependency; added per-class
+  box colours; added a test suite in ``tests/test_visualise.py``.
 
 Version 0.2.0
 -------------
