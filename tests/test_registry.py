@@ -325,3 +325,19 @@ def test_guard_accepts_same_major_newer_minor(registry_path):
         {'schema': 'osw:model-registry:1.9', 'future_field': 'ignored', 'models': {}},
     )
     assert registry.lookup('missing') is None  # reads fine, ignores unknown field
+
+
+def test_get_examples_dir_default(monkeypatch):
+    """Default examples dir is under ~/.osw/ when OSW_HOME is unset."""
+    monkeypatch.delenv('OSW_HOME', raising=False)
+    import scoutbot.registry.paths as p
+
+    assert p.get_examples_dir() == Path.home() / '.osw' / 'examples'
+
+
+def test_get_examples_dir_under_osw_home(tmp_path, monkeypatch):
+    """OSW_HOME relocates the base; the examples dir lands under it (P13 compliance)."""
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+    import scoutbot.registry.paths as p
+
+    assert p.get_examples_dir() == tmp_path / 'osw-home' / 'examples'

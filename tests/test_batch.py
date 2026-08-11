@@ -971,3 +971,49 @@ class TestExampleSlow:
             patch('scoutbot.pipeline', return_value=(0.5, [])),
         ):
             scoutbot.example()
+
+
+def test_example_caches_image_under_osw_home(tmp_path, monkeypatch):
+    """example() caches the demo image under the OSW home, not legacy ~/.cache/scoutbot."""
+    import scoutbot
+
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+
+    fake_response = MagicMock()
+    fake_response.iter_content.return_value = [b'fake-image-bytes']
+    fake_response.raise_for_status = MagicMock()
+    fake_response.__enter__ = MagicMock(return_value=fake_response)
+    fake_response.__exit__ = MagicMock(return_value=False)
+
+    with (
+        patch('requests.get', return_value=fake_response),
+        patch('scoutbot.pipeline', return_value=(0.5, [])),
+    ):
+        scoutbot.example()
+
+    assert (tmp_path / 'osw-home' / 'examples' / 'scout.example.jpg').exists()
+
+
+def test_example_surfaces_wic_and_returns_result(tmp_path, monkeypatch, capsys):
+    """example() prints the WIC score + detection count and returns (wic, detections)."""
+    import scoutbot
+
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+
+    fake_response = MagicMock()
+    fake_response.iter_content.return_value = [b'fake-image-bytes']
+    fake_response.raise_for_status = MagicMock()
+    fake_response.__enter__ = MagicMock(return_value=fake_response)
+    fake_response.__exit__ = MagicMock(return_value=False)
+
+    det = {'l': 'animal', 'c': 0.9, 'x': 1, 'y': 2, 'w': 3, 'h': 4}
+    with (
+        patch('requests.get', return_value=fake_response),
+        patch('scoutbot.pipeline', return_value=(0.83, [det])),
+    ):
+        result = scoutbot.example()
+
+    assert result == (0.83, [det])
+    out = capsys.readouterr().out
+    assert '0.83' in out  # WIC score surfaced, not just detections
+    assert '1 detection' in out  # detection count surfaced

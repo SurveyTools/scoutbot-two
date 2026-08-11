@@ -2,9 +2,19 @@
 Changelog
 =========
 
-Unreleased
-----------
+0.5.0 (unreleased)
+------------------
 
+* ``scoutbot.example()`` now downloads its demo image from the OSW public bucket
+  (``osw-public-data/scoutbot/examples/scout.example.jpg``) instead of the retired Wild Me Azure
+  CDN. The image bytes and pinned SHA-256 are unchanged.
+* ``scoutbot.example()`` now prints the WIC score and detection count (not just the raw detection
+  list), returns ``(wic_score, detections)`` instead of ``None``, and points to the docs for batch /
+  multi-class / Core ML usage. It remains a single-image install smoke check, not an API tour.
+* ``scoutbot.example()`` now caches its demo image under the OSW home
+  (``${OSW_HOME:-~/.osw}/examples`` via a new ``get_examples_dir()`` resolver) instead of recreating
+  the legacy ``~/.cache/scoutbot`` directory. This completes the move off ``~/.cache/scoutbot``
+  begun in 0.5.0 for model files.
 * Corrected the Windows NVIDIA GPU install docs: the pinned ``torch`` (2.13.0) is published under the
   ``cu130`` PyTorch index, not the stale ``cu124`` the docs previously showed (nor ``cu128``). Added
   guidance to match the CUDA index to the pinned Torch version so it does not silently install a
@@ -24,9 +34,6 @@ Unreleased
   survey, GPS/EXIF-strips them, and freezes CPU inference baselines with a pinned model + dependency
   stack; the regression test replays them and asserts exact CPU parity when the stack matches. Adds
   ``piexif`` to the ``test`` extra.
-
-0.5.0 (2026-07-30)
-------------------
 
 * Renamed the ecosystem namespace from ``rw`` ("Rebel Workflow") to ``osw`` ("Overhead Survey
   Workflow"): environment variables ``OSW_HOME`` / ``OSW_REGISTRY_PATH`` / ``OSW_MODELS_DIR``, the
