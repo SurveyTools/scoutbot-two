@@ -797,6 +797,21 @@ class TestBatchResumableUnit:
 
 
 class TestBatchResumableMultiprocess:
+    @pytest.fixture(autouse=True)
+    def _force_forkserver_available(self, monkeypatch):
+        # These tests exercise the Linux/CUDA-first multiprocess *routing*, which is
+        # gated on the forkserver start method. Simulate a forkserver-capable platform
+        # so they stay meaningful on spawn-only CI (Windows), where batch_resumable
+        # otherwise clamps processes>1 to the sequential path (covered separately by
+        # test_effective_processes_*). processes<=1 tests here are unaffected.
+        import multiprocessing
+
+        monkeypatch.setattr(
+            multiprocessing,
+            'get_all_start_methods',
+            lambda: ['fork', 'spawn', 'forkserver'],
+        )
+
     def test_processes_gt_1_uses_run_batch(self, tmp_path):
         import scoutbot
 
@@ -951,6 +966,36 @@ class TestBatchResumableMultiprocess:
         assert rm.called  # registry resolution used on the mp path
         rec = _json.loads(out.read_text().splitlines()[0])
         assert rec['model'] == provenance  # provenance attached to written record
+
+
+def test_batch_resumable_falls_back_to_sequential_without_forkserver(
+    tmp_path, monkeypatch, caplog
+):
+    """On spawn-only platforms (e.g. Windows) processes>1 runs sequentially with a
+    warning, never building a pool. Module-level so the class fixture that forces
+    forkserver-available does not apply here."""
+    import multiprocessing
+
+    import scoutbot
+
+    monkeypatch.setattr(multiprocessing, 'get_all_start_methods', lambda: ['spawn'])
+    out = tmp_path / 'out.jsonl'
+    with (
+        patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
+        patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+        patch('scoutbot.pipeline', return_value=(0.5, [])),
+        patch('scoutbot._batch_mp.make_mp_submit') as mk,
+    ):
+        with caplog.at_level('WARNING'):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=4,
+                show_progress=False,
+            )
+    assert not mk.called  # no pool built on a spawn-only platform
+    assert 'forkserver' in caplog.text  # user is warned about the fallback
 
 
 @pytest.mark.slow
