@@ -78,6 +78,11 @@ Changelog
   survey, GPS/EXIF-strips them, and freezes CPU inference baselines with a pinned model + dependency
   stack; the regression test replays them and asserts exact CPU parity when the stack matches. Adds
   ``piexif`` to the ``test`` extra.
+* Added a Core ML (``.mlpackage``) inference backend for Apple Silicon: the ``v3-coreml`` and
+  ``v3-cls-coreml`` configs export on demand from the source ``.pt`` model and cache under
+  ``~/.osw/models``. Select with ``--config v3-coreml`` (see the Core ML docs for parity caveats).
+* Added a ``--no-progress`` flag and mean-seconds-per-image timing to the batch progress bar, and
+  wired the ``LOC_CONFIG`` / ``CONFIG`` env vars to the public API for config selection.
 
 **Models, downloads, and examples**
 
@@ -133,6 +138,10 @@ Changelog
 
 **Fixes and internals**
 
+* Fixed images that errored in a prior run being silently skipped on resume — they are now retried.
+* Fixed the ``batch_resumable`` progress bar being silently disabled.
+* Pass the confidence threshold to ``model.predict()`` so below-threshold detections don't waste
+  inference.
 * ``batch_resumable(processes=N)`` / ``--processes N`` now falls back to the sequential path with a
   warning on platforms without a ``forkserver`` start method (e.g. Windows, which offers only
   ``spawn``), instead of crashing with ``ValueError: cannot find context for 'forkserver'``.
