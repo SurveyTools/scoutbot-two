@@ -16,8 +16,8 @@ Use this when you want to run Scoutbot directly from a clone:
 
 .. code-block:: bash
 
-   git clone https://github.com/SurveyTools/scoutbot-2026
-   cd scoutbot-2026
+   git clone https://github.com/SurveyTools/scoutbot-two
+   cd scoutbot-two
    uv pip install -e .
 
 Models are downloaded automatically on first use and cached at ``~/.osw/models/``. To fetch
@@ -97,8 +97,8 @@ published under **cu130**, and is *not* in the older ``cu128`` or ``cu124`` inde
 
 .. code-block:: powershell
 
-   git clone https://github.com/SurveyTools/scoutbot-2026
-   cd scoutbot-2026
+   git clone https://github.com/SurveyTools/scoutbot-two
+   cd scoutbot-two
    uv venv
    .\.venv\Scripts\Activate.ps1
    uv pip install -e .
