@@ -825,6 +825,6 @@ def example():
     print(json.dumps(detects, indent=2))
     print(
         'For batch, multi-class (v3-cls), and Core ML usage, see '
-        'https://surveytools.github.io/scoutbot-2026/usage.html'
+        'https://surveytools.github.io/scoutbot-two/usage.html'
     )
     return wic, detects

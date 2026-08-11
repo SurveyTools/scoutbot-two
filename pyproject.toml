@@ -59,7 +59,7 @@ coreml = [
 ]
 
 [project.urls]
-Repository = "https://github.com/SurveyTools/scoutbot-2026"
+Repository = "https://github.com/SurveyTools/scoutbot-two"
 
 [project.scripts]
 scoutbot = "scoutbot.scoutbot:cli"

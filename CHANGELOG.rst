@@ -5,6 +5,9 @@ Changelog
 0.5.0 (unreleased)
 ------------------
 
+* Renamed the GitHub repository and local project directory from ``scoutbot-2026`` to
+  ``scoutbot-two`` and updated project URLs (repository, docs, CI badges). The Python package name
+  (``scoutbot``) is unchanged, so imports and installs are unaffected.
 * ``scoutbot.example()`` now downloads its demo image from the OSW public bucket
   (``osw-public-data/scoutbot/examples/scout.example.jpg``) instead of the retired Wild Me Azure
   CDN. The image bytes and pinned SHA-256 are unchanged.

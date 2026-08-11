@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Scoutbot runs inference locally and does not transmit image data during inference. See the
-[Security and Governance](https://surveytools.github.io/scoutbot-2026/security.html) documentation
+[Security and Governance](https://surveytools.github.io/scoutbot-two/security.html) documentation
 for the full model-download, integrity-verification, dependency-scanning, and data-handling
 posture.
 

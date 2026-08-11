@@ -11,7 +11,7 @@ Sphinx source.
 Acknowledgement
 ---------------
 
-Scoutbot-2026 is a continuation of the work started in the original
+Scoutbot-two is a continuation of the work started in the original
 `WildMeOrg/scoutbot <https://github.com/WildMeOrg/scoutbot>`_ repository.
 Scoutbot was originally developed for the `Scout <https://github.com/WildMeOrg/scout>`_
 project by the Wild Me team of Conservation X Labs with funding from
@@ -20,7 +20,7 @@ the Paul G. Allen Family Foundation.
 Start with :doc:`installation` and :doc:`usage`. See :doc:`coreml` and
 :doc:`performance` for Apple Silicon acceleration and benchmark interpretation.
 
-Source: https://github.com/SurveyTools/scoutbot-2026
+Source: https://github.com/SurveyTools/scoutbot-two
 
 .. toctree::
    :maxdepth: 2
