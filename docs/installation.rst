@@ -89,8 +89,11 @@ Windows with NVIDIA GPU
 CUDA GPU support is best-effort for NVIDIA systems on Windows. It is not CI-tested and is not
 required to run the package — CPU-only installs work on any Windows machine without a GPU.
 
-The default install may pull in a CPU-only PyTorch build on Windows. For NVIDIA GPU use, replace
-that build with the CUDA wheel after installing Scoutbot:
+PyTorch is pulled in transitively by ``ultralytics``, and on Windows the wheels published to PyPI
+are **CPU-only** -- so a default install silently has no CUDA support. For NVIDIA GPU use, reinstall
+``torch``/``torchvision`` from the PyTorch CUDA index after installing Scoutbot. The index you pick
+must carry the exact ``torch`` version this package pins (currently **2.13.0**): that version is
+published under **cu130**, and is *not* in the older ``cu128`` or ``cu124`` indexes.
 
 .. code-block:: powershell
 
@@ -100,11 +103,19 @@ that build with the CUDA wheel after installing Scoutbot:
    .\.venv\Scripts\Activate.ps1
    uv pip install -e .
 
-   # Replace CPU-only PyTorch with the CUDA build (requires NVIDIA GPU + driver >= 525)
-   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124 --force-reinstall
+   # Replace CPU-only PyTorch with the CUDA build. torch 2.13.0 is published under
+   # cu130 (not cu128/cu124); the build needs an NVIDIA driver new enough for the
+   # CUDA 13.0 runtime -- the verify step below confirms detection.
+   uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130 --force-reinstall
 
    # Required for large image handling (SAHI tiling)
    uv pip install scikit-image imagecodecs
+
+The right ``cuXXX`` tag is tied to the pinned ``torch`` version, so it changes when Scoutbot bumps
+Torch. Do not assume ``cu130`` indefinitely: check the pinned version (``uv run python -c "import
+torch; print(torch.__version__)"``, or ``torch`` in ``uv.lock``), then confirm it is listed at
+``https://download.pytorch.org/whl/<cuXXX>/torch/`` and pick the newest ``cuXXX`` that carries it.
+A stale tag installs an older -- possibly CPU-only -- build without erroring.
 
 Verify the GPU is detected before running:
 

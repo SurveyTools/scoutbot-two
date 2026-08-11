@@ -5,6 +5,10 @@ Changelog
 Unreleased
 ----------
 
+* Corrected the Windows NVIDIA GPU install docs: the pinned ``torch`` (2.13.0) is published under the
+  ``cu130`` PyTorch index, not the stale ``cu124`` the docs previously showed (nor ``cu128``). Added
+  guidance to match the CUDA index to the pinned Torch version so it does not silently install a
+  CPU-only build.
 * ``batch_resumable(processes=N)`` / ``--processes N`` now falls back to the sequential path with a
   warning on platforms without a ``forkserver`` start method (e.g. Windows, which offers only
   ``spawn``), instead of crashing with ``ValueError: cannot find context for 'forkserver'``.
