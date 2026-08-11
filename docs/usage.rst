@@ -87,7 +87,11 @@ registry name, MD5, framework, and the effective SAHI parameters used for that r
    }
 
 Use ``--processes N`` to process images across multiple worker processes on a single machine
-(Linux/CUDA-first; ``N`` defaults to ``1``, the unchanged sequential path). Each worker loads its
+(Linux/CUDA-first; ``N`` defaults to ``1``, the unchanged sequential path). The mode relies on the
+``forkserver`` start method. Platforms that do not provide it -- notably Windows, which offers only
+``spawn`` -- cannot run it, so there ``--processes N`` logs a warning and falls back to the
+sequential path instead of failing. A caller that always sets ``N`` (such as Habitat Hub) therefore
+still runs, single-process. Each worker loads its
 own copy of the model, so ``N`` copies must fit in available VRAM -- see
 :doc:`configuration` for sizing guidance. Because workers complete at different speeds, results
 are written to the JSONL file in **completion order**, not input order; resume matches on the

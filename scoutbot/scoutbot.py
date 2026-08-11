@@ -276,7 +276,9 @@ def batch(
     default=1,
     type=click.IntRange(min=1),  # reject 0/negatives at the CLI boundary
     help='Number of worker processes (Linux/CUDA). 1 = sequential. Each process '
-    'loads its own model copy; ensure N copies fit in VRAM.',
+    'loads its own model copy; ensure N copies fit in VRAM. On platforms '
+    'without forkserver (e.g. Windows) this falls back to sequential with a '
+    'warning.',
 )
 @click.option(
     '--summary-json',

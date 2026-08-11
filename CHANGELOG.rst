@@ -5,6 +5,11 @@ Changelog
 Unreleased
 ----------
 
+* ``batch_resumable(processes=N)`` / ``--processes N`` now falls back to the sequential path with a
+  warning on platforms without a ``forkserver`` start method (e.g. Windows, which offers only
+  ``spawn``), instead of crashing with ``ValueError: cannot find context for 'forkserver'``.
+  Callers that always set ``N`` (e.g. Habitat Hub) run single-process there rather than failing
+  every batch.
 * Fixed ``scoutbot.__version__`` reporting a stale hardcoded value (``0.2.0``) instead of the
   packaged version. ``__version__`` (and the ``VERSION`` / ``version`` aliases) now derive from
   installed package metadata (``importlib.metadata``), making ``pyproject.toml`` the single source

@@ -9,6 +9,7 @@ import pytest
 
 from scoutbot._batch_mp import (
     BatchWork,
+    _effective_processes,
     _load_processed,
     _parse_result_timeout,
     make_mp_submit,
@@ -297,3 +298,31 @@ def test_mp_submit_end_to_end_over_examples(sample_image, tmp_path):
     summary = run_batch(work, out, submit, summary_meta=meta)
     assert summary['processed'] >= 1
     assert out.read_text().strip() != ''
+
+
+def test_effective_processes_falls_back_when_forkserver_unavailable(monkeypatch, caplog):
+    # Spawn-only platform (e.g. Windows): forkserver is absent, so a >1 request
+    # must clamp to sequential and warn rather than crash later in get_context.
+    monkeypatch.setattr(multiprocessing, 'get_all_start_methods', lambda: ['spawn'])
+    with caplog.at_level('WARNING'):
+        assert _effective_processes(4) == 1
+    assert 'forkserver' in caplog.text
+
+
+def test_effective_processes_keeps_count_when_forkserver_available(monkeypatch, caplog):
+    monkeypatch.setattr(
+        multiprocessing,
+        'get_all_start_methods',
+        lambda: ['fork', 'spawn', 'forkserver'],
+    )
+    with caplog.at_level('WARNING'):
+        assert _effective_processes(4) == 4
+    assert 'forkserver' not in caplog.text
+
+
+def test_effective_processes_sequential_request_never_warns(monkeypatch, caplog):
+    # processes=1 is already sequential; no platform probe, no warning.
+    monkeypatch.setattr(multiprocessing, 'get_all_start_methods', lambda: ['spawn'])
+    with caplog.at_level('WARNING'):
+        assert _effective_processes(1) == 1
+    assert 'forkserver' not in caplog.text

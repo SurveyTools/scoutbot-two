@@ -36,6 +36,26 @@ def _parse_result_timeout():
 RESULT_TIMEOUT_S = _parse_result_timeout()
 
 
+def _effective_processes(processes):
+    """Clamp the requested worker count to what the platform can actually run.
+
+    Multiprocess batch mode uses the ``forkserver`` start method (Linux/CUDA-
+    first). Spawn-only platforms (e.g. Windows) have no forkserver context, so
+    ``get_context('forkserver')`` would raise mid-run. Fall back to sequential
+    and warn instead of crashing -- callers that auto-enable ``--processes``
+    (e.g. Habitat Hub) keep working, just single-process.
+    """
+    if processes > 1 and 'forkserver' not in multiprocessing.get_all_start_methods():
+        log.warning(
+            "--processes=%d requested but the 'forkserver' start method is "
+            'unavailable on this platform; running sequentially. Multiprocess '
+            'batch mode is Linux/CUDA-first.',
+            processes,
+        )
+        return 1
+    return processes
+
+
 @dataclass(frozen=True)
 class BatchWork:
     """One resume-filtering result, kept coherent as a single value."""
