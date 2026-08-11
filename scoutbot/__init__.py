@@ -42,6 +42,7 @@ from time import perf_counter_ns
 from scoutbot import utils
 from scoutbot._batch_mp import _load_processed
 from scoutbot._observability import build_batch_summary, emit
+from scoutbot.registry.paths import get_examples_dir
 
 log = utils.init_logging()
 QUIET = not utils.VERBOSE
@@ -466,7 +467,9 @@ def batch_resumable(
             (the sequential loop). When greater than 1, the model is resolved
             once in the parent and each of the N worker processes loads its
             own copy, so ensure N copies fit in available VRAM. Linux/CUDA is
-            the primary target for this mode.
+            the primary target for this mode. On platforms without a
+            ``forkserver`` start method (e.g. Windows), a value greater than 1
+            is not honored: a warning is logged and the sequential path runs.
         summary_json (str or Path, optional): if given, the machine-readable
             batch summary (counts, timing, throughput) is written to this
             path as JSON on completion, in both sequential and multiprocess
@@ -533,6 +536,11 @@ def batch_resumable(
     if processes > 1:
         from scoutbot import _batch_mp
 
+        # Spawn-only platforms (e.g. Windows) have no 'forkserver' context; drop
+        # to sequential with a warning instead of crashing later in the pool.
+        processes = _batch_mp._effective_processes(processes)
+
+    if processes > 1:
         work = _batch_mp.BatchWork(
             remaining=remaining,
             skipped_count=len(filepaths) - len(remaining),
@@ -772,17 +780,24 @@ def get_classes(config=None):
 
 
 def example():
-    """
-    Run the pipeline on an example image with the default configuration.
+    """Run the pipeline on the bundled example image as a quick end-to-end smoke check.
+
+    Downloads the example image (cached under the OSW home), runs ``pipeline`` with
+    the default ``v3`` config, prints the WIC score, detection count, and
+    detections, and returns ``(wic_score, detections)``. This is a single-image
+    install check, not a tour of the API -- see the docs for batch, multi-class
+    (``v3-cls``), and Core ML usage.
     """
     import hashlib
 
     import requests
 
-    TEST_IMAGE_URL = 'https://wildbookiarepository.azureedge.net/data/scout.example.jpg'
+    # Served from the OSW public bucket (byte-identical to the retired Wild Me
+    # copy, so the pinned hash is unchanged). Source: examples/1be4d40a-...jpg.
+    TEST_IMAGE_URL = 'https://storage.googleapis.com/osw-public-data/scoutbot/examples/scout.example.jpg'
     TEST_IMAGE_HASH = '786a940b062a90961f409539292f09144c3dbdbc6b6faa64c3e764d63d55c988'
 
-    cache_dir = Path.home() / '.cache' / 'scoutbot'
+    cache_dir = get_examples_dir()
     cache_dir.mkdir(parents=True, exist_ok=True)
     img_filepath = cache_dir / 'scout.example.jpg'
 
@@ -804,5 +819,12 @@ def example():
     assert exists(str(img_filepath))
     log.debug(f'Running pipeline on image: {img_filepath}')
 
-    wic_, detects = pipeline(str(img_filepath), config='v3')
+    wic, detects = pipeline(str(img_filepath), config='v3')
+    print(f'ScoutBot example (config v3) on {img_filepath.name}:')
+    print(f'  WIC score: {wic:.4f}  |  {len(detects)} detection(s)')
     print(json.dumps(detects, indent=2))
+    print(
+        'For batch, multi-class (v3-cls), and Core ML usage, see '
+        'https://surveytools.github.io/scoutbot-2026/usage.html'
+    )
+    return wic, detects

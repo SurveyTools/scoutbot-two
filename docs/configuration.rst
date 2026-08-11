@@ -92,7 +92,10 @@ Parallel execution
 ``batch_resumable`` accepts ``processes=N`` (CLI: ``--processes N``) to process images across
 ``N`` worker processes on a single machine instead of the default sequential loop
 (``processes=1``). This mode is **Linux/CUDA-first**; it uses the ``forkserver`` start method to
-launch workers.
+launch workers. On platforms that do not provide a ``forkserver`` start method -- notably Windows,
+which offers only ``spawn`` -- ``processes=N`` is not honored: scoutbot logs a warning and runs the
+sequential path instead of failing. This keeps callers that always pass ``N`` (e.g. Habitat Hub)
+working without a platform check of their own.
 
 Each worker process loads its own copy of the model, so ``N`` copies must all fit in the GPU's
 available VRAM at once. As a data point, the ``v3`` model uses roughly 1-2 GB of VRAM per copy, so

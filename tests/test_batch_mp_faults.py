@@ -74,6 +74,7 @@ except Exception as exc:
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(sys.platform != 'linux', reason='forkserver path is Linux/CUDA-first')
 def test_imap_unordered_behavior_on_hard_worker_death():
     """Characterization result (darwin, forkserver): a hard worker death via
     ``os._exit(1)`` is NOT surfaced by ``imap_unordered``. The dead worker's

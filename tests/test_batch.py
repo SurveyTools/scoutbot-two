@@ -797,6 +797,21 @@ class TestBatchResumableUnit:
 
 
 class TestBatchResumableMultiprocess:
+    @pytest.fixture(autouse=True)
+    def _force_forkserver_available(self, monkeypatch):
+        # These tests exercise the Linux/CUDA-first multiprocess *routing*, which is
+        # gated on the forkserver start method. Simulate a forkserver-capable platform
+        # so they stay meaningful on spawn-only CI (Windows), where batch_resumable
+        # otherwise clamps processes>1 to the sequential path (covered separately by
+        # test_effective_processes_*). processes<=1 tests here are unaffected.
+        import multiprocessing
+
+        monkeypatch.setattr(
+            multiprocessing,
+            'get_all_start_methods',
+            lambda: ['fork', 'spawn', 'forkserver'],
+        )
+
     def test_processes_gt_1_uses_run_batch(self, tmp_path):
         import scoutbot
 
@@ -953,6 +968,36 @@ class TestBatchResumableMultiprocess:
         assert rec['model'] == provenance  # provenance attached to written record
 
 
+def test_batch_resumable_falls_back_to_sequential_without_forkserver(
+    tmp_path, monkeypatch, caplog
+):
+    """On spawn-only platforms (e.g. Windows) processes>1 runs sequentially with a
+    warning, never building a pool. Module-level so the class fixture that forces
+    forkserver-available does not apply here."""
+    import multiprocessing
+
+    import scoutbot
+
+    monkeypatch.setattr(multiprocessing, 'get_all_start_methods', lambda: ['spawn'])
+    out = tmp_path / 'out.jsonl'
+    with (
+        patch('scoutbot.model_store.fetch', return_value='/fake/model.pt'),
+        patch('scoutbot.tile_batched.Yolov8DetectionModel'),
+        patch('scoutbot.pipeline', return_value=(0.5, [])),
+        patch('scoutbot._batch_mp.make_mp_submit') as mk,
+    ):
+        with caplog.at_level('WARNING'):
+            scoutbot.batch_resumable(
+                ['a.jpg'],
+                output_path=str(out),
+                config='v3',
+                processes=4,
+                show_progress=False,
+            )
+    assert not mk.called  # no pool built on a spawn-only platform
+    assert 'forkserver' in caplog.text  # user is warned about the fallback
+
+
 @pytest.mark.slow
 class TestExampleSlow:
     """Integration test for scoutbot.example() — downloads from network."""
@@ -971,3 +1016,49 @@ class TestExampleSlow:
             patch('scoutbot.pipeline', return_value=(0.5, [])),
         ):
             scoutbot.example()
+
+
+def test_example_caches_image_under_osw_home(tmp_path, monkeypatch):
+    """example() caches the demo image under the OSW home, not legacy ~/.cache/scoutbot."""
+    import scoutbot
+
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+
+    fake_response = MagicMock()
+    fake_response.iter_content.return_value = [b'fake-image-bytes']
+    fake_response.raise_for_status = MagicMock()
+    fake_response.__enter__ = MagicMock(return_value=fake_response)
+    fake_response.__exit__ = MagicMock(return_value=False)
+
+    with (
+        patch('requests.get', return_value=fake_response),
+        patch('scoutbot.pipeline', return_value=(0.5, [])),
+    ):
+        scoutbot.example()
+
+    assert (tmp_path / 'osw-home' / 'examples' / 'scout.example.jpg').exists()
+
+
+def test_example_surfaces_wic_and_returns_result(tmp_path, monkeypatch, capsys):
+    """example() prints the WIC score + detection count and returns (wic, detections)."""
+    import scoutbot
+
+    monkeypatch.setenv('OSW_HOME', str(tmp_path / 'osw-home'))
+
+    fake_response = MagicMock()
+    fake_response.iter_content.return_value = [b'fake-image-bytes']
+    fake_response.raise_for_status = MagicMock()
+    fake_response.__enter__ = MagicMock(return_value=fake_response)
+    fake_response.__exit__ = MagicMock(return_value=False)
+
+    det = {'l': 'animal', 'c': 0.9, 'x': 1, 'y': 2, 'w': 3, 'h': 4}
+    with (
+        patch('requests.get', return_value=fake_response),
+        patch('scoutbot.pipeline', return_value=(0.83, [det])),
+    ):
+        result = scoutbot.example()
+
+    assert result == (0.83, [det])
+    out = capsys.readouterr().out
+    assert '0.83' in out  # WIC score surfaced, not just detections
+    assert '1 detection' in out  # detection count surfaced

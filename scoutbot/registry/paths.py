@@ -20,3 +20,12 @@ def get_registry_path() -> Path:
 
 def get_models_dir() -> Path:
     return Path(os.getenv('OSW_MODELS_DIR', _osw_home() / 'models'))
+
+
+def get_examples_dir() -> Path:
+    """Directory for downloaded demo/example assets, under the OSW home.
+
+    Keeps ``example()``'s cached image inside the single OSW toolchain home
+    rather than recreating a separate ``~/.cache/scoutbot`` dot-directory.
+    """
+    return _osw_home() / 'examples'

@@ -87,12 +87,13 @@ uv run pre-commit run --all-files
 ## Architecture
 
 ### Pipeline data flow
-1. `loc.fetch(config)` — downloads the YOLOv8 `.pt` model from Azure Blob Storage to `~/.cache/scoutbot/`, verified by MD5.
+1. `model_store.fetch(config)` — downloads the YOLOv8 `.pt` model from the OSW public model bucket (Google Cloud Storage; Azure Blob Storage as fallback) to `~/.osw/models/` (`OSW_MODELS_DIR`, default `${OSW_HOME:-~/.osw}/models`), verified by MD5. (`loc.fetch` is a back-compat alias.)
 2. `Yolov8DetectionModel` (`tile_batched/main.py`) — SAHI wrapper; slices the image, runs batched YOLOv8, merges detections.
 3. `pipeline()` returns `(wic_score: float, detections: list[dict])` where each detection has keys `l`, `c`, `x`, `y`, `w`, `h`.
 
 ### Module map
-- `scoutbot/loc/__init__.py` — `CONFIGS` dict (model URLs, thresholds, slice params) and `fetch()`.
+- `scoutbot/model_store.py` — `CONFIGS` dict (model URLs, thresholds, slice params), `fetch()`, and Core ML export; caches under `~/.osw/models/`. Path resolvers live in `scoutbot/registry/paths.py`.
+- `scoutbot/loc/__init__.py` — thin back-compat wrapper re-exporting `CONFIGS`, `fetch`, etc. from `model_store`. New code should call `model_store` directly.
 - `scoutbot/tile_batched/main.py` — `Yolov8DetectionModel`, the SAHI `DetectionModel` subclass.
 - `scoutbot/utils.py` — Rich + file logging setup.
 
