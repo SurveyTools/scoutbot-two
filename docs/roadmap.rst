@@ -129,6 +129,22 @@ Release-note hygiene should include a short pre-tag check that the changelog ent
 * calls out user-visible changes, compatibility changes, and workflow changes
 * stays synchronized with the eventual Git tag and public announcement
 
+Prometheus-Survey-Hub rename follow-up
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** ``planned`` (on hold)
+
+The Hub-side follow-up to the ``scoutbot-2026`` → ``scoutbot-two`` rename is paused. Two pieces
+are in flight on Hub branch ``scoutbot-two-updates`` (Hub PR #6):
+
+* the Hub text sweep (provenance label ``scoutbot-2026/{config}`` → ``scoutbot/{config}``, venv
+  default path, prose references)
+* schema v14, a data migration rewriting stored ``detections.model`` labels to the new form
+
+The remaining gate is validating the v14 migration against Brandon's real DB file before merge.
+This work is **not blocking** for scoutbot-two releases: Scoutbot's package name and output
+labels are unaffected by it. See ``docs/plans/2026-08-14-hub-scoutbot-two-migration.md``.
+
 Python interpreter readiness
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

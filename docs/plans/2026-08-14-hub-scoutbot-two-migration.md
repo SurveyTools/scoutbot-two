@@ -1,5 +1,8 @@
 # Prometheus-Survey-Hub `scoutbot-2026` → `scoutbot-two` Migration Plan
 
+> **Status (2026-11-05): ON HOLD.** Hub work paused; tracked in `docs/roadmap.rst`
+> ("Prometheus-Survey-Hub rename follow-up"). Does not block scoutbot-two releases.
+
 > Cross-repo text sweep in **prometheus-survey-hub** accompanying the scoutbot
 > repo rename (`scoutbot-2026` → `scoutbot-two`). Authored in scoutbot-two per
 > the repo's `docs/plans/` convention; the edits land in the Hub repo.
