@@ -10,7 +10,7 @@ Current priorities
 1. **Release and contributor readiness**
 
    * define the release/tagging checklist and release-note hygiene
-   * make the repository public and enable branch protection
+   * ✓ repository is public with main-branch protection enabled
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
 
@@ -106,9 +106,10 @@ The repository should move through the following release steps together:
 
 1. choose and document the next version tag, including the tagging convention and the release
    branch / commit state that will be tagged
-2. make the repository public
-3. enable main-branch protection in GitHub settings at the same time as the public switch
-4. verify the GitHub Pages docs site still builds on ``main``
+2. ✓ repository is public
+3. ✓ main-branch protection enabled in GitHub settings
+4. ✓ GitHub Pages docs site builds on ``main`` and is served at
+   https://surveytools.github.io/scoutbot-two/
 5. confirm the release notes / changelog entry for the tag and keep the changelog entry aligned
    with the tagged release
 6. publish the contributor-facing docs needed for external contributors, including the documented

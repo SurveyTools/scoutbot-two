@@ -10,14 +10,16 @@ in the Hub, keeping runtime behavior intact, while applying four decisions made
 during planning.
 
 **Scope:** 14 grep hits across runtime code, config, tests, and docs (~17
-edits). One behavioral change (the provenance label string). Independent of
-the scoutbot in-repo sweep — can run any time after the GitHub rename.
+edits). One behavioral change (the provenance label string), which turned out
+to need a stored-data migration too (Task 2, added 2026-09-09 from PR #6
+review). Independent of the scoutbot in-repo sweep — can run any time after
+the GitHub rename.
 
 ## Decisions (locked during planning, 2026-08-14)
 
 | # | Decision | Choice |
 |---|----------|--------|
-| Q1 | Stored provenance label `scoutbot-2026/{config}` | → `scoutbot/{config}` — matches the Python **package** name (unchanged by the rename); repo suffix stays out of provenance |
+| Q1 | Stored provenance label `scoutbot-2026/{config}` | → `scoutbot/{config}` — matches the Python **package** name (unchanged by the rename); repo suffix stays out of provenance. **Revised 2026-09-09:** this also requires a data migration — see Task 2. |
 | Q2 | `DEFAULT_VENV` convention path | → `~/repos/scoutbot-two/.venv` (straight rename of the convention) |
 | Q3 | Vestigial `config/default.yaml` `scoutbot_venv` key | Update the string in place (do not prune the orphaned consumer in this sweep) |
 | Q4 | Roadmap/planning docs naming the workstream | Update to the new name |
@@ -35,6 +37,17 @@ the scoutbot in-repo sweep — can run any time after the GitHub rename.
   exists and `$SCOUTBOT_VENV` is unset — the default path is a documented
   fallback, so nothing here breaks at runtime as long as the real environment
   sets `$SCOUTBOT_VENV`.
+- **Upgrade note for existing checkouts:** an operator with an existing
+  `~/repos/scoutbot-2026` checkout will find `DEFAULT_VENV` no longer resolves
+  to it after this sweep lands. `$SCOUTBOT_VENV` overrides the default and
+  `resolve_scoutbot()`'s `FileNotFoundError` names the resolved path, so the
+  failure mode is loud and self-explanatory rather than silent — but anyone
+  mid-upgrade should either rename the checkout directory to `scoutbot-two`
+  or set `$SCOUTBOT_VENV` to the old path. (Raised in PR #6 review.)
+- **Correction 2026-09-09:** the original "Hub is pre-release" premise below
+  (see Out of scope) does not hold everywhere — Brandon's DB, populated from
+  real survey runs, already has `detections.model` rows stamped
+  `scoutbot-2026/{config}`. Caught in PR #6 review before merge. See Task 2.
 
 ---
 
@@ -93,6 +106,38 @@ Expected: both test files pass; grep returns nothing.
 
 ---
 
+## Task 2: Migrate stored provenance labels (added 2026-09-09, PR #6 review)
+
+**Why:** Task 1's Group A changes the label the Hub *writes* going forward
+(`scoutbot-2026/{config}` → `scoutbot/{config}`) but does nothing for labels
+already *stored*. Brandon's DB has `detections.model` rows from real runs
+still stamped `scoutbot-2026/{config}`; left alone, any query that groups or
+filters by model would see the same detector under two labels.
+
+**Approach:** a schema-version-tracked data migration in `api/db.py`
+(`MIGRATIONS`), following the existing additive-only pattern (`schema_version`
+table, one entry per version, applied automatically on `db.connect()`) —
+consistent with how the Hub already evolves the DB, just a data rewrite
+instead of a `CREATE`/`ALTER`. Added as migration **v14**:
+
+```sql
+UPDATE detections
+SET model = 'scoutbot/' || substr(model, length('scoutbot-2026/') + 1)
+WHERE model LIKE 'scoutbot-2026/%';
+```
+
+Only rows written by the ScoutBot backend ever carry the `scoutbot-2026/`
+prefix (confirmed by reading `job_service.py`/`import_service.py`'s
+model-label call sites); other backends' labels (`default`, `imported`,
+`verified`, a Prometheus weights filename) don't match the `LIKE` and are
+left untouched.
+
+**Status:** implemented test-first on `scoutbot-two-updates`
+(`tests/test_scoutbot_label_migration.py` — red before the migration existed,
+green after) and folded into PR #6. **Still needs validation against
+Brandon's real DB file** once he sends it, before merge — the synthetic test
+covers the rewrite logic but not real-world label variety.
+
 ## Out of scope (record, don't do here)
 
 - **Prune orphaned `hh/detection` scoutbot path.** `config/default.yaml`'s
@@ -101,13 +146,13 @@ Expected: both test files pass; grep returns nothing.
   wiring isn't forgotten.
 - **Provenance-format changelog note.** If the Hub adopts a changelog for
   output-schema changes, the `scoutbot-2026/v3` → `scoutbot/v3` label change
-  warrants a one-line entry. Hub is pre-release, so no back-compat handling for
-  existing stored records is required.
+  (and its Task 2 migration) warrants a one-line entry. Not written now only
+  because the Hub has no changelog file yet — not deferred as unnecessary.
 
 ## Handoff
 
-No `git add` / `git commit`. Stop at review state and provide a suggested
-commit message, e.g.:
+No `git add` / `git commit`. Stop at review state and provide suggested
+commit messages, e.g.:
 
 ```
 Rename scoutbot-2026 references to scoutbot-two
@@ -117,3 +162,16 @@ changes to package-name form (scoutbot/{config}); venv default and docs
 track the new repo name. Orphaned hh/detection config key updated in
 place (pruning tracked separately).
 ```
+
+```
+Migrate stored scoutbot-2026 provenance labels to scoutbot/{config}
+
+Add schema v14: rewrite detections.model rows still stamped
+scoutbot-2026/{config} to the package-name form the rename now writes.
+Existing databases (Brandon's) predate the rename and would otherwise
+show one detector under two labels. Test-first, red before the
+migration existed.
+```
+
+Task 2's migration still needs a run against Brandon's actual DB file
+(pending) before either commit is finalized — see Task 2 status.
