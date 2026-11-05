@@ -1,17 +1,31 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoutbot"
 version = "0.5.0"
-description = "The computer vision for Wild Me's Scout project ... and beyond"
+description = "YOLOv8-based machine learning pipeline for detecting and localising wildlife in aerial survey imagery."
 readme = "README.md"
 requires-python = ">=3.10,<3.14"
-license = {text = "Apache-2.0"}
+# SPDX expression (PEP 639) — needs setuptools>=77 at build time; no License:: classifier allowed.
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [
     {name = "Overhead Survey Workflow Team"},
     {name = "Wild Me"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Image Recognition",
 ]
 dependencies = [
     "click",
@@ -60,6 +74,9 @@ coreml = [
 
 [project.urls]
 Repository = "https://github.com/SurveyTools/scoutbot-two"
+Documentation = "https://surveytools.github.io/scoutbot-two/"
+Changelog = "https://surveytools.github.io/scoutbot-two/changelog.html"
+Issues = "https://github.com/SurveyTools/scoutbot-two/issues"
 
 [project.scripts]
 scoutbot = "scoutbot.scoutbot:cli"
