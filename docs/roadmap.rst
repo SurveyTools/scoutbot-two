@@ -9,7 +9,8 @@ Current priorities
 
 1. **Release and contributor readiness**
 
-   * define the release/tagging checklist and release-note hygiene
+   * ✓ release/tagging checklist documented (:doc:`development`, *Releasing*); first PyPI
+     release (0.5.0) in progress
    * ✓ repository is public with main-branch protection enabled
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
@@ -104,8 +105,8 @@ Public release checklist
 
 The repository should move through the following release steps together:
 
-1. choose and document the next version tag, including the tagging convention and the release
-   branch / commit state that will be tagged
+1. ✓ tag convention documented: bare ``X.Y.Z`` tags on ``main`` matching ``pyproject.toml``
+   (:doc:`development`, *Releasing*); 0.5.0 is tagged on the final merged release commit
 2. ✓ repository is public
 3. ✓ main-branch protection enabled in GitHub settings
 4. ✓ GitHub Pages docs site builds on ``main`` and is served at
@@ -118,10 +119,9 @@ The repository should move through the following release steps together:
    macOS and Windows; the 179-test slow suite passes on macOS 3.13.
 8. record the Python 3.14 readiness checklist so the next interpreter bump is scoped before it
    becomes urgent
-9. revisit PyPI publishing once namespace ownership is clarified
-
-PyPI publishing remains deferred until the old Wild Me Scoutbot namespace and ownership path are
-clarified. That should stay a separate decision from the public-repo move itself.
+9. ✓ PyPI publishing: the ``scoutbot`` PyPI project was transferred from Wild Me to the OSW
+   organization, and ``publish.yml`` publishes via Trusted Publishing with a TestPyPI dry run
+   first. WildMeOrg/scoutbot is marked superseded and no longer publishes.
 
 Release-note hygiene should include a short pre-tag check that the changelog entry:
 

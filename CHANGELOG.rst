@@ -46,6 +46,15 @@ Changelog
 * Renamed the GitHub repository and local project directory from ``scoutbot-2026`` to
   ``scoutbot-two`` and updated project URLs (repository, docs, CI badges). The Python package name
   (``scoutbot``) is unchanged, so imports and installs are unaffected.
+* **First PyPI release from scoutbot-two.** The ``scoutbot`` PyPI project was transferred from
+  Wild Me to the Overhead Survey Workflow (OSW) PyPI organization, and 0.5.0 is the first release
+  published from this repository (``pip install scoutbot``). `WildMeOrg/scoutbot
+  <https://github.com/WildMeOrg/scoutbot>`_ is superseded and no longer publishes; the ``0.1.x``
+  releases remain on PyPI as the unmaintained legacy line. Upgrading from ``0.1.x`` is subject to
+  every breaking change listed in this section.
+* Package metadata updated for PyPI: new summary, PEP 639 SPDX license expression
+  (``Apache-2.0``, so building from source now needs ``setuptools>=77``), classifiers, and
+  documentation / changelog / issue-tracker project URLs.
 
 **New features**
 
@@ -121,6 +130,12 @@ Changelog
 
 **Quality, CI, and security**
 
+* Added ``.github/workflows/publish.yml``: PyPI Trusted Publishing (OIDC, no API tokens) with a
+  manually triggered TestPyPI dry run, a tag-equals-version guard, ``twine check --strict``,
+  clean-venv wheel smoke tests on Python 3.10 and 3.13, and a reviewer-gated ``pypi``
+  environment. Its actions are pinned to commit SHAs. Added ``tests/test_packaging.py`` to pin
+  the published metadata and catch subpackages missing from the hand-maintained setuptools
+  package list.
 * Added a ``windows-smoke`` CI job to ``.github/workflows/testing.yml`` that runs the fast/offline
   test suite on Python 3.13 under Windows. This provides basic cross-platform coverage for non-Core ML
   code without claiming full Windows parity; Core ML configs remain macOS-only.

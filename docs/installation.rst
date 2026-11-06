@@ -9,6 +9,28 @@ Python support
 
 Scoutbot currently supports Python 3.10, 3.11, 3.12, and 3.13.
 
+Install from PyPI
+-----------------
+
+.. code-block:: bash
+
+   pip install scoutbot
+   # or
+   uv pip install scoutbot
+
+   # Core ML on Apple Silicon (see below)
+   pip install "scoutbot[coreml]"
+
+The ``scoutbot`` project on PyPI is published from this repository by the Overhead Survey
+Workflow (OSW) team starting with **0.5.0**. The older ``0.1.x`` releases on PyPI are the legacy
+Wild Me line from `WildMeOrg/scoutbot <https://github.com/WildMeOrg/scoutbot>`_; they remain
+installable but are not maintained. 0.5.0 contains breaking changes relative to ``0.1.x`` — see
+:doc:`changelog` before upgrading.
+
+A PyPI install resolves dependencies fresh within the declared ranges; it does not use this
+repository's ``uv.lock``. For the exact dependency set CI tests against, install from source with
+``uv sync`` (below).
+
 Direct local install
 --------------------
 
@@ -110,6 +132,11 @@ published under **cu130**, and is *not* in the older ``cu128`` or ``cu124`` inde
 
    # Required for large image handling (SAHI tiling)
    uv pip install scikit-image imagecodecs
+
+To install from PyPI instead of a clone, replace the ``git clone`` / ``cd`` / ``uv pip install -e .``
+lines with ``uv pip install scoutbot``. A PyPI install is not locked, so check which ``torch``
+version it actually resolved (the verify command below prints it) and pick the CUDA index that
+carries that version, as described next.
 
 The right ``cuXXX`` tag is tied to the pinned ``torch`` version, so it changes when Scoutbot bumps
 Torch. Do not assume ``cu130`` indefinitely: check the pinned version (``uv run python -c "import
