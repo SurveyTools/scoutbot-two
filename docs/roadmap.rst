@@ -112,8 +112,8 @@ The repository should move through the following release steps together:
 3. ✓ main-branch protection enabled in GitHub settings
 4. ✓ GitHub Pages docs site builds on ``main`` and is served at
    https://surveytools.github.io/scoutbot-two/
-5. confirm the release notes / changelog entry for the tag and keep the changelog entry aligned
-   with the tagged release
+5. ✓ 0.5.0 changelog entry confirmed and dated 2026-11-05 for the tagged release; the release
+   was rehearsed as ``0.5.0rc1`` on PyPI because TestPyPI ownership is still being transferred
 6. publish the contributor-facing docs needed for external contributors, including the documented
    documentation-pass rule and the public contribution workflow
 7. ✓ Python 3.13 support confirmed: CI runs the full fast suite on Python 3.13 under both

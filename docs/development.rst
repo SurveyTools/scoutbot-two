@@ -231,6 +231,33 @@ Scoutbot is published to PyPI as ``scoutbot`` (owned by the OSW PyPI organizatio
    place of ``X.Y.Z`` in the verify commands above. If TestPyPI has no trusted publisher for this
    repository yet, ``publish-testpypi`` fails with an invalid-publisher error after ``build`` and
    ``smoke`` pass; that run still counts as a reduced dry run (build and wheel smoke only).
+
+   **Alternative: a release candidate on PyPI.** When TestPyPI is unavailable, or to exercise
+   the real index and publisher, publish ``X.Y.ZrcN`` to PyPI itself. ``pip install scoutbot``
+   ignores pre-releases, so default installs are unaffected (0.5.0 used ``0.5.0rc1`` this way).
+   The tag does not need to be on ``main``; pushing the tag carries the commit:
+
+   .. code-block:: bash
+
+      git fetch origin
+      git switch -c release/X.Y.ZrcN origin/main
+      git branch --unset-upstream     # keep a bare `git push` from targeting main
+      uv version X.Y.ZrcN             # updates pyproject.toml and uv.lock
+      git commit -am "Release candidate X.Y.ZrcN"
+      git tag -a X.Y.ZrcN -m "scoutbot X.Y.ZrcN"
+      git push origin X.Y.ZrcN
+
+   Approve the ``pypi`` deployment, then verify in an empty temporary directory:
+
+   .. code-block:: bash
+
+      uv venv && uv pip install --refresh-package scoutbot --pre scoutbot==X.Y.ZrcN
+      uv run scoutbot --version && uv run scoutbot fetch --config v3
+
+   ``--refresh-package scoutbot`` matters right after any upload: uv caches the package's version
+   list and otherwise reports that a just-published version does not exist (``uv cache clean
+   scoutbot`` clears it permanently). The ``rcN`` version stays on PyPI; delete the local branch
+   once done.
 3. Tag and push:
 
    .. code-block:: bash
@@ -244,7 +271,7 @@ Scoutbot is published to PyPI as ``scoutbot`` (owned by the OSW PyPI organizatio
    again) as part of that first release.
 4. Approve the ``pypi`` deployment once ``build`` and ``smoke`` pass, then confirm the release in
    a clean environment: ``pip install scoutbot==X.Y.Z && scoutbot --version`` should print
-   ``scoutbot X.Y.Z``.
+   ``scoutbot X.Y.Z`` (with uv: ``uv pip install --refresh-package scoutbot scoutbot==X.Y.Z``).
 
 If the PyPI upload fails partway, re-run only the failed job in the same workflow run so it
 re-uses the same artifacts. Never rebuild or re-tag a version that has reached PyPI; release the
