@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "scoutbot"
-version = "0.5.0"
+version = "0.5.0rc1"
 description = "YOLOv8-based machine learning pipeline for detecting and localising wildlife in aerial survey imagery."
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
