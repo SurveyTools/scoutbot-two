@@ -11,15 +11,26 @@ Scoutbot-two is a continuation of the work started in the original
 [WildMeOrg/scoutbot](https://github.com/WildMeOrg/scoutbot) repository. Scoutbot was originally
 developed for the [Scout](https://github.com/WildMeOrg/scout) project by the Wild Me team of Conservation X Labs with funding from the Paul G. Allen Family Foundation.
 
+Starting with 0.5.0, the [`scoutbot` package on PyPI](https://pypi.org/project/scoutbot/) is
+published from scoutbot-two by the Overhead Survey Workflow (OSW) team, with Wild Me's support.
+The `0.1.x` releases on PyPI are the legacy Wild Me line and are no longer maintained.
+
 ## Quick Start
+
+```bash
+pip install scoutbot        # or: uv pip install scoutbot
+
+scoutbot fetch --config v3
+scoutbot pipeline /path/to/image.jpg --config v3 --device mps
+```
+
+From source:
 
 ```bash
 git clone https://github.com/SurveyTools/scoutbot-two
 cd scoutbot-two
 uv pip install -e .
-
 uv run scoutbot fetch --config v3
-uv run scoutbot pipeline /path/to/image.jpg --config v3 --device mps
 ```
 
 Scoutbot downloads models on first use and caches them in `~/.osw/models/`.
@@ -39,7 +50,8 @@ Scoutbot downloads models on first use and caches them in `~/.osw/models/`.
 On M-series Macs, install the Core ML extra and use `v3-coreml` or `v3-cls-coreml`:
 
 ```bash
-uv sync --extra coreml
+pip install "scoutbot[coreml]"   # from PyPI
+uv sync --extra coreml           # or, from a source checkout
 uv run scoutbot pipeline image.jpg --config v3-coreml
 ```
 

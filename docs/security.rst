@@ -103,6 +103,28 @@ Scoutbot inference runs locally. Scoutbot itself does not upload image data duri
 Users are responsible for the privacy, storage, network, and access-control behavior of any
 surrounding pipeline or infrastructure where Scoutbot is embedded.
 
+Release publishing
+------------------
+
+Releases reach PyPI only through ``.github/workflows/publish.yml``:
+
+* **Trusted Publishing (OIDC).** PyPI and TestPyPI trust this repository's ``publish.yml`` running
+  in the ``pypi`` / ``testpypi`` environment. No long-lived API token exists in the repository or
+  in GitHub secrets, so there is nothing to leak or rotate.
+* **Least privilege.** The workflow defaults to ``contents: read``; ``id-token: write`` is granted
+  only to the two upload jobs.
+* **Human gate.** The ``pypi`` environment (configured in repository settings, not in the
+  workflow file) requires reviewer approval and accepts deployments only from version tags. A tag
+  ruleset restricting who may create or move version tags is recommended alongside it.
+* **Build once, publish what was tested.** The upload jobs publish the exact artifacts built and
+  smoke-tested earlier in the same run; nothing is rebuilt at upload time. The uv cache is
+  disabled on this path, and its actions are pinned to commit SHAs (other workflows pin by tag).
+  ``pypa/gh-action-pypi-publish`` also generates PEP 740 attestations for each uploaded file by
+  default.
+* **TestPyPI caveat.** TestPyPI is an unvetted index; when verifying a dry run, download only the
+  ``scoutbot`` wheel from it (``--no-deps``) and resolve dependencies from PyPI (see
+  :doc:`development`, *Releasing*).
+
 CI posture
 ----------
 

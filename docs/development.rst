@@ -19,8 +19,10 @@ or similar tools directly.
 Python support
 --------------
 
-Scoutbot currently supports Python 3.10, 3.11, 3.12, and 3.13. The package metadata declares
-``>=3.10,<3.14``.
+Scoutbot currently supports Python 3.11, 3.12, and 3.13. The package metadata declares
+``>=3.11,<3.14``. Python 3.10 was dropped in 0.5.0: it reached end-of-life in October 2026, and
+the fixed releases of ``pillow`` (13.0) and ``filelock`` (4.2.1+) needed to keep ``uv audit``
+clean require 3.11+.
 
 Local setup
 -----------
@@ -142,7 +144,7 @@ CI workflows
 ------------
 
 ``.github/workflows/testing.yml``
-   Runs on pull requests and pushes to ``main``. It tests Python 3.10, 3.11, 3.12, and 3.13, installs
+   Runs on pull requests and pushes to ``main``. It tests Python 3.11, 3.12, and 3.13, installs
    with ``uv sync --extra test``, and runs ``uv run pytest -m "not slow"`` with coverage.
    A ``windows-smoke`` job also runs the fast/offline suite on Windows with Python 3.13 only, providing
    smoke coverage for non-Core ML code without claiming full Windows parity.
@@ -162,6 +164,13 @@ CI workflows
    ``scoutbot batch-resumable --processes 2`` smoke, and ``benchmarks/benchmark_concurrency.py``,
    publishing the run summaries to the job summary. It is inert until a matching GPU runner is
    registered.
+
+``.github/workflows/publish.yml``
+   Release publishing via PyPI Trusted Publishing (see `Releasing`_). A manual run
+   (``workflow_dispatch``) publishes to TestPyPI; pushing a version tag publishes to PyPI after a
+   reviewer approves the ``pypi`` environment. Both paths build once with ``uv build``, fail if a
+   pushed tag does not equal ``uv version --short``, run ``twine check --strict``, and smoke-test
+   the built wheel in clean venvs on Python 3.11 and 3.13 before uploading those same files.
 
 GPU and CUDA
 ~~~~~~~~~~~~
@@ -186,6 +195,60 @@ Install docs dependencies and build Sphinx:
 
 GitHub Pages is the canonical hosted docs site. Route readers to rendered HTML and keep local
 Sphinx builds as a maintainer path.
+
+Releasing
+---------
+
+Scoutbot is published to PyPI as ``scoutbot`` (owned by the OSW PyPI organization) by
+``.github/workflows/publish.yml`` using Trusted Publishing — there is no API token to manage.
+
+**Conventions**
+
+* Tags are the bare version, ``X.Y.Z`` (no ``v`` prefix), and must equal the ``version`` in
+  ``pyproject.toml``; the workflow refuses a mismatched tag before building anything.
+* Do not rename ``publish.yml`` or the ``pypi`` / ``testpypi`` GitHub environments: those exact
+  names are registered as the trusted publisher on PyPI and TestPyPI.
+* A version can be uploaded to an index only once — PyPI and TestPyPI both permanently reject a
+  reused filename, even after deletion.
+
+**Steps**
+
+1. Merge the release changes to ``main`` with CI green, and update the ``CHANGELOG.rst`` entry
+   (including its date) for the version in ``pyproject.toml``.
+2. Dry run: *Actions → Publish → Run workflow* on ``main`` uploads to TestPyPI. Verify it without
+   letting TestPyPI supply dependencies (TestPyPI carries unvetted uploads of common package
+   names):
+
+   .. code-block:: bash
+
+      # in an empty temporary directory
+      uvx pip download scoutbot==X.Y.Z --no-deps -i https://test.pypi.org/simple/ -d dl/
+      uv venv && uv pip install dl/scoutbot-X.Y.Z-py3-none-any.whl
+      uv run scoutbot --version && uv run scoutbot fetch --config v3
+
+   If a fix is needed after the TestPyPI upload, dry-run again from a throwaway branch with
+   ``uv version X.Y.ZrcN`` set, since ``X.Y.Z`` is already taken on TestPyPI; use ``X.Y.ZrcN`` in
+   place of ``X.Y.Z`` in the verify commands above. If TestPyPI has no trusted publisher for this
+   repository yet, ``publish-testpypi`` fails with an invalid-publisher error after ``build`` and
+   ``smoke`` pass; that run still counts as a reduced dry run (build and wheel smoke only).
+3. Tag and push:
+
+   .. code-block:: bash
+
+      git fetch origin
+      git tag -a X.Y.Z -m "scoutbot X.Y.Z" origin/main
+      git push origin X.Y.Z
+
+   This fails if the tag already exists. That is the case only for ``0.5.0``, whose tag predates
+   ``publish.yml`` and is moved once (delete the remote tag, re-create it on ``origin/main``, push
+   again) as part of that first release.
+4. Approve the ``pypi`` deployment once ``build`` and ``smoke`` pass, then confirm the release in
+   a clean environment: ``pip install scoutbot==X.Y.Z && scoutbot --version`` should print
+   ``scoutbot X.Y.Z``.
+
+If the PyPI upload fails partway, re-run only the failed job in the same workflow run so it
+re-uses the same artifacts. Never rebuild or re-tag a version that has reached PyPI; release the
+next patch version instead.
 
 Documentation pass
 ------------------

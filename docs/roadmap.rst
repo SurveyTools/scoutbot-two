@@ -9,8 +9,9 @@ Current priorities
 
 1. **Release and contributor readiness**
 
-   * define the release/tagging checklist and release-note hygiene
-   * make the repository public and enable branch protection
+   * ✓ release/tagging checklist documented (:doc:`development`, *Releasing*); first PyPI
+     release (0.5.0) in progress
+   * ✓ repository is public with main-branch protection enabled
    * keep the hosted docs site healthy on ``main``
    * publish the contributor-facing docs and workflow needed for external contributors
 
@@ -104,11 +105,13 @@ Public release checklist
 
 The repository should move through the following release steps together:
 
-1. choose and document the next version tag, including the tagging convention and the release
-   branch / commit state that will be tagged
-2. make the repository public
-3. enable main-branch protection in GitHub settings at the same time as the public switch
-4. verify the GitHub Pages docs site still builds on ``main``
+1. ✓ tag convention documented: bare ``X.Y.Z`` tags on ``main`` matching ``pyproject.toml``
+   (:doc:`development`, *Releasing*); the existing ``0.5.0`` tag will be moved to the final merged
+   release commit when 0.5.0 is published
+2. ✓ repository is public
+3. ✓ main-branch protection enabled in GitHub settings
+4. ✓ GitHub Pages docs site builds on ``main`` and is served at
+   https://surveytools.github.io/scoutbot-two/
 5. confirm the release notes / changelog entry for the tag and keep the changelog entry aligned
    with the tagged release
 6. publish the contributor-facing docs needed for external contributors, including the documented
@@ -117,16 +120,32 @@ The repository should move through the following release steps together:
    macOS and Windows; the 179-test slow suite passes on macOS 3.13.
 8. record the Python 3.14 readiness checklist so the next interpreter bump is scoped before it
    becomes urgent
-9. revisit PyPI publishing once namespace ownership is clarified
-
-PyPI publishing remains deferred until the old Wild Me Scoutbot namespace and ownership path are
-clarified. That should stay a separate decision from the public-repo move itself.
+9. ✓ PyPI publishing: the ``scoutbot`` PyPI project was transferred from Wild Me to the OSW
+   organization, and ``publish.yml`` publishes via Trusted Publishing with a TestPyPI dry run
+   first. Retiring publishing from WildMeOrg/scoutbot (removing its PyPI and Docker workflows and
+   adding a superseded notice) is a separate pull request on that repository, in progress.
 
 Release-note hygiene should include a short pre-tag check that the changelog entry:
 
 * names the release boundary clearly
 * calls out user-visible changes, compatibility changes, and workflow changes
 * stays synchronized with the eventual Git tag and public announcement
+
+Prometheus-Survey-Hub rename follow-up
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**Status:** ``planned`` (on hold)
+
+The Hub-side follow-up to the ``scoutbot-2026`` → ``scoutbot-two`` rename is paused. Two pieces
+are in flight on Hub branch ``scoutbot-two-updates`` (Hub PR #6):
+
+* the Hub text sweep (provenance label ``scoutbot-2026/{config}`` → ``scoutbot/{config}``, venv
+  default path, prose references)
+* schema v14, a data migration rewriting stored ``detections.model`` labels to the new form
+
+The remaining gate is validating the v14 migration against Brandon's real DB file before merge.
+This work is **not blocking** for scoutbot-two releases: Scoutbot's package name and output
+labels are unaffected by it. See ``docs/plans/2026-08-14-hub-scoutbot-two-migration.md``.
 
 Python interpreter readiness
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -20,6 +20,17 @@ class TestCLI:
         assert result.exit_code == 0
         assert 'ScoutBot CLI' in result.output
 
+    def test_cli_version(self):
+        """--version prints the installed package version (used to verify a PyPI install)."""
+        import scoutbot
+        from scoutbot.scoutbot import cli
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ['--version'])
+
+        assert result.exit_code == 0
+        assert result.output.strip() == f'scoutbot {scoutbot.__version__}'
+
     def test_cli_pipeline_help(self):
         """Test pipeline command help."""
         from scoutbot.scoutbot import cli
