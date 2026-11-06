@@ -523,6 +523,11 @@ class _ScoutbotGroup(click.Group):
 
 
 @click.group(cls=_ScoutbotGroup)
+# Reuse scoutbot.__version__ (not package_name=) so the CLI reports the same value, including
+# the '0.0.0+unknown' fallback when package metadata is missing.
+@click.version_option(
+    version=scoutbot.__version__, prog_name='scoutbot', message='%(prog)s %(version)s'
+)
 def cli():
     """
     ScoutBot CLI - YOLOv8-based wildlife detection in aerial imagery.

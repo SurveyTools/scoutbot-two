@@ -106,7 +106,8 @@ Public release checklist
 The repository should move through the following release steps together:
 
 1. ✓ tag convention documented: bare ``X.Y.Z`` tags on ``main`` matching ``pyproject.toml``
-   (:doc:`development`, *Releasing*); 0.5.0 is tagged on the final merged release commit
+   (:doc:`development`, *Releasing*); the existing ``0.5.0`` tag will be moved to the final merged
+   release commit when 0.5.0 is published
 2. ✓ repository is public
 3. ✓ main-branch protection enabled in GitHub settings
 4. ✓ GitHub Pages docs site builds on ``main`` and is served at
@@ -121,7 +122,8 @@ The repository should move through the following release steps together:
    becomes urgent
 9. ✓ PyPI publishing: the ``scoutbot`` PyPI project was transferred from Wild Me to the OSW
    organization, and ``publish.yml`` publishes via Trusted Publishing with a TestPyPI dry run
-   first. WildMeOrg/scoutbot is marked superseded and no longer publishes.
+   first. Retiring publishing from WildMeOrg/scoutbot (removing its PyPI and Docker workflows and
+   adding a superseded notice) is a separate pull request on that repository, in progress.
 
 Release-note hygiene should include a short pre-tag check that the changelog entry:
 

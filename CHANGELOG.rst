@@ -41,16 +41,22 @@ Changelog
   now requires ``coremltools>=9.0`` (the previous pin was unversioned). Two new transitive
   dependencies are added: ``polars>=0.20.0`` and ``nvidia-ml-py>=12.0.0``. A minor type-annotation
   fix in ``model_store.py`` was required because ``YOLO.export()`` now carries a typed return value.
-* Raised declared Python support to ``>=3.10,<3.14`` and added Python 3.13 to the supported
-  target matrix.
+* Changed declared Python support to ``>=3.11,<3.14``: added Python 3.13 and **dropped Python
+  3.10**. Python 3.10 reached end-of-life in October 2026, and the security fixes for ``pillow``
+  (13.0.0) and ``filelock`` (4.2.1+) require Python 3.11+. Python 3.10 users can stay on the
+  legacy ``0.1.x`` releases or upgrade their interpreter.
+* Upgraded locked dependencies to clear ``uv audit`` advisories: ``pillow`` 12.3.0 → 13.0.0,
+  ``filelock`` 3.29.0 → 4.2.9, ``urllib3`` 2.7.0 → 2.8.0, ``setuptools`` 83.0.0 → 84.2.1,
+  ``certifi`` 2026.4.22 → 2026.10.23, and ``fsspec`` 2026.4.0 → 2026.9.0.
 * Renamed the GitHub repository and local project directory from ``scoutbot-2026`` to
   ``scoutbot-two`` and updated project URLs (repository, docs, CI badges). The Python package name
   (``scoutbot``) is unchanged, so imports and installs are unaffected.
 * **First PyPI release from scoutbot-two.** The ``scoutbot`` PyPI project was transferred from
   Wild Me to the Overhead Survey Workflow (OSW) PyPI organization, and 0.5.0 is the first release
   published from this repository (``pip install scoutbot``). `WildMeOrg/scoutbot
-  <https://github.com/WildMeOrg/scoutbot>`_ is superseded and no longer publishes; the ``0.1.x``
-  releases remain on PyPI as the unmaintained legacy line. Upgrading from ``0.1.x`` is subject to
+  <https://github.com/WildMeOrg/scoutbot>`_ is being superseded by scoutbot-two, with its
+  publishing workflows retired in a separate pull request; the ``0.1.x`` releases remain on PyPI
+  as the unmaintained legacy line. Upgrading from ``0.1.x`` is subject to
   every breaking change listed in this section.
 * Package metadata updated for PyPI: new summary, PEP 639 SPDX license expression
   (``Apache-2.0``, so building from source now needs ``setuptools>=77``), classifiers, and
@@ -58,6 +64,8 @@ Changelog
 
 **New features**
 
+* Added ``scoutbot --version``, printing ``scoutbot <version>`` from the installed package
+  metadata (the same value as ``scoutbot.__version__``).
 * Added a local model registry backed by ``~/.osw/model-registry.json``.
   ``scoutbot fetch`` auto-registers downloaded models; subsequent fetches resolve
   from the registry and skip the network. New CLI commands: ``scoutbot register``

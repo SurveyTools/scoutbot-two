@@ -4,10 +4,9 @@ These read the *installed* metadata (``uv sync`` rebuilds it from pyproject.toml
 what PyPI will actually show rather than re-parsing the TOML.
 """
 
+import tomllib
 from importlib.metadata import metadata
 from pathlib import Path
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -27,9 +26,15 @@ def test_license_is_spdx_expression():
 
 def test_python_classifiers_match_supported_range():
     classifiers = md.get_all('Classifier') or []
-    for v in ('3.10', '3.11', '3.12', '3.13'):
+    for v in ('3.11', '3.12', '3.13'):
         assert f'Programming Language :: Python :: {v}' in classifiers
-    assert 'Programming Language :: Python :: 3.14' not in classifiers
+    for v in ('3.10', '3.14'):
+        assert f'Programming Language :: Python :: {v}' not in classifiers
+
+
+def test_requires_python_floor_is_311():
+    # 3.10 was dropped for 0.5.0: it is EOL and the security fixes for pillow/filelock need 3.11+.
+    assert md.get('Requires-Python') == '<3.14,>=3.11'
 
 
 def test_project_urls_point_at_scoutbot_two():
@@ -45,7 +50,6 @@ def test_project_urls_point_at_scoutbot_two():
 def test_setuptools_packages_cover_source_tree():
     # [tool.setuptools] packages is a hand-maintained list, so a new subpackage would otherwise
     # build fine and silently ship missing from the wheel.
-    tomllib = pytest.importorskip('tomllib')  # stdlib from 3.11; skipped on 3.10
     with open(REPO_ROOT / 'pyproject.toml', 'rb') as f:
         pyproject = tomllib.load(f)
     listed = set(pyproject['tool']['setuptools']['packages'])

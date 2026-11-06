@@ -7,7 +7,8 @@ with best-effort GPU support for Windows NVIDIA systems.
 Python support
 --------------
 
-Scoutbot currently supports Python 3.10, 3.11, 3.12, and 3.13.
+Scoutbot currently supports Python 3.11, 3.12, and 3.13. Python 3.10 support was dropped in 0.5.0
+(3.10 is end-of-life, and security fixes for core image dependencies require 3.11+).
 
 Install from PyPI
 -----------------
@@ -26,6 +27,12 @@ Workflow (OSW) team starting with **0.5.0**. The older ``0.1.x`` releases on PyP
 Wild Me line from `WildMeOrg/scoutbot <https://github.com/WildMeOrg/scoutbot>`_; they remain
 installable but are not maintained. 0.5.0 contains breaking changes relative to ``0.1.x`` — see
 :doc:`changelog` before upgrading.
+
+.. warning::
+
+   On Python 3.10 or older, ``pip install scoutbot`` does not fail. It skips 0.5.0 and silently
+   installs the legacy ``0.1.17``. Check with ``scoutbot --version`` (``0.1.x`` has no such option),
+   or require the new line explicitly: ``pip install "scoutbot>=0.5"``.
 
 A PyPI install resolves dependencies fresh within the declared ranges; it does not use this
 repository's ``uv.lock``. For the exact dependency set CI tests against, install from source with
